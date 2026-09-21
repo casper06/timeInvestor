@@ -1,7 +1,8 @@
 import logging
+import threading
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Tuple
 import numpy as np
 import httpx
 import yfinance as yf
@@ -16,20 +17,24 @@ class SimpleCache:
     def __init__(self, ttl_seconds: int = 3600):
         self._cache: Dict[str, tuple[float, Any]] = {}
         self._ttl = ttl_seconds
+        self._lock = threading.RLock()
 
     def get(self, key: str) -> Optional[Any]:
-        if key in self._cache:
-            timestamp, data = self._cache[key]
-            if time.time() - timestamp < self._ttl:
-                return data
-            del self._cache[key]
-        return None
+        with self._lock:
+            if key in self._cache:
+                timestamp, data = self._cache[key]
+                if time.time() - timestamp < self._ttl:
+                    return data
+                del self._cache[key]
+            return None
 
     def set(self, key: str, value: Any):
-        self._cache[key] = (time.time(), value)
+        with self._lock:
+            self._cache[key] = (time.time(), value)
 
     def clear(self):
-        self._cache.clear()
+        with self._lock:
+            self._cache.clear()
 
 cache = SimpleCache(ttl_seconds=settings.CACHE_TTL_SECONDS)
 
@@ -39,23 +44,35 @@ class MarketDataFetcher:
 
     @staticmethod
     def get_history(ticker: str, period: str = "2y", interval: str = "1d") -> TimeSeriesData:
-        cache_key = f"yf_hist_{ticker}_{period}_{interval}"
+        clean_ticker = ticker.strip().upper()
+        cache_key = f"yf_hist_{clean_ticker}_{period}_{interval}"
         cached = cache.get(cache_key)
         if cached:
-            return cached
+            # Clone with cached status for provenance transparency
+            return TimeSeriesData(
+                id=cached.id,
+                name=cached.name,
+                type=cached.type,
+                unit=cached.unit,
+                points=cached.points,
+                source="cached",
+                source_detail="Recuperado de caché local"
+            )
 
-        logger.info(f"Fetching yfinance history for {ticker} (period={period}, interval={interval})")
+        logger.info(f"Fetching yfinance history for {clean_ticker} (period={period}, interval={interval})")
         try:
-            t = yf.Ticker(ticker.strip().upper())
+            t = yf.Ticker(clean_ticker)
             df = t.history(period=period, interval=interval)
             
-            if df.empty:
-                logger.warning(f"Empty dataframe returned for ticker {ticker}, generating synthetic fallback")
-                return MarketDataFetcher._generate_synthetic_equity(ticker, period)
+            if df is None or df.empty:
+                detail = f"yfinance devolvió dataframe vacío para {clean_ticker}"
+                logger.warning(detail)
+                if not settings.ALLOW_SYNTHETIC_DATA:
+                    raise ValueError(f"No se pudieron obtener datos de mercado para '{clean_ticker}' ({detail}) y ALLOW_SYNTHETIC_DATA=false")
+                return MarketDataFetcher._generate_synthetic_equity(clean_ticker, period, detail=detail)
 
             points: List[TimeSeriesPoint] = []
             for idx, row in df.iterrows():
-                # Handle pandas Timestamp or DatetimeIndex
                 if hasattr(idx, "strftime"):
                     date_str = idx.strftime("%Y-%m-%d")
                 else:
@@ -71,40 +88,49 @@ class MarketDataFetcher:
             except Exception:
                 pass
 
-            name = info.get("shortName") or info.get("longName") or f"{ticker} Stock"
+            name = info.get("shortName") or info.get("longName") or f"{clean_ticker} Stock"
             series_data = TimeSeriesData(
-                id=ticker.upper(),
+                id=clean_ticker,
                 name=name,
                 type="equity",
                 unit="USD",
-                points=points
+                points=points,
+                source="live",
+                source_detail="Cotizaciones reales obtenidas vía yfinance"
             )
             cache.set(cache_key, series_data)
             return series_data
 
         except Exception as e:
-            logger.error(f"Error fetching data for ticker {ticker}: {e}. Using fallback.")
-            return MarketDataFetcher._generate_synthetic_equity(ticker, period)
+            detail = f"Error al consultar yfinance para {clean_ticker}: {str(e)}"
+            logger.error(detail)
+            if not settings.ALLOW_SYNTHETIC_DATA:
+                raise ValueError(f"Fallo en la ingesta de datos para '{clean_ticker}': {str(e)} y ALLOW_SYNTHETIC_DATA=false") from e
+            return MarketDataFetcher._generate_synthetic_equity(clean_ticker, period, detail=detail)
 
     @staticmethod
-    def get_fundamentals(tickers: List[str]) -> List[FundamentalsMetric]:
-        cache_key = f"yf_fund_{'_'.join(sorted(tickers))}"
+    def get_fundamentals(tickers: List[str]) -> Tuple[List[FundamentalsMetric], List[str]]:
+        """
+        Fetches official balance sheet and cashflow fundamentals (Capex and Revenue) from yfinance.
+        Never fabricates numbers: if unavailable, returns warnings explicitly.
+        """
+        clean_tickers = sorted(list(set(t.strip().upper() for t in tickers if t.strip())))
+        cache_key = f"yf_fund_{'_'.join(clean_tickers)}"
         cached = cache.get(cache_key)
         if cached:
             return cached
 
         metrics: List[FundamentalsMetric] = []
-        for raw_sym in tickers:
-            sym = raw_sym.strip().upper()
+        warnings: List[str] = []
+
+        for sym in clean_tickers:
             try:
                 t = yf.Ticker(sym)
                 cashflow = t.cashflow
                 financials = t.financials
 
-                # Extract Capex from cashflow
                 capex_extracted = False
                 if cashflow is not None and not cashflow.empty:
-                    # Candidates in cashflow index
                     candidates = [
                         "Capital Expenditure", 
                         "CapitalExpenditure", 
@@ -117,19 +143,19 @@ class MarketDataFetcher:
                             for date_col, val in row.items():
                                 if val is not None and not np.isnan(val):
                                     year = date_col.strftime("%Y") if hasattr(date_col, "strftime") else str(date_col)[:4]
-                                    # Capex is often reported negative in accounting; normalize to positive billions
                                     val_abs = abs(float(val)) / 1e9
                                     metrics.append(FundamentalsMetric(
                                         ticker=sym,
                                         metric="Capex (Billions USD)",
                                         period=year,
-                                        value=round(val_abs, 2)
+                                        value=round(val_abs, 2),
+                                        source="live",
+                                        source_detail="Cashflow statement oficial de yfinance"
                                     ))
                                     capex_extracted = True
                             if capex_extracted:
                                 break
 
-                # Extract Revenue from financials
                 rev_extracted = False
                 if financials is not None and not financials.empty:
                     rev_candidates = ["Total Revenue", "Operating Revenue", "TotalRevenue"]
@@ -144,105 +170,43 @@ class MarketDataFetcher:
                                         ticker=sym,
                                         metric="Revenue (Billions USD)",
                                         period=year,
-                                        value=round(val_billions, 2)
+                                        value=round(val_billions, 2),
+                                        source="live",
+                                        source_detail="Income statement oficial de yfinance"
                                     ))
                                     rev_extracted = True
                             if rev_extracted:
                                 break
 
-                # If Yahoo didn't return full annual statements, provide realistic defaults based on known companies
-                if not capex_extracted or not rev_extracted:
-                    fallback_metrics = MarketDataFetcher._get_fallback_fundamentals(sym)
-                    metrics.extend(fallback_metrics)
+                if not capex_extracted and not rev_extracted:
+                    warnings.append(f"No se obtuvieron estados contables para {sym}")
 
             except Exception as e:
-                logger.warning(f"Error fetching fundamentals for {sym}: {e}. Using fallback.")
-                metrics.extend(MarketDataFetcher._get_fallback_fundamentals(sym))
+                logger.warning(f"Error fetching fundamentals for {sym}: {e}")
+                warnings.append(f"No se obtuvieron estados contables para {sym}: {str(e)}")
 
-        cache.set(cache_key, metrics)
-        return metrics
-
-    @staticmethod
-    def _get_fallback_fundamentals(ticker: str) -> List[FundamentalsMetric]:
-        """Provides realistic fundamental financials (Capex and Revenue in billions) for common tickers."""
-        known: Dict[str, Dict[str, Dict[str, float]]] = {
-            "NVDA": {
-                "Capex (Billions USD)": {"2022": 1.83, "2023": 3.90, "2024": 8.50, "2025": 14.20},
-                "Revenue (Billions USD)": {"2022": 26.91, "2023": 60.92, "2024": 115.80, "2025": 148.50}
-            },
-            "MSFT": {
-                "Capex (Billions USD)": {"2022": 23.88, "2023": 31.90, "2024": 55.70, "2025": 72.00},
-                "Revenue (Billions USD)": {"2022": 198.27, "2023": 211.91, "2024": 245.12, "2025": 278.40}
-            },
-            "GOOG": {
-                "Capex (Billions USD)": {"2022": 31.48, "2023": 32.25, "2024": 51.40, "2025": 65.00},
-                "Revenue (Billions USD)": {"2022": 282.83, "2023": 307.39, "2024": 350.02, "2025": 389.00}
-            },
-            "CEG": {  # Constellation Energy (Nuclear/Grid Power)
-                "Capex (Billions USD)": {"2022": 1.45, "2023": 2.10, "2024": 3.20, "2025": 4.10},
-                "Revenue (Billions USD)": {"2022": 24.44, "2023": 24.92, "2024": 26.80, "2025": 29.50}
-            },
-            "VST": {  # Vistra Corp (Power generation)
-                "Capex (Billions USD)": {"2022": 1.12, "2023": 1.65, "2024": 2.40, "2025": 3.10},
-                "Revenue (Billions USD)": {"2022": 13.73, "2023": 14.78, "2024": 16.50, "2025": 18.20}
-            },
-            "NEE": {  # NextEra Energy (Renewable & Utilities)
-                "Capex (Billions USD)": {"2022": 19.12, "2023": 21.30, "2024": 23.50, "2025": 25.80},
-                "Revenue (Billions USD)": {"2022": 20.95, "2023": 28.11, "2024": 30.20, "2025": 32.50}
-            }
-        }
-        res: List[FundamentalsMetric] = []
-        sym_data = known.get(ticker.upper())
-        if not sym_data:
-            # Generic synthetic based on hash of ticker
-            seed = sum(ord(c) for c in ticker)
-            base_capex = 2.0 + (seed % 10)
-            base_rev = 15.0 + (seed % 40)
-            sym_data = {
-                "Capex (Billions USD)": {
-                    "2022": round(base_capex * 0.8, 2),
-                    "2023": round(base_capex * 1.0, 2),
-                    "2024": round(base_capex * 1.35, 2),
-                    "2025": round(base_capex * 1.60, 2),
-                },
-                "Revenue (Billions USD)": {
-                    "2022": round(base_rev * 0.85, 2),
-                    "2023": round(base_rev * 1.0, 2),
-                    "2024": round(base_rev * 1.20, 2),
-                    "2025": round(base_rev * 1.38, 2),
-                }
-            }
-
-        for metric_name, periods in sym_data.items():
-            for period, val in periods.items():
-                res.append(FundamentalsMetric(
-                    ticker=ticker.upper(),
-                    metric=metric_name,
-                    period=period,
-                    value=val
-                ))
-        return res
+        result = (metrics, warnings)
+        cache.set(cache_key, result)
+        return result
 
     @staticmethod
-    def _generate_synthetic_equity(ticker: str, period: str) -> TimeSeriesData:
-        """Generates realistic synthetic daily equity prices if Yahoo API fails or is offline."""
+    def _generate_synthetic_equity(ticker: str, period: str, detail: Optional[str] = None) -> TimeSeriesData:
+        """Generates synthetic daily equity prices only when ALLOW_SYNTHETIC_DATA=true."""
         days = 365 if period == "1y" else 730
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
         
-        # Base price determined deterministically by ticker name
         seed = sum(ord(c) for c in ticker)
+        rng = np.random.default_rng(seed)
         base_price = 50.0 + (seed % 150)
         
-        np.random.seed(seed)
-        returns = np.random.normal(0.0006, 0.015, days)
+        returns = rng.normal(0.0006, 0.015, days)
         prices = base_price * np.cumprod(1 + returns)
         
         points: List[TimeSeriesPoint] = []
         current = start_date
         for i in range(days):
             current += timedelta(days=1)
-            # Skip weekends
             if current.weekday() < 5:
                 points.append(TimeSeriesPoint(
                     timestamp=current.strftime("%Y-%m-%d"),
@@ -251,10 +215,12 @@ class MarketDataFetcher:
 
         return TimeSeriesData(
             id=ticker.upper(),
-            name=f"{ticker.upper()} Market Price",
+            name=f"{ticker.upper()} (Sintético)",
             type="equity",
             unit="USD",
-            points=points
+            points=points,
+            source="synthetic",
+            source_detail=detail or "Serie sintética generada por falta de datos reales"
         )
 
 
@@ -280,29 +246,22 @@ class FREDDataFetcher:
             "name": "Consumer Price Index for All Urban Consumers",
             "category": "Inflation",
             "unit": "Index 1982-1984=100",
-            "base_val": 308.0,
+            "base_val": 314.0,
             "trend": 0.0025
         },
         "DGS10": {
-            "name": "Market Yield on U.S. Treasury Securities at 10-Year Constant Maturity",
+            "name": "10-Year Treasury Constant Maturity Rate",
             "category": "Interest Rates",
             "unit": "Percent",
             "base_val": 4.15,
-            "trend": 0.0
+            "trend": 0.0005
         },
         "PCU33443344": {
             "name": "PPI: Semiconductor and Other Electronic Component Manufacturing",
-            "category": "Technology Hardware",
-            "unit": "Index 2003=100",
-            "base_val": 135.0,
-            "trend": 0.004
-        },
-        "DFII10": {
-            "name": "10-Year Treasury Inflation-Indexed Security (Real Yield)",
-            "category": "Interest Rates",
-            "unit": "Percent",
-            "base_val": 1.85,
-            "trend": 0.0
+            "category": "Technology Supply Chain",
+            "unit": "Index Dec 2003=100",
+            "base_val": 145.0,
+            "trend": 0.0015
         }
     }
 
@@ -310,13 +269,19 @@ class FREDDataFetcher:
         self.api_key = api_key or settings.FRED_API_KEY
 
     def get_series(self, series_id: str, limit: int = 500) -> TimeSeriesData:
-        series_id = series_id.strip().upper()
         cache_key = f"fred_{series_id}_{limit}"
         cached = cache.get(cache_key)
         if cached:
-            return cached
+            return TimeSeriesData(
+                id=cached.id,
+                name=cached.name,
+                type=cached.type,
+                unit=cached.unit,
+                points=cached.points,
+                source="cached",
+                source_detail="Recuperado de caché local"
+            )
 
-        # Try live FRED API if key is present
         if self.api_key and self.api_key.strip():
             try:
                 url = "https://api.stlouisfed.org/fred/series/observations"
@@ -350,21 +315,27 @@ class FREDDataFetcher:
                                 name=catalog_entry.get("name", f"FRED Series {series_id}"),
                                 type="macro",
                                 unit=catalog_entry.get("unit", "Index"),
-                                points=points
+                                points=points,
+                                source="live",
+                                source_detail="Datos oficiales de St. Louis Fed FRED API"
                             )
                             cache.set(cache_key, series_data)
                             return series_data
                     else:
-                        logger.warning(f"FRED API returned HTTP {resp.status_code}: {resp.text}. Falling back to reference data.")
+                        logger.warning(f"FRED API returned HTTP {resp.status_code}: {resp.text}")
             except Exception as e:
-                logger.error(f"Failed to query FRED API: {e}. Falling back to reference series generator.")
+                logger.error(f"Failed to query FRED API: {e}")
 
-        # Fallback to high-quality synthetic/reference time series
-        series_data = self._generate_reference_series(series_id)
+        # Fallback to reference series only if ALLOW_SYNTHETIC_DATA=true
+        detail = "FRED API no disponible (clave no configurada o error de conexión)"
+        if not settings.ALLOW_SYNTHETIC_DATA:
+            raise ValueError(f"No se pudieron obtener datos de FRED para '{series_id}' ({detail}) y ALLOW_SYNTHETIC_DATA=false")
+        
+        series_data = self._generate_reference_series(series_id, detail=detail)
         cache.set(cache_key, series_data)
         return series_data
 
-    def _generate_reference_series(self, series_id: str) -> TimeSeriesData:
+    def _generate_reference_series(self, series_id: str, detail: Optional[str] = None) -> TimeSeriesData:
         catalog_entry = self.SERIES_CATALOG.get(series_id, {
             "name": f"Macro Series {series_id}",
             "category": "Economic Indicator",
@@ -373,28 +344,25 @@ class FREDDataFetcher:
             "trend": 0.001
         })
 
-        # Generate monthly points over 3 years
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365 * 3)
-        
         base_val = catalog_entry["base_val"]
         trend = catalog_entry["trend"]
 
         seed = sum(ord(c) for c in series_id)
-        np.random.seed(seed)
+        rng = np.random.default_rng(seed)
         
         points: List[TimeSeriesPoint] = []
         cur_date = datetime(start_date.year, start_date.month, 1)
         cur_val = base_val
         
         while cur_date <= end_date:
-            noise = np.random.normal(0, base_val * 0.01)
+            noise = rng.normal(0, base_val * 0.01)
             cur_val = cur_val * (1 + trend) + noise
             points.append(TimeSeriesPoint(
                 timestamp=cur_date.strftime("%Y-%m-%d"),
                 value=round(float(cur_val), 2)
             ))
-            # Move forward 1 month
             month = cur_date.month + 1
             year = cur_date.year
             if month > 12:
@@ -404,8 +372,10 @@ class FREDDataFetcher:
 
         return TimeSeriesData(
             id=series_id,
-            name=catalog_entry["name"],
+            name=f"{catalog_entry['name']} (Referencia Sintética)",
             type="macro",
             unit=catalog_entry["unit"],
-            points=points
+            points=points,
+            source="synthetic",
+            source_detail=detail or "Serie sintética generada por falta de datos reales"
         )

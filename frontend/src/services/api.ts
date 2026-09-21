@@ -9,6 +9,8 @@ export interface TimeSeriesData {
   type: string;
   unit: string;
   points: TimeSeriesPoint[];
+  source?: 'live' | 'synthetic' | 'cached';
+  source_detail?: string;
 }
 
 export interface TickerSuggestion {
@@ -41,6 +43,8 @@ export interface ForecastResponse {
   lower_bound: number[];
   upper_bound: number[];
   model_name: string;
+  is_fallback?: boolean;
+  fitted_params?: Record<string, number>;
 }
 
 export interface FundamentalsMetric {
@@ -48,6 +52,8 @@ export interface FundamentalsMetric {
   metric: string;
   period: string;
   value: number;
+  source?: 'live' | 'synthetic' | 'cached';
+  source_detail?: string;
 }
 
 export interface InterpretationContext {
@@ -220,6 +226,8 @@ export interface ThesisCreateRequest {
 export interface BacktestMetrics {
   mae: number;
   mape: number;
+  smape?: number;
+  mase?: number;
   directional_accuracy: number;
   observations_evaluated: number;
 }
@@ -236,7 +244,11 @@ export interface BacktestResponse {
   future_lower_bound: number[];
   future_upper_bound: number[];
   metrics: BacktestMetrics;
+  naive_metrics?: BacktestMetrics;
+  interval_coverage?: number;
+  aggregate_direction_correct?: boolean;
   verdict: string;
+  warnings?: string[];
 }
 
 export interface CorrelationMatrixResponse {
@@ -244,9 +256,13 @@ export interface CorrelationMatrixResponse {
   series_names: Record<string, string>;
   pearson_matrix: number[][];
   spearman_matrix: number[][];
+  p_values_pearson?: number[][];
+  p_values_spearman?: number[][];
   common_observations: number;
   start_date: string;
   end_date: string;
+  mode?: string;
+  warning?: string;
 }
 
 export async function fetchTheses(): Promise<ThesisSummaryItem[]> {
@@ -278,6 +294,24 @@ export async function updateThesisStatus(id: string, status: string): Promise<Th
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error('Error al actualizar el estado de la tesis');
+  return res.json();
+}
+
+export async function updateThesis(
+  id: string,
+  data: {
+    title?: string;
+    status?: string;
+    summary?: string;
+    tickers?: TickerSuggestion[];
+  }
+): Promise<ThesisDetailResponse> {
+  const res = await fetch(`${API_BASE}/theses/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Error al actualizar la tesis');
   return res.json();
 }
 
@@ -351,7 +385,8 @@ export async function runBacktest(
 
 export async function fetchCorrelations(
   seriesIds: string[],
-  period = '2y'
+  period = '2y',
+  mode: 'returns' | 'levels' = 'returns'
 ): Promise<CorrelationMatrixResponse> {
   const res = await fetch(`${API_BASE}/correlation`, {
     method: 'POST',
@@ -359,6 +394,7 @@ export async function fetchCorrelations(
     body: JSON.stringify({
       series_ids: seriesIds,
       period,
+      mode,
     }),
   });
   if (!res.ok) {
@@ -367,3 +403,105 @@ export async function fetchCorrelations(
   }
   return res.json();
 }
+
+// ==========================================
+// Portfolio Optimization & Risk Interfaces & Calls
+// ==========================================
+
+export interface PortfolioAllocationSummary {
+  name: string;
+  weights: Record<string, number>;
+  expected_return: number;
+  volatility: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  risk_contributions: Record<string, number>;
+  risk_contribution_pct: Record<string, number>;
+  diversification_ratio?: number;
+}
+
+export interface PortfolioOptimizeResponse {
+  tickers: string[];
+  shrinkage_intensity: number;
+  condition_number: number;
+  mu_method_used: string;
+  cov_method_used: string;
+  portfolios: Record<string, PortfolioAllocationSummary>;
+  warnings: string[];
+}
+
+export interface RiskMetricDetail {
+  confidence_level: number;
+  var_pct: number;
+  var_usd: number;
+  var_std_error: number;
+  cvar_pct: number;
+  cvar_usd: number;
+}
+
+export interface HistogramData {
+  bin_edges: number[];
+  frequencies: number[];
+  densities: number[];
+  median: number;
+  percentile_5: number;
+  percentile_1: number;
+}
+
+export interface PortfolioRiskResponse {
+  method_used: string;
+  horizon_days: number;
+  initial_capital: number;
+  n_simulations: number;
+  metrics: Record<string, RiskMetricDetail>;
+  prob_loss_10pct: number;
+  prob_loss_20pct: number;
+  prob_loss_30pct: number;
+  histogram: HistogramData;
+  warnings: string[];
+}
+
+export async function optimizePortfolio(params: {
+  tickers: string[];
+  current_weights?: Record<string, number>;
+  period?: string;
+  cov_method?: 'ledoit_wolf' | 'sample';
+  mu_method?: 'historical_shrunk' | 'equal' | 'forecast';
+  forecast_horizon?: number;
+  max_weight?: number;
+  risk_free_rate?: number;
+}): Promise<PortfolioOptimizeResponse> {
+  const res = await fetch(`${API_BASE}/portfolio/optimize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al optimizar la cartera');
+  }
+  return res.json();
+}
+
+export async function evaluatePortfolioRisk(params: {
+  tickers: string[];
+  weights: Record<string, number>;
+  horizon_days?: number;
+  confidence_levels?: number[];
+  initial_capital?: number;
+  method?: 'bootstrap' | 'student_t' | 'gaussian';
+  n_simulations?: number;
+  block_size?: number;
+}): Promise<PortfolioRiskResponse> {
+  const res = await fetch(`${API_BASE}/portfolio/risk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al evaluar el riesgo de la cartera');
+  }
+  return res.json();
+}
+

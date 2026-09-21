@@ -32,12 +32,18 @@ from backend.schemas.models import (
     CorrelationMatrixResponse,
     TickerSuggestion,
     MacroSuggestion,
+    PortfolioOptimizeRequest,
+    PortfolioOptimizeResponse,
+    PortfolioRiskRequest,
+    PortfolioRiskResponse,
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
 from backend.services.forecast_engine import get_forecast_engine
 from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
+from backend.services.portfolio_engine import PortfolioEngine
+from backend.services.risk_engine import RiskEngine
 
 logger = logging.getLogger(__name__)
 
@@ -75,31 +81,37 @@ async def analyze_thesis(payload: ThesisRequest):
         raise HTTPException(status_code=500, detail=f"Failed to analyze thesis: {str(e)}")
 
 @router.get("/data/market", response_model=TimeSeriesData)
-async def get_market_data(
+def get_market_data(
     ticker: str = Query(..., description="Stock ticker symbol, e.g. NVDA"),
     period: str = Query(default="2y", description="Time period: 1mo, 6mo, 1y, 2y, 5y, max")
 ):
     """Fetches normalized historical market price time series using yfinance."""
     try:
         return MarketDataFetcher.get_history(ticker=ticker, period=period)
+    except ValueError as ve:
+        logger.warning(f"Validation/Missing data for {ticker}: {ve}")
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         logger.error(f"Error fetching market data for {ticker}: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not retrieve data for {ticker}")
+        raise HTTPException(status_code=500, detail=f"Could not retrieve data for {ticker}: {str(e)}")
 
 @router.get("/data/macro", response_model=TimeSeriesData)
-async def get_macro_data(
+def get_macro_data(
     series_id: str = Query(..., description="FRED series ID, e.g. IPG2211A2N"),
     limit: int = Query(default=500, ge=10, le=1000)
 ):
     """Fetches normalized macroeconomic or energy time series from FRED."""
     try:
         return fred_fetcher.get_series(series_id=series_id, limit=limit)
+    except ValueError as ve:
+        logger.warning(f"Validation/Missing data for FRED {series_id}: {ve}")
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         logger.error(f"Error fetching FRED series {series_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Could not retrieve FRED series {series_id}")
+        raise HTTPException(status_code=500, detail=f"Could not retrieve FRED series {series_id}: {str(e)}")
 
 @router.get("/data/fundamentals", response_model=FundamentalsResponse)
-async def get_fundamentals_data(
+def get_fundamentals_data(
     tickers: str = Query(..., description="Comma-separated ticker list, e.g. NVDA,MSFT,CEG")
 ):
     """Fetches fundamental financial metrics (Capex and Revenue) for comparison."""
@@ -107,14 +119,14 @@ async def get_fundamentals_data(
         ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
         if not ticker_list:
             raise HTTPException(status_code=400, detail="No tickers provided")
-        metrics = MarketDataFetcher.get_fundamentals(ticker_list)
-        return FundamentalsResponse(metrics=metrics)
+        metrics, warnings = MarketDataFetcher.get_fundamentals(ticker_list)
+        return FundamentalsResponse(metrics=metrics, warnings=warnings)
     except Exception as e:
         logger.error(f"Error fetching fundamentals: {e}")
         raise HTTPException(status_code=500, detail=f"Could not retrieve fundamentals: {str(e)}")
 
 @router.post("/forecast", response_model=ForecastResponse)
-async def generate_forecast(payload: ForecastRequest):
+def generate_forecast(payload: ForecastRequest):
     """
     Generates time series projection and confidence intervals.
     Returns TimesFM-compliant structure: { timestamps, values, lower_bound, upper_bound }.
@@ -227,6 +239,8 @@ def update_thesis(thesis_id: str, payload: ThesisUpdateRequest, db: Session = De
         thesis.status = payload.status
     if payload.summary is not None:
         thesis.summary = payload.summary
+    if payload.tickers is not None:
+        thesis.tickers_json = json.dumps([t.model_dump() for t in payload.tickers])
 
     db.commit()
     db.refresh(thesis)
@@ -363,7 +377,7 @@ def _format_thesis_detail(t: ThesisModel) -> ThesisDetailResponse:
 # ----------------- FASE 2: BACKTESTING Y CORRELACIÓN -----------------
 
 @router.post("/backtest", response_model=BacktestResponse)
-async def run_backtest(payload: BacktestRequest):
+def run_backtest(payload: BacktestRequest):
     """
     Evaluates projection fidelity against ground-truth historical data.
     Truncates series at cutoff_date, forecasts horizon steps, and computes MAE, MAPE, Directional Accuracy.
@@ -376,23 +390,67 @@ async def run_backtest(payload: BacktestRequest):
             confidence=payload.confidence
         )
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        err_msg = str(ve)
+        if "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
     except Exception as e:
         logger.error(f"Error running backtest: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Backtest failed: {str(e)}")
 
 @router.post("/correlation", response_model=CorrelationMatrixResponse)
-async def compute_correlations(payload: CorrelationRequest):
+def compute_correlations(payload: CorrelationRequest):
     """
     Computes Pearson and Spearman cross-asset correlation matrices for portfolio tickers and macro series.
     """
     try:
         return CorrelationEngine.calculate_correlations(
             series_ids=payload.series_ids,
-            period=payload.period
+            period=payload.period,
+            mode=payload.mode
         )
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        err_msg = str(ve)
+        if "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
     except Exception as e:
         logger.error(f"Error calculating correlation matrix: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Correlation computation failed: {str(e)}")
+
+
+@router.post("/portfolio/optimize", response_model=PortfolioOptimizeResponse)
+def optimize_portfolio(payload: PortfolioOptimizeRequest):
+    """
+    Computes optimal portfolio allocations (Max Sharpe with SLSQP Dirichlet restarts,
+    Risk Parity via Spinu barrier, and benchmarks) using Ledoit-Wolf shrinkage.
+    """
+    try:
+        return PortfolioEngine.optimize_portfolio(payload)
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "synthetic" in err_msg.lower() or "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
+    except Exception as e:
+        logger.error(f"Error optimizing portfolio: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Portfolio optimization failed: {str(e)}")
+
+
+@router.post("/portfolio/risk", response_model=PortfolioRiskResponse)
+def evaluate_portfolio_risk(payload: PortfolioRiskRequest):
+    """
+    Simulates portfolio risk distribution (Bootstrap, Student-t, Gaussian)
+    and computes positive-loss VaR, CVaR, SE, and tail distribution metrics.
+    """
+    try:
+        return RiskEngine.evaluate_risk(payload)
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "synthetic" in err_msg.lower() or "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
+    except Exception as e:
+        logger.error(f"Error evaluating portfolio risk: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Portfolio risk evaluation failed: {str(e)}")
+

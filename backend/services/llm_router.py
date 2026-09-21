@@ -77,16 +77,23 @@ class GeminiLLMClient(BaseLLMClient):
         self.api_key = api_key or settings.GEMINI_API_KEY
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is not configured")
+        try:
+            from google import genai
+            self._client = genai.Client(api_key=self.api_key)
+        except Exception as e:
+            logger.warning(f"Could not initialize google-genai Client: {e}")
+            self._client = None
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
         try:
-            from google import genai
+            if not self._client:
+                from google import genai
+                self._client = genai.Client(api_key=self.api_key)
             from google.genai import types
 
-            client = genai.Client(api_key=self.api_key)
             prompt = f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\""
 
-            response = client.models.generate_content(
+            response = self._client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
@@ -119,10 +126,11 @@ class GeminiLLMClient(BaseLLMClient):
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
-            from google import genai
+            if not self._client:
+                from google import genai
+                self._client = genai.Client(api_key=self.api_key)
             from google.genai import types
 
-            client = genai.Client(api_key=self.api_key)
             prompt = (
                 f"{INTERPRETATION_SYSTEM_PROMPT}\n\n"
                 f"Contexto Cuantitativo:\n"
@@ -136,7 +144,7 @@ class GeminiLLMClient(BaseLLMClient):
                 f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
             )
 
-            response = client.models.generate_content(
+            response = self._client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(

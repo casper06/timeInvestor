@@ -9,10 +9,11 @@ import {
   Rewind,
   Network,
   GitCompare,
+  PieChart,
 } from 'lucide-react';
 import type { HealthResponse } from '../services/api';
 
-export type DashboardView = 'forecast' | 'backtest' | 'correlation' | 'dual';
+export type DashboardView = 'forecast' | 'backtest' | 'correlation' | 'dual' | 'risk';
 
 interface HeaderProps {
   health: HealthResponse | null;
@@ -21,6 +22,7 @@ interface HeaderProps {
   onChangeView: (view: DashboardView) => void;
   onOpenThesesDrawer: () => void;
   onExportReport: () => void;
+  isSyntheticActive?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   onChangeView,
   onOpenThesesDrawer,
   onExportReport,
+  isSyntheticActive = false,
 }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
@@ -103,11 +106,19 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
-              onClick={() => onChangeView('backtest')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                currentView === 'backtest'
-                  ? 'bg-slate-800 text-amber-400 font-bold border border-slate-700'
-                  : 'text-slate-400 hover:text-slate-200'
+              onClick={() => !isSyntheticActive && onChangeView('backtest')}
+              disabled={isSyntheticActive}
+              title={
+                isSyntheticActive
+                  ? 'Deshabilitado: no se puede validar una tesis sobre datos generados'
+                  : 'Auditar fidelidad empírica frente al historial real'
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                isSyntheticActive
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : currentView === 'backtest'
+                  ? 'bg-slate-800 text-amber-400 font-bold border border-slate-700 cursor-pointer'
+                  : 'text-slate-400 hover:text-slate-200 cursor-pointer'
               }`}
             >
               <Rewind className="h-3.5 w-3.5" />
@@ -115,11 +126,19 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             <button
-              onClick={() => onChangeView('correlation')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
-                currentView === 'correlation'
-                  ? 'bg-slate-800 text-indigo-400 font-bold border border-slate-700'
-                  : 'text-slate-400 hover:text-slate-200'
+              onClick={() => !isSyntheticActive && onChangeView('correlation')}
+              disabled={isSyntheticActive}
+              title={
+                isSyntheticActive
+                  ? 'Deshabilitado: no se puede validar una tesis sobre datos generados'
+                  : 'Calcular matriz de correlación Pearson / Spearman'
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                isSyntheticActive
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : currentView === 'correlation'
+                  ? 'bg-slate-800 text-indigo-400 font-bold border border-slate-700 cursor-pointer'
+                  : 'text-slate-400 hover:text-slate-200 cursor-pointer'
               }`}
             >
               <Network className="h-3.5 w-3.5" />
@@ -136,6 +155,26 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <GitCompare className="h-3.5 w-3.5" />
               <span>Gráfico Dual-Axis</span>
+            </button>
+
+            <button
+              onClick={() => !isSyntheticActive && onChangeView('risk')}
+              disabled={isSyntheticActive}
+              title={
+                isSyntheticActive
+                  ? 'Deshabilitado: no se puede evaluar riesgo sobre datos generados'
+                  : 'Optimización Markowitz, Risk Parity y Simulación Monte Carlo VaR/CVaR'
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                isSyntheticActive
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : currentView === 'risk'
+                  ? 'bg-slate-800 text-emerald-400 font-bold border border-slate-700 cursor-pointer'
+                  : 'text-slate-400 hover:text-slate-200 cursor-pointer'
+              }`}
+            >
+              <PieChart className="h-3.5 w-3.5" />
+              <span>Asignación y Riesgo</span>
             </button>
           </div>
 
