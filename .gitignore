@@ -1,0 +1,84 @@
+# ============================================================
+# TimeInvestor - .gitignore
+# ============================================================
+
+# --- Entornos Virtuales de Python ---
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Variables de Entorno y Credenciales Sensibles ---
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.cert
+*.crt
+credentials.json
+client_secret*.json
+
+# --- Bases de Datos Locales y Snapshots ---
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+time_investor.db
+backend/database/*.db
+backend/database/*.sqlite
+
+# --- Cachés y Bytecode de Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist-python/
+build/
+
+# --- Node.js, Frontend y Bundles ---
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Modelos de Deep Learning y Caché Hugging Face ---
+.cache/
+hf_cache/
+huggingface/
+timesfm_weights/
+models/timesfm/
+checkpoints/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+
+# --- Logs y Archivos Temporales del Sistema ---
+*.log
+logs/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Configuraciones Locales de IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo

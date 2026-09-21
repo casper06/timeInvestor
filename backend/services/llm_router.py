@@ -1,0 +1,564 @@
+import abc
+import json
+import logging
+import re
+from typing import Dict, List, Optional
+import httpx
+
+from backend.config import settings
+from backend.schemas.models import (
+    ThesisResponse,
+    TickerSuggestion,
+    MacroSuggestion,
+    InterpretationContext,
+    InterpretationResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """Eres un analista cuantitativo senior y portfolio manager.
+Tu tarea es traducir una hipótesis de inversión en lenguaje natural a una estructura cuantitativa ejecutable.
+Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema:
+{
+  "summary": "Resumen conciso y riguroso de la tesis en español",
+  "tickers": [
+    {
+      "symbol": "TICKER",
+      "name": "Nombre de la empresa",
+      "sector": "Sector industrial",
+      "weight": 0.25,
+      "thesis_role": "Explicación del rol específico de este activo en la tesis"
+    }
+  ],
+  "macro_series": [
+    {
+      "series_id": "FRED_ID (ej. IPG2211A2N, INDPRO, CPIAUCSL, DGS10, PCU33443344)",
+      "name": "Nombre del indicador",
+      "category": "Categoría (Energía, Macro, Tasas, Semiconductores)",
+      "expected_correlation": "Positive / Negative"
+    }
+  ],
+  "rationales": {
+    "TICKER": "Racional cuantitativo y de negocio de por qué este activo se beneficia de la tesis"
+  }
+}
+Devuelve entre 3 y 6 tickers relevantes y entre 1 y 4 series macroeconómicas de FRED. Las ponderaciones de los tickers deben sumar 1.0.
+"""
+
+INTERPRETATION_SYSTEM_PROMPT = """Eres un Copiloto Cuantitativo Senior y Director de Análisis Estratégico.
+Tu tarea es interpretar en lenguaje llano, estructurado y directo el estado de una tesis de inversión cuantitativa a partir de la telemetría proyectiva y fundamental actual.
+Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema exacto:
+{
+  "what_data_says": "Traducción conceptual de las curvas y tendencia proyectada...",
+  "thesis_alignment": "Evaluación de si los datos y proyecciones confirman o contradicen la hipótesis planteada...",
+  "next_series_suggestion": "Justificación concisa de qué serie o indicador mirar a continuación para validar cuellos de botella...",
+  "suggested_series_id": "TICKER_O_FRED_ID_SUGERIDO"
+}
+"""
+
+class BaseLLMClient(abc.ABC):
+    """Abstract interface for Semantic Router translating investment thesis to structured assets and copilot interpretation."""
+
+    @abc.abstractmethod
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        """Parse natural language thesis into structured tickers, macro series, and rationales."""
+        pass
+
+    @abc.abstractmethod
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        """Provide quantitative copilot interpretation of current series vs the thesis."""
+        pass
+
+
+class GeminiLLMClient(BaseLLMClient):
+    """LLM client implementation using Google Gemini via google-genai SDK."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.GEMINI_API_KEY
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY is not configured")
+
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        try:
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=self.api_key)
+            prompt = f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\""
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+
+            raw_json = response.text.strip()
+            if raw_json.startswith("```"):
+                raw_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_json, flags=re.DOTALL)
+
+            data = json.loads(raw_json)
+
+            tickers = [TickerSuggestion(**t) for t in data.get("tickers", [])]
+            macro_series = [MacroSuggestion(**m) for m in data.get("macro_series", [])]
+
+            return ThesisResponse(
+                thesis=thesis,
+                summary=data.get("summary", "Análisis de tesis cuantitativa"),
+                tickers=tickers,
+                macro_series=macro_series,
+                rationales=data.get("rationales", {}),
+                provider_used="gemini-2.5-flash"
+            )
+
+        except Exception as e:
+            logger.error(f"Gemini LLM error: {e}. Falling back to MockLLMClient.")
+            mock_client = MockLLMClient()
+            return await mock_client.parse_thesis(thesis)
+
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        try:
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=self.api_key)
+            prompt = (
+                f"{INTERPRETATION_SYSTEM_PROMPT}\n\n"
+                f"Contexto Cuantitativo:\n"
+                f"- Tesis: {ctx.thesis}\n"
+                f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
+                f"- Último precio real: {ctx.last_price}\n"
+                f"- Objetivo proyectado (+{ctx.horizon}d): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
+                f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound} - {ctx.upper_bound}]\n"
+                f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
+                f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
+                f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+
+            raw_json = response.text.strip()
+            if raw_json.startswith("```"):
+                raw_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_json, flags=re.DOTALL)
+
+            data = json.loads(raw_json)
+            return InterpretationResponse(
+                what_data_says=data.get("what_data_says", ""),
+                thesis_alignment=data.get("thesis_alignment", ""),
+                next_series_suggestion=data.get("next_series_suggestion", ""),
+                suggested_series_id=data.get("suggested_series_id")
+            )
+        except Exception as e:
+            logger.error(f"Gemini interpretation error: {e}. Falling back to MockLLMClient.")
+            mock_client = MockLLMClient()
+            return await mock_client.interpret_situation(ctx)
+
+
+class OpenAILLMClient(BaseLLMClient):
+    """LLM client implementation using OpenAI-compatible REST API."""
+
+    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://api.openai.com/v1"):
+        self.api_key = api_key or settings.OPENAI_API_KEY
+        self.base_url = base_url.rstrip("/")
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY is not configured")
+
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Hipótesis de inversión: \"{thesis}\""}
+                    ],
+                    "response_format": {"type": "json_object"}
+                }
+                resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                resp.raise_for_status()
+                result = resp.json()
+                content = result["choices"][0]["message"]["content"]
+                data = json.loads(content)
+
+                return ThesisResponse(
+                    thesis=thesis,
+                    summary=data.get("summary", ""),
+                    tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
+                    macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
+                    rationales=data.get("rationales", {}),
+                    provider_used="openai-gpt-4o-mini"
+                )
+        except Exception as e:
+            logger.error(f"OpenAI LLM error: {e}. Falling back to MockLLMClient.")
+            mock_client = MockLLMClient()
+            return await mock_client.parse_thesis(thesis)
+
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": INTERPRETATION_SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Contexto: {ctx.model_dump_json()}"}
+                    ],
+                    "response_format": {"type": "json_object"}
+                }
+                resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                resp.raise_for_status()
+                data = json.loads(resp.json()["choices"][0]["message"]["content"])
+                return InterpretationResponse(**data)
+        except Exception as e:
+            logger.error(f"OpenAI interpretation error: {e}. Falling back to Mock.")
+            mock_client = MockLLMClient()
+            return await mock_client.interpret_situation(ctx)
+
+
+class OllamaLLMClient(BaseLLMClient):
+    """LLM client implementation using local Ollama instance."""
+
+    def __init__(self, base_url: Optional[str] = None, model: str = "llama3.2"):
+        self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
+        self.model = model
+
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                payload = {
+                    "model": self.model,
+                    "prompt": f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\"",
+                    "stream": False,
+                    "format": "json"
+                }
+                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                resp.raise_for_status()
+                data = json.loads(resp.json().get("response", "{}"))
+
+                return ThesisResponse(
+                    thesis=thesis,
+                    summary=data.get("summary", "Análisis local Ollama"),
+                    tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
+                    macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
+                    rationales=data.get("rationales", {}),
+                    provider_used=f"ollama-{self.model}"
+                )
+        except Exception as e:
+            logger.error(f"Ollama error: {e}. Falling back to MockLLMClient.")
+            mock_client = MockLLMClient()
+            return await mock_client.parse_thesis(thesis)
+
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                payload = {
+                    "model": self.model,
+                    "prompt": f"{INTERPRETATION_SYSTEM_PROMPT}\n\nContexto: {ctx.model_dump_json()}",
+                    "stream": False,
+                    "format": "json"
+                }
+                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                resp.raise_for_status()
+                data = json.loads(resp.json().get("response", "{}"))
+                return InterpretationResponse(**data)
+        except Exception as e:
+            logger.error(f"Ollama interpretation error: {e}. Falling back to Mock.")
+            mock_client = MockLLMClient()
+            return await mock_client.interpret_situation(ctx)
+
+
+class MockLLMClient(BaseLLMClient):
+    """Deterministic, domain-aware financial semantic parser with zero external API dependencies."""
+
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        normalized = thesis.lower()
+
+        # Topic: AI, Datacenters, Power, Electricity
+        if any(w in normalized for w in ["electric", "eléctric", "datacenter", "centro de datos", "energ", "ia", "ai", "nuclear", "potencia", "power"]):
+            tickers = [
+                TickerSuggestion(
+                    symbol="NVDA",
+                    name="NVIDIA Corporation",
+                    sector="Semiconductors",
+                    weight=0.25,
+                    thesis_role="Cálculo acelerado y plataformas de cómputo para inferencia/entrenamiento en datacenters"
+                ),
+                TickerSuggestion(
+                    symbol="CEG",
+                    name="Constellation Energy Corp",
+                    sector="Utilities / Nuclear",
+                    weight=0.25,
+                    thesis_role="Generación nuclear limpia para suministro directo (behind-the-meter) a hiperescaladores"
+                ),
+                TickerSuggestion(
+                    symbol="VST",
+                    name="Vistra Corp",
+                    sector="Independent Power Producers",
+                    weight=0.20,
+                    thesis_role="Generación eléctrica flexible y almacenamiento en batería para picos de demanda energética"
+                ),
+                TickerSuggestion(
+                    symbol="MSFT",
+                    name="Microsoft Corporation",
+                    sector="Cloud / Software",
+                    weight=0.15,
+                    thesis_role="Mayor inversor de Capex en infraestructura de nube y acuerdos PPA de energía limpia"
+                ),
+                TickerSuggestion(
+                    symbol="NEE",
+                    name="NextEra Energy Inc",
+                    sector="Renewable Utilities",
+                    weight=0.15,
+                    thesis_role="Líder en contratos renovables corporativos y expansión de líneas de transmisión"
+                ),
+            ]
+            macro_series = [
+                MacroSuggestion(
+                    series_id="IPG2211A2N",
+                    name="Electric Power Generation, Transmission & Distribution",
+                    category="Energy Demand",
+                    expected_correlation="Positive"
+                ),
+                MacroSuggestion(
+                    series_id="INDPRO",
+                    name="Industrial Production Index",
+                    category="Macro Activity",
+                    expected_correlation="Positive"
+                ),
+                MacroSuggestion(
+                    series_id="PCU33443344",
+                    name="PPI: Semiconductor & Electronic Component Manufacturing",
+                    category="Tech Supply Chain",
+                    expected_correlation="Positive"
+                ),
+            ]
+            rationales = {
+                "NVDA": "Demanda inelástica por aceleradores Blackwell y redes InfiniBand; catalizador primario de la densidad térmica y consumo de MW por rack.",
+                "CEG": "Mayor operador nuclear de EE. UU.; acuerdos directos a largo plazo con primas tarifarias sustanciales para datacenters 24/7.",
+                "VST": "Flotas de gas natural y activos de almacenamiento de baterías con alto apalancamiento operativo ante el encarecimiento de la energía en mercados mayoristas como PJM y ERCOT.",
+                "MSFT": "Compromiso de capital multimillonario en nuevos centros de datos para Azure e integración de copilots empresariales.",
+                "NEE": "Capacidad de interconexión rápida a la red y cartera diversificada de proyectos eólicos y solares con PPAs comerciales."
+            }
+            summary = "Tesis centrada en el cuello de botella energético de la Inteligencia Artificial: la expansión exponencial de centros de datos requiere generación de carga base (nuclear y gas) e infraestructura de red crítica."
+
+        # Topic: Semiconductors, Hardware, Chip Capex
+        elif any(w in normalized for w in ["semiconductor", "chip", "tsmc", "hardware", "asml", "litograf", "fundic"]):
+            tickers = [
+                TickerSuggestion(
+                    symbol="NVDA",
+                    name="NVIDIA Corporation",
+                    sector="Semiconductors",
+                    weight=0.30,
+                    thesis_role="Monopolio fáctico en GPUs de cómputo avanzado para IA"
+                ),
+                TickerSuggestion(
+                    symbol="TSM",
+                    name="Taiwan Semiconductor Mfg",
+                    sector="Foundry",
+                    weight=0.30,
+                    thesis_role="Fabricante exclusivo de nodos avanzados de 3nm y empaquetado CoWoS"
+                ),
+                TickerSuggestion(
+                    symbol="ASML",
+                    name="ASML Holding NV",
+                    sector="Semiconductor Equipment",
+                    weight=0.25,
+                    thesis_role="Único proveedor global de máquinas de litografía ultravioleta extrema (EUV)"
+                ),
+                TickerSuggestion(
+                    symbol="AMAT",
+                    name="Applied Materials",
+                    sector="Semiconductor Equipment",
+                    weight=0.15,
+                    thesis_role="Equipamiento indispensable para deposición y grabado en nuevos nodos"
+                ),
+            ]
+            macro_series = [
+                MacroSuggestion(
+                    series_id="PCU33443344",
+                    name="PPI: Semiconductor Manufacturing",
+                    category="Semiconductors",
+                    expected_correlation="Positive"
+                ),
+                MacroSuggestion(
+                    series_id="INDPRO",
+                    name="Industrial Production",
+                    category="Macro Activity",
+                    expected_correlation="Positive"
+                )
+            ]
+            rationales = {
+                "NVDA": "Poder de fijación de precios superior en chips de centros de datos y márgenes brutos por encima del 70%.",
+                "TSM": "Capacidad de utilización al 100% en nodos de 3nm con demanda comprometida por los principales hiperescaladores.",
+                "ASML": "Barrera de entrada insuperable en litografía avanzada High-NA para la próxima generación de chips.",
+                "AMAT": "Exposición diversificada al ciclo de inversión global de fundiciones y memoria HBM."
+            }
+            summary = "Tesis orientada al superciclo de inversión en semiconductores avanzados, empaquetado CoWoS y memoria HBM para satisfacer la infraestructura de cómputo mundial."
+
+        # Default / Macro / Tech thesis
+        else:
+            tickers = [
+                TickerSuggestion(
+                    symbol="NVDA",
+                    name="NVIDIA Corporation",
+                    sector="Information Technology",
+                    weight=0.25,
+                    thesis_role="Líder de infraestructura de cómputo acelerado"
+                ),
+                TickerSuggestion(
+                    symbol="MSFT",
+                    name="Microsoft Corporation",
+                    sector="Cloud / Software",
+                    weight=0.25,
+                    thesis_role="Hiperescalador con despliegue enterprise a gran escala"
+                ),
+                TickerSuggestion(
+                    symbol="GOOG",
+                    name="Alphabet Inc",
+                    sector="Technology / Search",
+                    weight=0.25,
+                    thesis_role="Integración vertical completa: modelos, silicio TPU y nube"
+                ),
+                TickerSuggestion(
+                    symbol="CEG",
+                    name="Constellation Energy Corp",
+                    sector="Energy / Utilities",
+                    weight=0.25,
+                    thesis_role="Proveedor de energía firme y descarbonizada para datacenters"
+                ),
+            ]
+            macro_series = [
+                MacroSuggestion(
+                    series_id="INDPRO",
+                    name="Industrial Production Index",
+                    category="Macro Growth",
+                    expected_correlation="Positive"
+                ),
+                MacroSuggestion(
+                    series_id="DGS10",
+                    name="10-Year Treasury Constant Maturity",
+                    category="Interest Rates",
+                    expected_correlation="Negative"
+                ),
+                MacroSuggestion(
+                    series_id="IPG2211A2N",
+                    name="Electric Power Generation Index",
+                    category="Power Demand",
+                    expected_correlation="Positive"
+                ),
+            ]
+            rationales = {
+                "NVDA": "Crecimiento estructural de ingresos y expansión sostenida del flujo de caja libre.",
+                "MSFT": "Alta recurrencia de ingresos por suscripción en Azure y Office 365 con márgenes operativos sólidos.",
+                "GOOG": "Innovación acelerada en modelos de lenguaje y ventaja de costes con chips TPU propios.",
+                "CEG": "Generación de energía limpia y acuerdos estratégicos de largo plazo para suministro a grandes tecnológicos."
+            }
+            summary = f"Tesis analizada para: '{thesis}'. Selección cuantitativa optimizada de activos de alta convicción y métricas macroeconómicas de referencia."
+
+        return ThesisResponse(
+            thesis=thesis,
+            summary=summary,
+            tickers=tickers,
+            macro_series=macro_series,
+            rationales=rationales,
+            provider_used="mock-semantic-engine"
+        )
+
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        """Rule-based quantitative copilot producing clean, structured, domain-accurate text."""
+        pct_delta = ((ctx.projected_target - ctx.last_price) / ctx.last_price) * 100 if ctx.last_price > 0 else 0
+        cone_width = ctx.upper_bound - ctx.lower_bound
+        cone_pct = (cone_width / ctx.projected_target) * 100 if ctx.projected_target > 0 else 0
+
+        # a) Qué dicen los datos
+        direction = "expansión alcista" if pct_delta >= 0 else "contracción correctiva"
+        what_data_says = (
+            f"La curva proyectiva para **{ctx.active_series_id}** ({ctx.active_series_name or 'Activo analizado'}) "
+            f"señala una {direction} del {pct_delta:+.1f}% hacia un precio objetivo de ${ctx.projected_target:.2f} "
+            f"en un horizonte de {ctx.horizon} días (CAGR anualizado implícito del {ctx.cagr:+.1f}%). "
+            f"El cono de incertidumbre al {int(ctx.confidence * 100)}% abarca el intervalo [{ctx.lower_bound:.2f}, {ctx.upper_bound:.2f}], "
+            f"lo que representa una dispersión del {cone_pct:.1f}% respecto al objetivo central, "
+            f"denotando una volatilidad {'moderada' if cone_pct < 25 else 'elevada y sensible a anuncios de Capex'}."
+        )
+
+        # b) Alineación con tu tesis
+        is_power_related = any(w in ctx.thesis.lower() for w in ["electric", "eléctric", "datacenter", "ia", "potencia", "energia", "energía"])
+        active_sym = ctx.active_series_id.upper()
+
+        if active_sym in ("NVDA", "TSM", "ASML"):
+            thesis_alignment = (
+                f"Las series proyectadas para {active_sym} confirman la fase de aceleración de infraestructura. "
+                f"Sin embargo, el crecimiento sostenido de Capex reportado por los hiperescaladores "
+                f"requiere que la demanda de capacidad de cómputo no se frene por restricciones de potencia eléctrica en sitio."
+            )
+            suggested_id = "CEG" if "CEG" in ctx.other_tickers else ("IPG2211A2N" if "IPG2211A2N" in ctx.macro_series else "VST")
+            next_series_suggestion = (
+                f"Conviene conmutar a **{suggested_id}** (productor de energía firme/nuclear o índice de generación eléctrica) "
+                f"para verificar si la oferta energética y tarifas mayoristas están acompañando la absorción proyectada."
+            )
+        elif active_sym in ("CEG", "VST", "NEE", "IPG2211A2N"):
+            thesis_alignment = (
+                f"La serie {active_sym} refleja el traspaso del cuello de botella hacia la generación eléctrica de carga base. "
+                f"Las proyecciones respaldan directamente la hipótesis de escasez de megavatios y primas contractuales favorables para los proveedores de energía."
+            )
+            suggested_id = "NVDA" if "NVDA" in ctx.other_tickers else "MSFT"
+            next_series_suggestion = (
+                f"Examina ahora **{suggested_id}** para contrastar cómo el crecimiento en el gasto de capital (Capex) "
+                f"de los proveedores de cómputo valida el flujo de ingresos esperado hacia el sector energético."
+            )
+        else:
+            thesis_alignment = (
+                f"Los datos muestran coherencia direccional con la hipótesis planteada ('{ctx.thesis}'). "
+                f"La persistencia de la tendencia proyectada dependerá de que las tasas de reinversión en Capex se mantengan en los niveles históricos observados."
+            )
+            candidates = [t for t in ctx.other_tickers if t != active_sym] + ctx.macro_series
+            suggested_id = candidates[0] if candidates else "IPG2211A2N"
+            next_series_suggestion = (
+                f"Se recomienda alternar a **{suggested_id}** para cruzar la proyección del activo con indicadores macroeconómicos clave."
+            )
+
+        return InterpretationResponse(
+            what_data_says=what_data_says,
+            thesis_alignment=thesis_alignment,
+            next_series_suggestion=next_series_suggestion,
+            suggested_series_id=suggested_id
+        )
+
+
+def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
+    """Factory creating the appropriate LLM client based on configuration or explicit provider."""
+    prov = (provider or settings.effective_llm_provider).lower()
+
+    if prov == "gemini":
+        try:
+            return GeminiLLMClient()
+        except Exception as e:
+            logger.warning(f"Failed to initialize GeminiLLMClient ({e}), falling back to MockLLMClient")
+            return MockLLMClient()
+
+    elif prov == "openai":
+        try:
+            return OpenAILLMClient()
+        except Exception as e:
+            logger.warning(f"Failed to initialize OpenAILLMClient ({e}), falling back to MockLLMClient")
+            return MockLLMClient()
+
+    elif prov == "ollama":
+        return OllamaLLMClient()
+
+    else:
+        return MockLLMClient()
