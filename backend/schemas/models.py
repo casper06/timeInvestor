@@ -310,3 +310,57 @@ class PortfolioRiskResponse(BaseModel):
     histogram: HistogramData
     warnings: List[str] = Field(default_factory=list)
 
+
+# Dynamic Rebalancing Backtest Schemas
+class RebalanceBacktestRequest(BaseModel):
+    tickers: List[str] = Field(..., min_length=2, max_length=20, description="List of at least 2 tickers")
+    method: Literal["max_sharpe", "risk_parity"] = Field(default="max_sharpe", description="Portfolio rebalancing optimization model")
+    mu_method: Literal["historical_shrunk", "equal"] = Field(default="historical_shrunk", description="Expected return method if max_sharpe")
+    rebalance_frequency: Literal["monthly", "quarterly", "none"] = Field(default="monthly", description="Rebalancing schedule: monthly (~21d), quarterly (~63d), or none")
+    cost_bps: float = Field(default=10.0, ge=0.0, le=500.0, description="Transaction cost in basis points (e.g. 10 bps = 0.10%)")
+    capital_gains_tax_rate: float = Field(default=0.0, ge=0.0, le=0.50, description="Capital gains tax rate on realized sales (0.0 to 0.50)")
+    period: str = Field(default="5y", description="Historical lookback period (e.g. 3y, 5y)")
+    burn_in_days: int = Field(default=252, ge=126, le=756, description="Minimum trading days of history before initial backtest rebalance")
+    max_weight: float = Field(default=0.35, ge=0.05, le=1.0, description="Maximum allocation per asset")
+    initial_capital: float = Field(default=100_000.0, ge=100.0, description="Initial portfolio capital in USD")
+    risk_free_rate: float = Field(default=0.045, ge=0.0, le=0.20, description="Risk-free rate for Sharpe ratio calculation")
+
+
+class RebalanceCurvePoint(BaseModel):
+    date: str
+    rebalance_net: float
+    rebalance_gross: float
+    buy_and_hold: float
+
+
+class StrategyPerformanceMetrics(BaseModel):
+    total_return: float
+    annualized_return: float
+    annualized_volatility: float
+    sharpe_ratio: float
+    max_drawdown: float
+
+
+class RebalanceBacktestResponse(BaseModel):
+    tickers: List[str]
+    method: str
+    rebalance_frequency: str
+    cost_bps: float
+    capital_gains_tax_rate: float
+    initial_capital: float
+    start_date: str
+    end_date: str
+    trading_days_evaluated: int
+    n_rebalances_executed: int
+    total_turnover: float
+    total_transaction_costs: float
+    total_tax_paid: float
+    curves: List[RebalanceCurvePoint]
+    net_metrics: StrategyPerformanceMetrics
+    gross_metrics: StrategyPerformanceMetrics
+    buy_and_hold_metrics: StrategyPerformanceMetrics
+    net_benefit_of_rebalancing: float
+    cost_drag: float
+    verdict: str
+    warnings: List[str] = Field(default_factory=list)
+

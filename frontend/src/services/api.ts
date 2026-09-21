@@ -475,6 +475,59 @@ export interface PortfolioRiskResponse {
   warnings: string[];
 }
 
+export interface RebalanceCurvePoint {
+  date: string;
+  rebalance_net: number;
+  rebalance_gross: number;
+  buy_and_hold: number;
+}
+
+export interface StrategyPerformanceMetrics {
+  total_return: number;
+  annualized_return: number;
+  annualized_volatility: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+}
+
+export interface RebalanceBacktestResponse {
+  tickers: string[];
+  method: string;
+  rebalance_frequency: string;
+  cost_bps: number;
+  capital_gains_tax_rate: number;
+  initial_capital: number;
+  start_date: string;
+  end_date: string;
+  trading_days_evaluated: number;
+  n_rebalances_executed: number;
+  total_turnover: number;
+  total_transaction_costs: number;
+  total_tax_paid: number;
+  curves: RebalanceCurvePoint[];
+  net_metrics: StrategyPerformanceMetrics;
+  gross_metrics: StrategyPerformanceMetrics;
+  buy_and_hold_metrics: StrategyPerformanceMetrics;
+  net_benefit_of_rebalancing: number;
+  cost_drag: number;
+  verdict: string;
+  warnings: string[];
+}
+
+export interface RebalanceBacktestRequest {
+  tickers: string[];
+  method?: 'max_sharpe' | 'risk_parity';
+  mu_method?: 'historical_shrunk' | 'equal';
+  rebalance_frequency?: 'monthly' | 'quarterly' | 'none';
+  cost_bps?: number;
+  capital_gains_tax_rate?: number;
+  period?: string;
+  burn_in_days?: number;
+  max_weight?: number;
+  initial_capital?: number;
+  risk_free_rate?: number;
+}
+
 export async function optimizePortfolio(params: {
   tickers: string[];
   current_weights?: Record<string, number>;
@@ -515,6 +568,21 @@ export async function evaluatePortfolioRisk(params: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Error al evaluar el riesgo de la cartera');
+  }
+  return res.json();
+}
+
+export async function runRebalanceBacktest(
+  params: RebalanceBacktestRequest
+): Promise<RebalanceBacktestResponse> {
+  const res = await fetch(`${API_BASE}/portfolio/rebalance-backtest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error en el backtest de rebalanceo');
   }
   return res.json();
 }
