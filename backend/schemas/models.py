@@ -11,8 +11,10 @@ class TimeSeriesData(BaseModel):
     type: str = Field(..., description="Type of series: equity, macro, or fundamental")
     unit: str = Field(default="USD", description="Unit of measurement")
     points: List[TimeSeriesPoint] = Field(default_factory=list)
-    source: Literal["live", "synthetic", "cached"] = Field(default="live", description="Data provenance")
-    source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic or cached")
+    source: Literal["live", "synthetic"] = Field(default="live", description="Data provenance: where the data came from originally")
+    from_cache: bool = Field(default=False, description="Whether the series was served from local in-memory cache")
+    cached_at: Optional[str] = Field(default=None, description="ISO timestamp of when the series was cached")
+    source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic")
 
 class TickerSuggestion(BaseModel):
     symbol: str = Field(..., description="Stock ticker symbol (e.g. NVDA)")
@@ -58,8 +60,10 @@ class FundamentalsMetric(BaseModel):
     metric: str
     period: str
     value: float
-    source: Literal["live", "synthetic", "cached"] = Field(default="live", description="Data provenance")
-    source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic or cached")
+    source: Literal["live", "synthetic"] = Field(default="live", description="Data provenance: where the data came from originally")
+    from_cache: bool = Field(default=False, description="Whether the metric was served from local in-memory cache")
+    cached_at: Optional[str] = Field(default=None, description="ISO timestamp of when the metric was cached")
+    source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic")
 
 class FundamentalsResponse(BaseModel):
     metrics: List[FundamentalsMetric] = Field(default_factory=list)

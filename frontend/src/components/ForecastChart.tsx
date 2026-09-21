@@ -321,8 +321,19 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
 
       {/* Chart Footer Info */}
       <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 font-mono">
-        <div>
-          Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
+        <div className="flex items-center gap-2">
+          <span>
+            Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
+          </span>
+          {seriesData.from_cache && seriesData.source === 'live' && (
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 font-mono inline-flex items-center gap-1"
+              title={seriesData.cached_at ? `En caché local desde ${new Date(seriesData.cached_at).toLocaleTimeString()}` : 'Servido desde caché local'}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+              datos en caché
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-3">
           <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>

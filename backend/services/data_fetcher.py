@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Any, Tuple
 import numpy as np
 import httpx
@@ -19,14 +19,18 @@ class SimpleCache:
         self._ttl = ttl_seconds
         self._lock = threading.RLock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get_with_time(self, key: str) -> Optional[Tuple[Any, float]]:
         with self._lock:
             if key in self._cache:
                 timestamp, data = self._cache[key]
                 if time.time() - timestamp < self._ttl:
-                    return data
+                    return data, timestamp
                 del self._cache[key]
             return None
+
+    def get(self, key: str) -> Optional[Any]:
+        res = self.get_with_time(key)
+        return res[0] if res else None
 
     def set(self, key: str, value: Any):
         with self._lock:
@@ -46,17 +50,21 @@ class MarketDataFetcher:
     def get_history(ticker: str, period: str = "2y", interval: str = "1d") -> TimeSeriesData:
         clean_ticker = ticker.strip().upper()
         cache_key = f"yf_hist_{clean_ticker}_{period}_{interval}"
-        cached = cache.get(cache_key)
-        if cached:
-            # Clone with cached status for provenance transparency
+        hit = cache.get_with_time(cache_key)
+        if hit:
+            cached, cached_ts = hit
+            cached_at_str = datetime.fromtimestamp(cached_ts, tz=timezone.utc).isoformat()
+            # Clone preserving the original source of the cached object and set from_cache=True plus cached_at
             return TimeSeriesData(
                 id=cached.id,
                 name=cached.name,
                 type=cached.type,
                 unit=cached.unit,
                 points=cached.points,
-                source="cached",
-                source_detail="Recuperado de caché local"
+                source=cached.source,
+                from_cache=True,
+                cached_at=cached_at_str,
+                source_detail=cached.source_detail
             )
 
         logger.info(f"Fetching yfinance history for {clean_ticker} (period={period}, interval={interval})")
@@ -116,9 +124,24 @@ class MarketDataFetcher:
         """
         clean_tickers = sorted(list(set(t.strip().upper() for t in tickers if t.strip())))
         cache_key = f"yf_fund_{'_'.join(clean_tickers)}"
-        cached = cache.get(cache_key)
-        if cached:
-            return cached
+        hit = cache.get_with_time(cache_key)
+        if hit:
+            (cached_metrics, cached_warnings), cached_ts = hit
+            cached_at_str = datetime.fromtimestamp(cached_ts, tz=timezone.utc).isoformat()
+            cloned_metrics = [
+                FundamentalsMetric(
+                    ticker=m.ticker,
+                    metric=m.metric,
+                    period=m.period,
+                    value=m.value,
+                    source=m.source,
+                    from_cache=True,
+                    cached_at=cached_at_str,
+                    source_detail=m.source_detail
+                )
+                for m in cached_metrics
+            ]
+            return cloned_metrics, cached_warnings
 
         metrics: List[FundamentalsMetric] = []
         warnings: List[str] = []
@@ -270,16 +293,20 @@ class FREDDataFetcher:
 
     def get_series(self, series_id: str, limit: int = 500) -> TimeSeriesData:
         cache_key = f"fred_{series_id}_{limit}"
-        cached = cache.get(cache_key)
-        if cached:
+        hit = cache.get_with_time(cache_key)
+        if hit:
+            cached, cached_ts = hit
+            cached_at_str = datetime.fromtimestamp(cached_ts, tz=timezone.utc).isoformat()
             return TimeSeriesData(
                 id=cached.id,
                 name=cached.name,
                 type=cached.type,
                 unit=cached.unit,
                 points=cached.points,
-                source="cached",
-                source_detail="Recuperado de caché local"
+                source=cached.source,
+                from_cache=True,
+                cached_at=cached_at_str,
+                source_detail=cached.source_detail
             )
 
         if self.api_key and self.api_key.strip():
