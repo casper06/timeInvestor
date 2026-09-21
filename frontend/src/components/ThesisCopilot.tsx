@@ -11,6 +11,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { interpretSituation } from '../services/api';
+import { LLMProviderBadge } from './LLMProviderBadge';
 import type {
   InterpretationContext,
   InterpretationResponse,
@@ -111,15 +112,19 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
             <Bot className="h-5 w-5 text-white" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
                 Copiloto / Intérprete de Tesis
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">
-                Asistente LLM
-              </span>
+              {interpretation ? (
+                <LLMProviderBadge providerUsed={interpretation.provider_used} />
+              ) : (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">
+                  Asistente LLM
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mt-0.5">
               Traducción conceptual de curvas, alineación con tu hipótesis y detección de cuellos de botella
             </p>
           </div>

@@ -77,6 +77,7 @@ export interface InterpretationResponse {
   thesis_alignment: string;
   next_series_suggestion: string;
   suggested_series_id?: string;
+  provider_used: string;
 }
 
 export interface HealthResponse {

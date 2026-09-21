@@ -161,7 +161,8 @@ class GeminiLLMClient(BaseLLMClient):
                 what_data_says=data.get("what_data_says", ""),
                 thesis_alignment=data.get("thesis_alignment", ""),
                 next_series_suggestion=data.get("next_series_suggestion", ""),
-                suggested_series_id=data.get("suggested_series_id")
+                suggested_series_id=data.get("suggested_series_id"),
+                provider_used="gemini-2.5-flash"
             )
         except Exception as e:
             logger.error(f"Gemini interpretation error: {e}. Falling back to MockLLMClient.")
@@ -230,7 +231,13 @@ class OpenAILLMClient(BaseLLMClient):
                 resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
                 resp.raise_for_status()
                 data = json.loads(resp.json()["choices"][0]["message"]["content"])
-                return InterpretationResponse(**data)
+                return InterpretationResponse(
+                    what_data_says=data.get("what_data_says", ""),
+                    thesis_alignment=data.get("thesis_alignment", ""),
+                    next_series_suggestion=data.get("next_series_suggestion", ""),
+                    suggested_series_id=data.get("suggested_series_id"),
+                    provider_used="openai-gpt-4o-mini"
+                )
         except Exception as e:
             logger.error(f"OpenAI interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
@@ -282,7 +289,13 @@ class OllamaLLMClient(BaseLLMClient):
                 resp = await client.post(f"{self.base_url}/api/generate", json=payload)
                 resp.raise_for_status()
                 data = json.loads(resp.json().get("response", "{}"))
-                return InterpretationResponse(**data)
+                return InterpretationResponse(
+                    what_data_says=data.get("what_data_says", ""),
+                    thesis_alignment=data.get("thesis_alignment", ""),
+                    next_series_suggestion=data.get("next_series_suggestion", ""),
+                    suggested_series_id=data.get("suggested_series_id"),
+                    provider_used=f"ollama-{self.model}"
+                )
         except Exception as e:
             logger.error(f"Ollama interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
@@ -543,7 +556,8 @@ class MockLLMClient(BaseLLMClient):
             what_data_says=what_data_says,
             thesis_alignment=thesis_alignment,
             next_series_suggestion=next_series_suggestion,
-            suggested_series_id=suggested_id
+            suggested_series_id=suggested_id,
+            provider_used="mock-semantic-engine"
         )
 
 

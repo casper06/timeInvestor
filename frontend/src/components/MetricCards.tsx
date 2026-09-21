@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrendingUp, ShieldAlert, Target, ChevronDown, ChevronUp, BookOpen, Sparkles } from 'lucide-react';
 import type { ThesisResponse, ForecastResponse, TimeSeriesData } from '../services/api';
+import { LLMProviderBadge } from './LLMProviderBadge';
 
 interface MetricCardsProps {
   thesisData: ThesisResponse | null;
@@ -104,9 +105,12 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                 <BookOpen className="h-4 w-4 text-cyan-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-200">
-                  Síntesis Cuantitativa de la Tesis
-                </h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-200">
+                    Síntesis Cuantitativa de la Tesis
+                  </h3>
+                  <LLMProviderBadge providerUsed={thesisData.provider_used} />
+                </div>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   {thesisData.summary}
                 </p>

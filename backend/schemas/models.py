@@ -85,6 +85,7 @@ class InterpretationResponse(BaseModel):
     thesis_alignment: str = Field(..., description="Evaluación de si los datos confirman o contradicen la hipótesis")
     next_series_suggestion: str = Field(..., description="Justificación de qué serie mirar a continuación")
     suggested_series_id: Optional[str] = Field(default=None, description="ID del ticker o serie sugerida para explorar")
+    provider_used: str = Field(..., description="Proveedor real que generó esta interpretación: gemini-2.5-flash, openai-gpt-4o-mini, ollama-<model>, o mock-semantic-engine")
 
 class HealthResponse(BaseModel):
     status: str
