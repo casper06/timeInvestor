@@ -14,7 +14,8 @@ class Settings:
     STATIC_DIR: Path = STATIC_DIR
 
     # Server settings
-    HOST: str = os.getenv("HOST", "127.0.0.1")
+    RUNNING_IN_DOCKER: bool = os.getenv("RUNNING_IN_DOCKER", "0").lower() in ("true", "1", "t")
+    HOST: str = os.getenv("HOST", "0.0.0.0" if os.getenv("RUNNING_IN_DOCKER", "0").lower() in ("true", "1", "t") else "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "true").lower() in ("true", "1", "t")
 

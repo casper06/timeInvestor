@@ -83,11 +83,62 @@ El sistema está desacoplado mediante una arquitectura de "cables" (interfaces a
 
 ---
 
-## 🛠️ Guía Paso a Paso de Instalación y Puesta en Marcha
+---
+
+## 🚀 Despliegue Rápido con Docker (Opción Recomendada)
+
+La forma más rápida, reproducible y aislada de ejecutar TimeInvestor es a través de Docker y Docker Compose:
+
+### 1. Clonar el repositorio y configurar el entorno
+```bash
+git clone https://github.com/casper06/timeInvestor.git
+cd timeInvestor
+cp .env.example .env
+```
+*(En Windows PowerShell: `Copy-Item .env.example .env`)*
+
+Edita `.env` si cuentas con claves de API para **Gemini** o **FRED** (opcional; si no se configuran, operará con mocks determinísticos de alta fidelidad).
+
+### 2. Iniciar con Docker Compose
+```bash
+docker compose up --build
+```
+- 💻 **Dashboard Web**: [http://localhost:8000](http://localhost:8000)
+- 📖 **Documentación Swagger API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- 💾 **Persistencia de Datos**: Los datos y tesis se almacenan en el volumen nombrado de Docker `timeinvestor-data` (`/app/backend/database/time_investor.db`), persistiendo incluso si se destruyen o recrean los contenedores (`docker compose down`).
+
+Para detener el servicio:
+```bash
+docker compose down
+```
+
+---
+
+### 🚀 Despliegue con Aceleración GPU (Google TimesFM Real)
+
+Para ejecutar el motor con soporte para modelos neuronales preentrenados y aceleración por GPU CUDA:
+
+```bash
+# Construir la imagen con soporte PyTorch CUDA y TimesFM
+docker build -f Dockerfile.timesfm -t timeinvestor:gpu .
+
+# Ejecutar con soporte GPU y persistencia de pesos de Hugging Face
+docker run --gpus all -p 8000:8000 \
+  -v timeinvestor-data:/app/backend/database \
+  -v huggingface-cache:/app/.cache/huggingface \
+  --env-file .env \
+  timeinvestor:gpu
+```
+
+---
+
+## 🛠️ Instalación Local y Desarrollo (Alternativa sin Docker)
+
+Si prefieres ejecutar el código directamente en tu máquina anfitriona:
 
 ### Prerrequisitos
 - **Python 3.10** o superior.
-- **Node.js 18+** y **npm** (solo necesario si deseas recompilar el frontend).
+- **Node.js 20+** y **npm**.
 - **Git**.
 
 ### 1. Clonar el repositorio

@@ -1,0 +1,67 @@
+# Multi-stage Dockerfile for TimeInvestor with Google TimesFM (PyTorch + CUDA GPU Acceleration)
+# Stage 1: Build React 19 / Vite frontend
+FROM node:20-slim AS frontend-builder
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Python 3.12 runtime with PyTorch CUDA and TimesFM support
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    RUNNING_IN_DOCKER=1 \
+    HOST=0.0.0.0 \
+    PORT=8000 \
+    USE_REAL_TIMESFM=true \
+    FORECAST_ENGINE=timesfm \
+    HF_HOME=/app/.cache/huggingface
+
+WORKDIR /app
+
+# Install system dependencies (curl for healthcheck, git for HF if needed)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create unprivileged system user
+RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin appuser
+
+# Install standard backend requirements
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install PyTorch with CUDA 12.1 support and Hugging Face packages for TimesFM
+RUN pip install --no-cache-dir \
+    torch --index-url https://download.pytorch.org/whl/cu121 \
+    && pip install --no-cache-dir \
+    huggingface_hub>=0.23.0 \
+    transformers>=4.40.0 \
+    einops>=0.7.0 \
+    accelerate>=0.30.0
+
+# Copy application backend, execution scripts, and launcher
+COPY backend/ ./backend/
+COPY scripts/ ./scripts/
+COPY run.py ./
+
+# Copy compiled frontend from Stage 1
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+
+# Create SQLite database directory and cache directory with proper ownership
+RUN mkdir -p /app/backend/database /app/.cache/huggingface \
+    && chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+CMD ["python", "run.py", "--no-browser", "--host", "0.0.0.0", "--port", "8000"]

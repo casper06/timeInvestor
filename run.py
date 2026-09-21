@@ -13,8 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 DIST_DIR = FRONTEND_DIR / "dist"
 
+import os
+
 def ensure_frontend_built():
     """Compiles frontend if dist directory doesn't exist."""
+    if os.getenv("RUNNING_IN_DOCKER", "0").lower() in ("1", "true", "t"):
+        return
+
     if not (DIST_DIR / "index.html").exists():
         print("[TimeInvestor] Compilando frontend por primera vez...")
         try:
@@ -31,11 +36,14 @@ def ensure_frontend_built():
 
 def main():
     import argparse
+    default_host = os.getenv("HOST", "0.0.0.0" if os.getenv("RUNNING_IN_DOCKER", "0").lower() in ("1", "true", "t") else "127.0.0.1")
+    default_port = int(os.getenv("PORT", "8000"))
+
     parser = argparse.ArgumentParser(description="Lanza TimeInvestor (Backend + Frontend)")
     parser.add_argument("--dev", action="store_true", help="Modo desarrollo (FastAPI reload + Vite dev server)")
     parser.add_argument("--no-browser", action="store_true", help="No abrir automáticamente el navegador")
-    parser.add_argument("--port", type=int, default=8000, help="Puerto del servidor (default: 8000)")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host del servidor (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=default_port, help=f"Puerto del servidor (default: {default_port})")
+    parser.add_argument("--host", type=str, default=default_host, help=f"Host del servidor (default: {default_host})")
     args = parser.parse_args()
 
     ensure_frontend_built()
