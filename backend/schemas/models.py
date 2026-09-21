@@ -145,6 +145,7 @@ class ThesisUpdateRequest(BaseModel):
     title: Optional[str] = None
     status: Optional[str] = None
     summary: Optional[str] = None
+    tickers: Optional[List[TickerSuggestion]] = None
 
 class ThesisSummaryItem(BaseModel):
     id: str
@@ -224,3 +225,81 @@ class CorrelationMatrixResponse(BaseModel):
     end_date: str
     mode: str = "returns"
     warning: Optional[str] = None
+
+
+# Portfolio Optimization Schemas
+class PortfolioOptimizeRequest(BaseModel):
+    tickers: List[str] = Field(..., min_length=2, max_length=20, description="List of at least 2 tickers")
+    current_weights: Optional[Dict[str, float]] = Field(default=None, description="Optional current portfolio weights")
+    period: str = Field(default="2y", description="Historical period, e.g. 2y")
+    cov_method: Literal["ledoit_wolf", "sample"] = Field(default="ledoit_wolf", description="Covariance estimation method")
+    mu_method: Literal["historical_shrunk", "equal", "forecast"] = Field(default="historical_shrunk", description="Expected return estimation method")
+    forecast_horizon: int = Field(default=30, ge=5, le=365, description="Horizon in days for forecast-based expected return")
+    max_weight: float = Field(default=0.35, ge=0.05, le=1.0, description="Maximum allocation per asset")
+    risk_free_rate: float = Field(default=0.045, ge=0.0, le=0.20, description="Annual risk-free rate")
+
+
+class PortfolioAllocationSummary(BaseModel):
+    name: str
+    weights: Dict[str, float]
+    expected_return: float
+    volatility: float
+    sharpe_ratio: float
+    max_drawdown: float
+    risk_contributions: Dict[str, float]
+    risk_contribution_pct: Dict[str, float]
+    diversification_ratio: Optional[float] = None
+
+
+class PortfolioOptimizeResponse(BaseModel):
+    tickers: List[str]
+    shrinkage_intensity: float = Field(..., description="Ledoit-Wolf shrinkage intensity delta* in [0, 1]")
+    condition_number: float = Field(..., description="Condition number of covariance matrix")
+    mu_method_used: str
+    cov_method_used: str
+    portfolios: Dict[str, PortfolioAllocationSummary]
+    warnings: List[str] = Field(default_factory=list)
+
+
+# Risk Engine Schemas
+class PortfolioRiskRequest(BaseModel):
+    tickers: List[str] = Field(..., min_length=1, max_length=20)
+    weights: Dict[str, float] = Field(..., description="Weights summing to ~1.0")
+    horizon_days: int = Field(default=30, ge=1, le=365, description="Risk horizon in days")
+    confidence_levels: List[float] = Field(default=[0.95, 0.99], description="Confidence levels for VaR/CVaR")
+    initial_capital: float = Field(default=100_000.0, ge=100.0, description="Capital in USD")
+    method: Literal["bootstrap", "student_t", "gaussian"] = Field(default="bootstrap", description="Simulation engine method")
+    n_simulations: int = Field(default=10_000, ge=1_000, le=100_000, description="Number of Monte Carlo paths")
+    block_size: Optional[int] = Field(default=None, ge=2, le=100, description="Block size for bootstrap")
+
+
+class RiskMetricDetail(BaseModel):
+    confidence_level: float
+    var_pct: float = Field(..., description="Value at Risk as a POSITIVE percentage loss (e.g. 0.12 = 12% loss)")
+    var_usd: float = Field(..., description="Value at Risk in USD")
+    var_std_error: float = Field(..., description="Monte Carlo standard error of estimated VaR")
+    cvar_pct: float = Field(..., description="Conditional VaR (Expected Shortfall) as a POSITIVE percentage loss")
+    cvar_usd: float = Field(..., description="Conditional VaR in USD")
+
+
+class HistogramData(BaseModel):
+    bin_edges: List[float]
+    frequencies: List[int]
+    densities: List[float]
+    median: float
+    percentile_5: float
+    percentile_1: float
+
+
+class PortfolioRiskResponse(BaseModel):
+    method_used: str
+    horizon_days: int
+    initial_capital: float
+    n_simulations: int
+    metrics: Dict[str, RiskMetricDetail]
+    prob_loss_10pct: float
+    prob_loss_20pct: float
+    prob_loss_30pct: float
+    histogram: HistogramData
+    warnings: List[str] = Field(default_factory=list)
+

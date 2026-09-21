@@ -13,6 +13,7 @@ import { BacktestPanel } from './components/BacktestPanel';
 import { CorrelationHeatmap } from './components/CorrelationHeatmap';
 import { DualAxisChart } from './components/DualAxisChart';
 import { ThesisAlertBanner } from './components/ThesisAlertBanner';
+import { PortfolioRiskView } from './components/PortfolioRiskView';
 import { exportMarkdownReport } from './utils/exportReport';
 import { AlertTriangle } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export const App: React.FC = () => {
   const [thesisStatus, setThesisStatus] = useState<string>('Activa');
   const [activeTickers, setActiveTickers] = useState<TickerSuggestion[]>([]);
   const [activeMacro, setActiveMacro] = useState<MacroSuggestion[]>([]);
+  const [activeThesisDetail, setActiveThesisDetail] = useState<ThesisDetailResponse | null>(null);
 
   // Time Series & Forecast State
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('NVDA');
@@ -234,6 +236,7 @@ export const App: React.FC = () => {
     setThesisStatus(detail.status);
     setActiveTickers(detail.tickers);
     setActiveMacro(detail.macro_series);
+    setActiveThesisDetail(detail);
 
     const tickerSymbols = detail.tickers.map((t) => t.symbol);
     fetchFundamentals(tickerSymbols)
@@ -412,6 +415,17 @@ export const App: React.FC = () => {
           <DualAxisChart
             primarySeriesData={seriesData}
             allAvailableSeries={allSeriesList}
+          />
+        )}
+
+        {/* ============================================================ */}
+        {/* VIEW 5: ASIGNACIÓN Y RIESGO (Markowitz, ERC & Monte Carlo)    */}
+        {/* ============================================================ */}
+        {currentView === 'risk' && (
+          <PortfolioRiskView
+            activeThesis={activeThesisDetail}
+            suggestedTickers={activeTickers}
+            isSyntheticActive={isSyntheticActive}
           />
         )}
       </main>

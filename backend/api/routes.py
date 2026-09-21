@@ -32,12 +32,18 @@ from backend.schemas.models import (
     CorrelationMatrixResponse,
     TickerSuggestion,
     MacroSuggestion,
+    PortfolioOptimizeRequest,
+    PortfolioOptimizeResponse,
+    PortfolioRiskRequest,
+    PortfolioRiskResponse,
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
 from backend.services.forecast_engine import get_forecast_engine
 from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
+from backend.services.portfolio_engine import PortfolioEngine
+from backend.services.risk_engine import RiskEngine
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +239,8 @@ def update_thesis(thesis_id: str, payload: ThesisUpdateRequest, db: Session = De
         thesis.status = payload.status
     if payload.summary is not None:
         thesis.summary = payload.summary
+    if payload.tickers is not None:
+        thesis.tickers_json = json.dumps([t.model_dump() for t in payload.tickers])
 
     db.commit()
     db.refresh(thesis)
@@ -409,3 +417,40 @@ def compute_correlations(payload: CorrelationRequest):
     except Exception as e:
         logger.error(f"Error calculating correlation matrix: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Correlation computation failed: {str(e)}")
+
+
+@router.post("/portfolio/optimize", response_model=PortfolioOptimizeResponse)
+def optimize_portfolio(payload: PortfolioOptimizeRequest):
+    """
+    Computes optimal portfolio allocations (Max Sharpe with SLSQP Dirichlet restarts,
+    Risk Parity via Spinu barrier, and benchmarks) using Ledoit-Wolf shrinkage.
+    """
+    try:
+        return PortfolioEngine.optimize_portfolio(payload)
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "synthetic" in err_msg.lower() or "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
+    except Exception as e:
+        logger.error(f"Error optimizing portfolio: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Portfolio optimization failed: {str(e)}")
+
+
+@router.post("/portfolio/risk", response_model=PortfolioRiskResponse)
+def evaluate_portfolio_risk(payload: PortfolioRiskRequest):
+    """
+    Simulates portfolio risk distribution (Bootstrap, Student-t, Gaussian)
+    and computes positive-loss VaR, CVaR, SE, and tail distribution metrics.
+    """
+    try:
+        return RiskEngine.evaluate_risk(payload)
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "synthetic" in err_msg.lower() or "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
+    except Exception as e:
+        logger.error(f"Error evaluating portfolio risk: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Portfolio risk evaluation failed: {str(e)}")
+

@@ -1,7 +1,17 @@
+import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
+from backend.schemas.models import (
+    TimeSeriesData,
+    TimeSeriesPoint,
+    FundamentalsMetric,
+)
+from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
+from backend.services.llm_router import MockLLMClient
+import backend.api.routes as routes
 
 client = TestClient(app)
+
 
 def test_health_endpoint():
     response = client.get("/api/health")
@@ -10,12 +20,55 @@ def test_health_endpoint():
     assert data["status"] == "ok"
     assert "llm_provider" in data
 
-def test_analyze_thesis_endpoint():
+
+def test_analyze_thesis_endpoint(monkeypatch):
+    monkeypatch.setattr(routes, "get_llm_client", lambda *args, **kwargs: MockLLMClient())
     response = client.post("/api/thesis", json={"thesis": "Demanda de energía por IA"})
     assert response.status_code == 200
     data = response.json()
     assert len(data["tickers"]) > 0
     assert len(data["macro_series"]) > 0
+
+
+def test_market_data_endpoint(monkeypatch):
+    mock_data = TimeSeriesData(
+        id="NVDA",
+        name="NVIDIA Corp",
+        type="equity",
+        unit="USD",
+        points=[
+            TimeSeriesPoint(timestamp="2024-01-01", value=150.0),
+            TimeSeriesPoint(timestamp="2024-01-02", value=155.0),
+        ],
+        source="live",
+    )
+    monkeypatch.setattr(MarketDataFetcher, "get_history", lambda *args, **kwargs: mock_data)
+    response = client.get("/api/data/market?ticker=NVDA&period=1y")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == "NVDA"
+    assert data["source"] == "live"
+
+
+def test_macro_data_endpoint(monkeypatch):
+    mock_data = TimeSeriesData(
+        id="CPIAUCSL",
+        name="Consumer Price Index",
+        type="macro",
+        unit="Index",
+        points=[
+            TimeSeriesPoint(timestamp="2024-01-01", value=300.0),
+            TimeSeriesPoint(timestamp="2024-02-01", value=301.0),
+        ],
+        source="live",
+    )
+    monkeypatch.setattr(FREDDataFetcher, "get_series", lambda *args, **kwargs: mock_data)
+    response = client.get("/api/data/macro?series_id=CPIAUCSL")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == "CPIAUCSL"
+    assert data["source"] == "live"
+
 
 def test_forecast_endpoint():
     points = [
@@ -33,13 +86,34 @@ def test_forecast_endpoint():
     assert len(data["lower_bound"]) == 5
     assert len(data["upper_bound"]) == 5
 
-def test_fundamentals_endpoint():
+
+def test_fundamentals_endpoint(monkeypatch):
+    mock_metrics = [
+        FundamentalsMetric(
+            ticker="NVDA",
+            metric="Capital Expenditure",
+            period="2023",
+            value=3000000000.0,
+            source="live",
+        ),
+        FundamentalsMetric(
+            ticker="MSFT",
+            metric="Capital Expenditure",
+            period="2023",
+            value=28000000000.0,
+            source="live",
+        ),
+    ]
+    monkeypatch.setattr(MarketDataFetcher, "get_fundamentals", lambda tickers: (mock_metrics, []))
     response = client.get("/api/data/fundamentals?tickers=NVDA,MSFT")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["metrics"]) > 0
+    assert len(data["metrics"]) == 2
+    assert data["metrics"][0]["ticker"] == "NVDA"
 
-def test_interpret_endpoint():
+
+def test_interpret_endpoint(monkeypatch):
+    monkeypatch.setattr(routes, "get_llm_client", lambda *args, **kwargs: MockLLMClient())
     response = client.post("/api/interpret", json={
         "thesis": "Demanda de energía por IA",
         "active_series_id": "NVDA",
@@ -55,6 +129,7 @@ def test_interpret_endpoint():
     assert "what_data_says" in data
     assert "thesis_alignment" in data
     assert "next_series_suggestion" in data
+
 
 def test_static_frontend_served():
     response = client.get("/")

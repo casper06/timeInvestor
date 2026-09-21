@@ -9,10 +9,11 @@ import {
   Rewind,
   Network,
   GitCompare,
+  PieChart,
 } from 'lucide-react';
 import type { HealthResponse } from '../services/api';
 
-export type DashboardView = 'forecast' | 'backtest' | 'correlation' | 'dual';
+export type DashboardView = 'forecast' | 'backtest' | 'correlation' | 'dual' | 'risk';
 
 interface HeaderProps {
   health: HealthResponse | null;
@@ -154,6 +155,26 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <GitCompare className="h-3.5 w-3.5" />
               <span>Gráfico Dual-Axis</span>
+            </button>
+
+            <button
+              onClick={() => !isSyntheticActive && onChangeView('risk')}
+              disabled={isSyntheticActive}
+              title={
+                isSyntheticActive
+                  ? 'Deshabilitado: no se puede evaluar riesgo sobre datos generados'
+                  : 'Optimización Markowitz, Risk Parity y Simulación Monte Carlo VaR/CVaR'
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium ${
+                isSyntheticActive
+                  ? 'opacity-40 cursor-not-allowed text-slate-500'
+                  : currentView === 'risk'
+                  ? 'bg-slate-800 text-emerald-400 font-bold border border-slate-700 cursor-pointer'
+                  : 'text-slate-400 hover:text-slate-200 cursor-pointer'
+              }`}
+            >
+              <PieChart className="h-3.5 w-3.5" />
+              <span>Asignación y Riesgo</span>
             </button>
           </div>
 
