@@ -56,10 +56,11 @@ fred_fetcher = FREDDataFetcher()
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Returns operational status and active engine configurations."""
+    engine = get_forecast_engine()
     return HealthResponse(
         status="ok",
         llm_provider=settings.effective_llm_provider,
-        forecast_engine=settings.FORECAST_ENGINE,
+        forecast_engine=engine.model_name,
         use_real_timesfm=settings.USE_REAL_TIMESFM,
         has_gemini_key=bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip()),
         has_fred_key=bool(settings.FRED_API_KEY and settings.FRED_API_KEY.strip()),

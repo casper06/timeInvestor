@@ -85,7 +85,7 @@ def test_interpretation_response_includes_provider(monkeypatch):
 def test_interpretation_response_provider_gemini(monkeypatch):
     """
     Monkeypatches Gemini client to simulate a successful API response without network,
-    verifying that /api/interpret returns provider_used == 'gemini-2.5-flash', not the mock.
+    verifying that /api/interpret returns provider_used == 'gemini-3.6-flash', not the mock.
     """
     import json
     from unittest.mock import MagicMock
@@ -128,5 +128,56 @@ def test_interpretation_response_provider_gemini(monkeypatch):
     })
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    assert data["provider_used"] == "gemini-2.5-flash"
+    assert data["provider_used"] == "gemini-3.6-flash"
     assert data["what_data_says"] == fake_gemini_payload["what_data_says"]
+
+
+def test_gemini_failure_exposes_reason(monkeypatch):
+    """
+    Forces GeminiLLMClient.models.generate_content to raise (simulating a retired
+    model / auth / network failure) and verifies parse_thesis falls back to
+    mock-semantic-engine AND surfaces the real exception text in fallback_reason,
+    instead of silently swallowing it as before.
+    """
+    import asyncio
+    from unittest.mock import MagicMock
+    from backend.services.llm_router import GeminiLLMClient
+
+    def mock_gemini_init(self, api_key=None):
+        self.api_key = api_key or "fake-test-key-123"
+        self._client = MagicMock()
+        self._client.models.generate_content.side_effect = Exception(
+            "404 NOT_FOUND. {'error': {'code': 404, 'message': "
+            "'This model models/gemini-2.5-flash is no longer available to new users.'}}"
+        )
+
+    monkeypatch.setattr(GeminiLLMClient, "__init__", mock_gemini_init)
+
+    client = GeminiLLMClient()
+    resp = asyncio.run(client.parse_thesis("Demanda de energía por IA"))
+
+    assert resp.provider_used == "mock-semantic-engine"
+    assert resp.fallback_reason is not None
+    assert "404" in resp.fallback_reason
+    assert "no longer available" in resp.fallback_reason
+
+
+def test_health_reports_actual_forecast_engine(monkeypatch):
+    """
+    Verifies /api/health returns the active forecast engine's real model_name
+    (e.g. 'damped-holt-mle'), not a stale hardcoded 'mock' string left over
+    from before StatisticalMockForecastEngine was renamed to DampedHoltForecastEngine.
+    """
+    from fastapi.testclient import TestClient
+    from backend.main import app
+    from backend.config import settings
+
+    monkeypatch.setattr(settings, "FORECAST_ENGINE", "mock")
+    monkeypatch.setattr(settings, "USE_REAL_TIMESFM", False)
+
+    test_client = TestClient(app)
+    resp = test_client.get("/api/health")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["forecast_engine"] == "damped-holt-mle"
+    assert data["forecast_engine"] != "mock"

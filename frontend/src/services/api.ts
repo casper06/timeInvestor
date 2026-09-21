@@ -37,6 +37,7 @@ export interface ThesisResponse {
   macro_series: MacroSuggestion[];
   rationales: Record<string, string>;
   provider_used: string;
+  fallback_reason?: string | null;
 }
 
 export interface ForecastResponse {
@@ -82,6 +83,7 @@ export interface InterpretationResponse {
   next_series_suggestion: string;
   suggested_series_id?: string;
   provider_used: string;
+  fallback_reason?: string | null;
 }
 
 export interface HealthResponse {

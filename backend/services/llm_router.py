@@ -70,6 +70,11 @@ class BaseLLMClient(abc.ABC):
         pass
 
 
+def _format_fallback_reason(provider_label: str, exc: Exception) -> str:
+    """Builds a short, user-facing explanation for why a real LLM provider fell back to mock."""
+    return f"{provider_label} falló: {exc}"
+
+
 class GeminiLLMClient(BaseLLMClient):
     """LLM client implementation using Google Gemini via google-genai SDK."""
 
@@ -94,7 +99,7 @@ class GeminiLLMClient(BaseLLMClient):
             prompt = f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\""
 
             response = self._client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json"
@@ -105,7 +110,11 @@ class GeminiLLMClient(BaseLLMClient):
             if raw_json.startswith("```"):
                 raw_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_json, flags=re.DOTALL)
 
-            data = json.loads(raw_json)
+            try:
+                data = json.loads(raw_json)
+            except json.JSONDecodeError:
+                logger.error(f"Gemini returned non-JSON response despite response_mime_type=application/json. Raw text: {raw_json!r}")
+                raise
 
             tickers = [TickerSuggestion(**t) for t in data.get("tickers", [])]
             macro_series = [MacroSuggestion(**m) for m in data.get("macro_series", [])]
@@ -116,13 +125,16 @@ class GeminiLLMClient(BaseLLMClient):
                 tickers=tickers,
                 macro_series=macro_series,
                 rationales=data.get("rationales", {}),
-                provider_used="gemini-2.5-flash"
+                provider_used="gemini-3.6-flash"
             )
 
         except Exception as e:
+            reason = _format_fallback_reason("Gemini", e)
             logger.error(f"Gemini LLM error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.parse_thesis(thesis)
+            result = await mock_client.parse_thesis(thesis)
+            result.fallback_reason = reason
+            return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
@@ -145,7 +157,7 @@ class GeminiLLMClient(BaseLLMClient):
             )
 
             response = self._client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.6-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json"
@@ -156,18 +168,26 @@ class GeminiLLMClient(BaseLLMClient):
             if raw_json.startswith("```"):
                 raw_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_json, flags=re.DOTALL)
 
-            data = json.loads(raw_json)
+            try:
+                data = json.loads(raw_json)
+            except json.JSONDecodeError:
+                logger.error(f"Gemini returned non-JSON response despite response_mime_type=application/json. Raw text: {raw_json!r}")
+                raise
+
             return InterpretationResponse(
                 what_data_says=data.get("what_data_says", ""),
                 thesis_alignment=data.get("thesis_alignment", ""),
                 next_series_suggestion=data.get("next_series_suggestion", ""),
                 suggested_series_id=data.get("suggested_series_id"),
-                provider_used="gemini-2.5-flash"
+                provider_used="gemini-3.6-flash"
             )
         except Exception as e:
+            reason = _format_fallback_reason("Gemini", e)
             logger.error(f"Gemini interpretation error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.interpret_situation(ctx)
+            result = await mock_client.interpret_situation(ctx)
+            result.fallback_reason = reason
+            return result
 
 
 class OpenAILLMClient(BaseLLMClient):
@@ -209,9 +229,12 @@ class OpenAILLMClient(BaseLLMClient):
                     provider_used="openai-gpt-4o-mini"
                 )
         except Exception as e:
+            reason = _format_fallback_reason("OpenAI", e)
             logger.error(f"OpenAI LLM error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.parse_thesis(thesis)
+            result = await mock_client.parse_thesis(thesis)
+            result.fallback_reason = reason
+            return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
@@ -239,9 +262,12 @@ class OpenAILLMClient(BaseLLMClient):
                     provider_used="openai-gpt-4o-mini"
                 )
         except Exception as e:
+            reason = _format_fallback_reason("OpenAI", e)
             logger.error(f"OpenAI interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
-            return await mock_client.interpret_situation(ctx)
+            result = await mock_client.interpret_situation(ctx)
+            result.fallback_reason = reason
+            return result
 
 
 class OllamaLLMClient(BaseLLMClient):
@@ -273,9 +299,12 @@ class OllamaLLMClient(BaseLLMClient):
                     provider_used=f"ollama-{self.model}"
                 )
         except Exception as e:
+            reason = _format_fallback_reason("Ollama", e)
             logger.error(f"Ollama error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.parse_thesis(thesis)
+            result = await mock_client.parse_thesis(thesis)
+            result.fallback_reason = reason
+            return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
@@ -297,9 +326,12 @@ class OllamaLLMClient(BaseLLMClient):
                     provider_used=f"ollama-{self.model}"
                 )
         except Exception as e:
+            reason = _format_fallback_reason("Ollama", e)
             logger.error(f"Ollama interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
-            return await mock_client.interpret_situation(ctx)
+            result = await mock_client.interpret_situation(ctx)
+            result.fallback_reason = reason
+            return result
 
 
 class MockLLMClient(BaseLLMClient):
@@ -561,6 +593,24 @@ class MockLLMClient(BaseLLMClient):
         )
 
 
+class _PreFailedMockLLMClient(MockLLMClient):
+    """MockLLMClient variant that stamps a fixed fallback_reason, used when a real
+    provider's client failed to even construct (e.g. missing/invalid API key)."""
+
+    def __init__(self, reason: str):
+        self._reason = reason
+
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        result = await super().parse_thesis(thesis)
+        result.fallback_reason = self._reason
+        return result
+
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        result = await super().interpret_situation(ctx)
+        result.fallback_reason = self._reason
+        return result
+
+
 def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
     """Factory creating the appropriate LLM client based on configuration or explicit provider."""
     prov = (provider or settings.effective_llm_provider).lower()
@@ -569,15 +619,17 @@ def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
         try:
             return GeminiLLMClient()
         except Exception as e:
+            reason = _format_fallback_reason("Gemini (inicialización)", e)
             logger.warning(f"Failed to initialize GeminiLLMClient ({e}), falling back to MockLLMClient")
-            return MockLLMClient()
+            return _PreFailedMockLLMClient(reason)
 
     elif prov == "openai":
         try:
             return OpenAILLMClient()
         except Exception as e:
+            reason = _format_fallback_reason("OpenAI (inicialización)", e)
             logger.warning(f"Failed to initialize OpenAILLMClient ({e}), falling back to MockLLMClient")
-            return MockLLMClient()
+            return _PreFailedMockLLMClient(reason)
 
     elif prov == "ollama":
         return OllamaLLMClient()

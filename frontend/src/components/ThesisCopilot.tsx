@@ -117,7 +117,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
                 Copiloto / Intérprete de Tesis
               </h3>
               {interpretation ? (
-                <LLMProviderBadge providerUsed={interpretation.provider_used} />
+                <LLMProviderBadge providerUsed={interpretation.provider_used} fallbackReason={interpretation.fallback_reason} />
               ) : (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">
                   Asistente LLM
