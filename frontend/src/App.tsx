@@ -14,6 +14,7 @@ import { CorrelationHeatmap } from './components/CorrelationHeatmap';
 import { DualAxisChart } from './components/DualAxisChart';
 import { ThesisAlertBanner } from './components/ThesisAlertBanner';
 import { exportMarkdownReport } from './utils/exportReport';
+import { AlertTriangle } from 'lucide-react';
 
 import {
   checkHealth,
@@ -263,6 +264,8 @@ export const App: React.FC = () => {
     ...activeMacro.map((m) => ({ id: m.series_id, name: m.name, type: 'macro' })),
   ];
 
+  const isSyntheticActive = !!seriesData && seriesData.source !== 'live';
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <Header
@@ -272,9 +275,30 @@ export const App: React.FC = () => {
         onChangeView={setCurrentView}
         onOpenThesesDrawer={() => setIsDrawerOpen(true)}
         onExportReport={handleExport}
+        isSyntheticActive={isSyntheticActive}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Synthetic Data Transparency Alert Banner */}
+        {isSyntheticActive && (
+          <div className="rounded-2xl p-4 bg-amber-950/40 border border-amber-500/40 shadow-xl flex items-start gap-3 text-amber-200">
+            <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-amber-300 uppercase tracking-wide">
+                  Datos Sintéticos / No Verificados
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                  Modo Contingencia
+                </span>
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                La serie actual <strong className="text-white font-mono">{seriesData?.id}</strong> proviene de un generador sintético o de referencia ({seriesData?.source_detail || 'sin conexión de datos reales'}). Los módulos de <strong>Reality Check (Backtesting)</strong> y <strong>Matrices de Correlación</strong> han sido inhabilitados para proteger la integridad cuantitativa de la tesis.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Quantitative Stress Alert Banner */}
         <ThesisAlertBanner
           seriesData={seriesData}

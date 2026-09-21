@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
@@ -30,10 +30,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for local modern web frontends
+# Enable CORS for local modern web frontends with explicit origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,11 +56,16 @@ if dist_path.exists() and (dist_path / "index.html").exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # Serve index.html for client-side routing if file doesn't exist
-        file_candidate = dist_path / full_path
+        dist_resolved = dist_path.resolve()
+        file_candidate = (dist_path / full_path).resolve()
+
+        # Guard against path traversal attacks
+        if not file_candidate.is_relative_to(dist_resolved):
+            raise HTTPException(status_code=404, detail="Not found")
+
         if full_path and file_candidate.exists() and file_candidate.is_file():
             return FileResponse(file_candidate)
-        return FileResponse(dist_path / "index.html")
+        return FileResponse(dist_resolved / "index.html")
 else:
     @app.get("/")
     async def root_fallback():

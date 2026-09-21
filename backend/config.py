@@ -36,7 +36,8 @@ class Settings:
     FORECAST_ENGINE: str = os.getenv("FORECAST_ENGINE", "mock")
     USE_REAL_TIMESFM: bool = os.getenv("USE_REAL_TIMESFM", "false").lower() in ("true", "1", "t")
 
-    # Data cache TTL (seconds)
+    # Data configuration
+    ALLOW_SYNTHETIC_DATA: bool = os.getenv("ALLOW_SYNTHETIC_DATA", "false").lower() in ("true", "1", "t")
     CACHE_TTL_SECONDS: int = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
 
     @property

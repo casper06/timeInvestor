@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Literal
 
 class TimeSeriesPoint(BaseModel):
     timestamp: str = Field(..., description="Timestamp in ISO-8601 or YYYY-MM-DD format")
@@ -11,6 +11,8 @@ class TimeSeriesData(BaseModel):
     type: str = Field(..., description="Type of series: equity, macro, or fundamental")
     unit: str = Field(default="USD", description="Unit of measurement")
     points: List[TimeSeriesPoint] = Field(default_factory=list)
+    source: Literal["live", "synthetic", "cached"] = Field(default="live", description="Data provenance")
+    source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic or cached")
 
 class TickerSuggestion(BaseModel):
     symbol: str = Field(..., description="Stock ticker symbol (e.g. NVDA)")
@@ -37,8 +39,8 @@ class ThesisResponse(BaseModel):
     provider_used: str
 
 class ForecastRequest(BaseModel):
-    points: List[TimeSeriesPoint] = Field(..., min_length=2, description="Historical time series")
-    horizon: int = Field(default=30, ge=1, le=730, description="Projection horizon in steps")
+    points: List[TimeSeriesPoint] = Field(..., min_length=2, max_length=10_000, description="Historical time series")
+    horizon: int = Field(default=30, ge=1, le=365, description="Projection horizon in steps (max 365)")
     confidence: float = Field(default=0.95, ge=0.5, le=0.99, description="Confidence interval level")
     freq: Optional[str] = Field(default="D", description="Frequency: 'D' for daily, 'M' for monthly")
 
@@ -47,16 +49,21 @@ class ForecastResponse(BaseModel):
     values: List[float] = Field(..., description="Point forecasts")
     lower_bound: List[float] = Field(..., description="Lower prediction interval bound")
     upper_bound: List[float] = Field(..., description="Upper prediction interval bound")
-    model_name: str = Field(default="timesfm-mock-v1", description="Name of the forecasting model")
+    model_name: str = Field(default="damped-holt-mle", description="Name of the forecasting model")
+    is_fallback: bool = Field(default=False, description="True if model fell back from primary engine")
+    fitted_params: Optional[Dict[str, float]] = Field(default=None, description="Fitted smoothing and damping parameters")
 
 class FundamentalsMetric(BaseModel):
     ticker: str
     metric: str
     period: str
     value: float
+    source: Literal["live", "synthetic", "cached"] = Field(default="live", description="Data provenance")
+    source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic or cached")
 
 class FundamentalsResponse(BaseModel):
-    metrics: List[FundamentalsMetric]
+    metrics: List[FundamentalsMetric] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
 
 class InterpretationContext(BaseModel):
     thesis: str = Field(..., description="Tesis original ingresada por el usuario")
@@ -176,7 +183,9 @@ class BacktestRequest(BaseModel):
 class BacktestMetrics(BaseModel):
     mae: float
     mape: float
-    directional_accuracy: float
+    smape: float = Field(default=0.0, description="Symmetric Mean Absolute Percentage Error (%)")
+    mase: float = Field(default=0.0, description="Mean Absolute Scaled Error relative to in-sample naive")
+    directional_accuracy: float = Field(..., description="Step-by-step directional accuracy (%)")
     observations_evaluated: int
 
 class BacktestResponse(BaseModel):
@@ -191,18 +200,27 @@ class BacktestResponse(BaseModel):
     future_lower_bound: List[float]
     future_upper_bound: List[float]
     metrics: BacktestMetrics
+    naive_metrics: Optional[BacktestMetrics] = None
+    interval_coverage: float = Field(default=0.0, description="Percentage of actuals inside prediction interval (%)")
+    aggregate_direction_correct: bool = Field(default=False, description="True if aggregate horizon direction matched")
     verdict: str
+    warnings: List[str] = Field(default_factory=list)
 
 # Correlation Schemas
 class CorrelationRequest(BaseModel):
     series_ids: List[str] = Field(..., min_length=2)
     period: str = Field(default="2y")
+    mode: Literal["returns", "levels"] = Field(default="returns", description="returns (log-diff/pct_change) or levels")
 
 class CorrelationMatrixResponse(BaseModel):
     series_ids: List[str]
     series_names: Dict[str, str]
     pearson_matrix: List[List[float]]
     spearman_matrix: List[List[float]]
+    p_values_pearson: List[List[float]] = Field(default_factory=list)
+    p_values_spearman: List[List[float]] = Field(default_factory=list)
     common_observations: int
     start_date: str
     end_date: str
+    mode: str = "returns"
+    warning: Optional[str] = None

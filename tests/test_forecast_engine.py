@@ -20,7 +20,8 @@ def test_statistical_mock_forecast():
     assert len(resp.values) == horizon
     assert len(resp.lower_bound) == horizon
     assert len(resp.upper_bound) == horizon
-    assert resp.model_name == "timesfm-mock-v1"
+    assert resp.model_name == "damped-holt-mle"
+    assert resp.is_fallback is False
 
     # Lower bound must be <= forecast value <= upper bound
     for v, lb, ub in zip(resp.values, resp.lower_bound, resp.upper_bound):
@@ -36,4 +37,5 @@ def test_timesfm_adapter_fallback():
     ]
     resp = engine.forecast(points, horizon=5)
     assert len(resp.values) == 5
-    assert resp.model_name == "timesfm-1.0-adapter"
+    assert "damped-holt-mle" in resp.model_name
+    assert resp.is_fallback is True

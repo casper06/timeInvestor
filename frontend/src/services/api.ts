@@ -9,6 +9,8 @@ export interface TimeSeriesData {
   type: string;
   unit: string;
   points: TimeSeriesPoint[];
+  source?: 'live' | 'synthetic' | 'cached';
+  source_detail?: string;
 }
 
 export interface TickerSuggestion {
@@ -41,6 +43,8 @@ export interface ForecastResponse {
   lower_bound: number[];
   upper_bound: number[];
   model_name: string;
+  is_fallback?: boolean;
+  fitted_params?: Record<string, number>;
 }
 
 export interface FundamentalsMetric {
@@ -48,6 +52,8 @@ export interface FundamentalsMetric {
   metric: string;
   period: string;
   value: number;
+  source?: 'live' | 'synthetic' | 'cached';
+  source_detail?: string;
 }
 
 export interface InterpretationContext {
@@ -220,6 +226,8 @@ export interface ThesisCreateRequest {
 export interface BacktestMetrics {
   mae: number;
   mape: number;
+  smape?: number;
+  mase?: number;
   directional_accuracy: number;
   observations_evaluated: number;
 }
@@ -236,7 +244,11 @@ export interface BacktestResponse {
   future_lower_bound: number[];
   future_upper_bound: number[];
   metrics: BacktestMetrics;
+  naive_metrics?: BacktestMetrics;
+  interval_coverage?: number;
+  aggregate_direction_correct?: boolean;
   verdict: string;
+  warnings?: string[];
 }
 
 export interface CorrelationMatrixResponse {
@@ -244,9 +256,13 @@ export interface CorrelationMatrixResponse {
   series_names: Record<string, string>;
   pearson_matrix: number[][];
   spearman_matrix: number[][];
+  p_values_pearson?: number[][];
+  p_values_spearman?: number[][];
   common_observations: number;
   start_date: string;
   end_date: string;
+  mode?: string;
+  warning?: string;
 }
 
 export async function fetchTheses(): Promise<ThesisSummaryItem[]> {
@@ -351,7 +367,8 @@ export async function runBacktest(
 
 export async function fetchCorrelations(
   seriesIds: string[],
-  period = '2y'
+  period = '2y',
+  mode: 'returns' | 'levels' = 'returns'
 ): Promise<CorrelationMatrixResponse> {
   const res = await fetch(`${API_BASE}/correlation`, {
     method: 'POST',
@@ -359,6 +376,7 @@ export async function fetchCorrelations(
     body: JSON.stringify({
       series_ids: seriesIds,
       period,
+      mode,
     }),
   });
   if (!res.ok) {
