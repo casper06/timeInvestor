@@ -267,7 +267,7 @@ export const App: React.FC = () => {
     ...activeMacro.map((m) => ({ id: m.series_id, name: m.name, type: 'macro' })),
   ];
 
-  const isSyntheticActive = !!seriesData && seriesData.source !== 'live';
+  const isSyntheticActive = !!seriesData && seriesData.source === 'synthetic';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">

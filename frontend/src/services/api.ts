@@ -9,7 +9,9 @@ export interface TimeSeriesData {
   type: string;
   unit: string;
   points: TimeSeriesPoint[];
-  source?: 'live' | 'synthetic' | 'cached';
+  source?: 'live' | 'synthetic';
+  from_cache?: boolean;
+  cached_at?: string | null;
   source_detail?: string;
 }
 
@@ -52,7 +54,9 @@ export interface FundamentalsMetric {
   metric: string;
   period: string;
   value: number;
-  source?: 'live' | 'synthetic' | 'cached';
+  source?: 'live' | 'synthetic';
+  from_cache?: boolean;
+  cached_at?: string | null;
   source_detail?: string;
 }
 
