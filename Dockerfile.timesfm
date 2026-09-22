@@ -33,17 +33,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin appuser
 
 # Install standard backend requirements
-COPY requirements.txt ./
+COPY requirements.txt requirements-timesfm.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install PyTorch with CUDA 12.1 support and Hugging Face packages for TimesFM
+# Install PyTorch with CUDA 12.1 support FIRST (from the CUDA wheel index), then
+# the rest of requirements-timesfm.txt — including the `timesfm` package itself,
+# which provides TimesFM_2p5_200M_torch and is what TimesFMForecastEngine actually
+# imports. requirements-timesfm.txt's own torch constraint (>=2.0.0,<3.0.0) is
+# already satisfied by the CUDA build installed here, so pip won't reinstall or
+# downgrade it to a CPU wheel when it processes that file next.
 RUN pip install --no-cache-dir \
     torch --index-url https://download.pytorch.org/whl/cu121 \
-    && pip install --no-cache-dir \
-    huggingface_hub>=0.23.0 \
-    transformers>=4.40.0 \
-    einops>=0.7.0 \
-    accelerate>=0.30.0
+    && pip install --no-cache-dir -r requirements-timesfm.txt
 
 # Copy application backend, execution scripts, and launcher
 COPY backend/ ./backend/
