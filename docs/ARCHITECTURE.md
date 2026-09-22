@@ -1,5 +1,32 @@
 # Engine Selection Architecture
 
+## EngineSelector decision flow
+
+How `EngineSelector.select()` picks an engine for one specific forecast
+request, given a series' identity, type, and available history:
+
+```mermaid
+flowchart TD
+    A["Forecast request:\nseries_id, series_type, points"] --> B{"series_id in\nSEASONAL_FRED_CATALOG?"}
+    B -- yes --> C{"USE_REAL_TIMESFM\nand weights loaded?"}
+    C -- yes --> D["TimesFM\nreason: 'Serie FRED estacional — TimesFM\nganó 4/4 en el benchmark real'"]
+    C -- no --> E["Holt (fallback)\nreason: 'Categoría favorece TimesFM,\npero TimesFM no disponible'"]
+
+    B -- no --> F{"series_id in\nDIVERSIFIED_ETF_CATALOG?"}
+    F -- yes --> G["Holt\nreason: 'Índice/ETF — TimesFM no le ganó\na Holt en el benchmark (0/4)'"]
+
+    F -- no --> H{"len(points) <\nLOW_CONFIDENCE_HISTORY_THRESHOLD (90)?"}
+    H -- yes --> I["Holt + fitted_params.low_confidence=1\nreason: 'Historia insuficiente — ningún\numbral corto favoreció a TimesFM'"]
+
+    H -- no --> J["Holt (default)\nreason: 'Acción individual,\nhistoria suficiente — Holt (default)'"]
+
+    D --> K["ForecastResponse\n(model_name, engine_selection_reason)"]
+    E --> K
+    G --> K
+    I --> K
+    J --> K
+```
+
 ## Current state: Variant A — curated catalogs (implemented)
 
 `backend/services/engine_selector.py`'s `EngineSelector` picks Holt vs TimesFM
@@ -89,3 +116,55 @@ factor for a future phase, not something to resolve preemptively here.
   (i.e. keep Variant A's cheap path for known categories, and use Variant B's
   expensive path only as a fallback for genuinely novel series) — a hybrid
   that keeps the common case cheap.
+
+## General architecture
+
+The main blocks, for someone new to the codebase — not exhaustive at the file
+level, just enough to place where a change would live:
+
+```mermaid
+graph TD
+    subgraph Frontend["Frontend (React 19 + Vite, frontend/src/)"]
+        UI["App.tsx + components/\n(ForecastChart, MetricCards, ThesisCopilot,\nBacktestPanel, CorrelationHeatmap, ...)"]
+    end
+
+    subgraph API["API (FastAPI, backend/api/routes.py)"]
+        R1["/thesis, /interpret"]
+        R2["/data/market, /data/macro,\n/data/fundamentals, /catalog/*"]
+        R3["/forecast"]
+        R4["/backtest, /correlation,\n/portfolio/*, /rebalance/backtest"]
+        R5["/theses (CRUD), /notes, /snapshots"]
+    end
+
+    subgraph Services["Services (backend/services/)"]
+        S1["llm_router.py\n(Gemini / OpenAI / Ollama / Mock,\nretry + fallback classification)"]
+        S2["data_fetcher.py\n(MarketDataFetcher, FREDDataFetcher,\nin-memory TTL cache)"]
+        S3["engine_selector.py\n(Holt vs TimesFM per series)"]
+        S4["forecast_engine.py\n(DampedHoltForecastEngine,\nTimesFMForecastEngine)"]
+        S5["backtest_engine.py, correlation_engine.py,\nportfolio_engine.py, risk_engine.py,\nrebalance_engine.py"]
+    end
+
+    subgraph External["External sources"]
+        X1["yfinance\n(equities/ETFs)"]
+        X2["FRED API\n(macro series + metadata)"]
+        X3["Gemini / OpenAI / Ollama\n(LLM providers)"]
+    end
+
+    DB[("SQLite\nbackend/database/\n(theses, snapshots, notes)")]
+
+    UI --> R1 & R2 & R3 & R4 & R5
+
+    R1 --> S1
+    R2 --> S2
+    R3 --> S3
+    R4 --> S5
+    R5 --> DB
+
+    S3 --> S4
+    S5 --> S2
+    S5 --> S4
+
+    S1 --> X3
+    S2 --> X1
+    S2 --> X2
+```

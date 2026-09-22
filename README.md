@@ -1,246 +1,96 @@
-# TimeInvestor ⚡📈
-### Plataforma Cuantitativa Local para Análisis, Proyección y Validación de Tesis de Inversión
+# TimeInvestor
 
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-19+-61DAFB.svg)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38B2AC.svg)](https://tailwindcss.com/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-TimesFM-EE4C2C.svg)](https://pytorch.org/)
-[![SQLite](https://img.shields.io/badge/Database-SQLite-003B57.svg)](https://www.sqlite.org/)
+Motor cuantitativo y de proyección de tesis de inversión: ingesta datos reales
+de mercado (yfinance) y macro (FRED), proyecta series temporales, hace backtest
+walk-forward contra un benchmark naive, optimiza carteras (Markowitz / Risk
+Parity), simula rebalanceo con costos de transacción, y usa un LLM (Gemini /
+OpenAI / Ollama / motor heurístico local) para traducir una tesis en lenguaje
+natural a una selección de activos.
 
-**TimeInvestor** es una estación de trabajo cuantitativa y modular que corre **100% en entorno local**. Permite a analistas, gestores de fondos e inversores independientes traducir hipótesis cualitativas en lenguaje natural (ej: *"Demanda eléctrica por centros de datos de IA"*) a carteras cuantitativas estructuradas, proyectar precios futuros mediante modelos de series temporales de última generación (**Google TimesFM**), someter el modelo a pruebas empíricas retrospectivas (**Reality Check Backtesting**), analizar matrices de correlación cruzada y auditar desviaciones frente a bandas de confianza en tiempo real.
+## Quickstart
 
----
-
-## 🏛️ Diagrama de Arquitectura (Puertos y Adaptadores)
-
-El sistema está desacoplado mediante una arquitectura de "cables" (interfaces abstractas y adaptadores) que permite intercambiar motores predictivos, proveedores de modelos de lenguaje o fuentes de datos sin alterar los contratos de la aplicación ni la experiencia de usuario:
-
-```
-                                  ┌─────────────────────────────────────────────────────────┐
-                                  │               Frontend Web (React 19 / Vite)            │
-                                  │  Tailwind CSS v4 • Lucide Icons • Chart.js Interactivo │
-                                  └────────────────────────────┬────────────────────────────┘
-                                                               │ HTTP REST / JSON
-                                                               ▼
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                 FastAPI Core Engine                                                    │
-│                                                                                                                        │
-│   ┌─────────────────────┐   ┌───────────────────────────┐   ┌───────────────────────────┐   ┌──────────────────────┐   │
-│   │   Ingesta de Datos  │   │      Cable Semántico      │   │     Cable Predictivo      │   │    Persistencia      │   │
-│   │ (MarketDataFetcher) │   │     (BaseLLMClient)       │   │   (BaseForecastEngine)    │   │ (SQLite/SQLAlchemy)  │   │
-│   └──────────┬──────────┘   └─────────────┬─────────────┘   └─────────────┬─────────────┘   └──────────┬───────────┘   │
-└──────────────┼────────────────────────────┼───────────────────────────────┼────────────────────────────┼───────────────┘
-               │                            │                               │                            │
-       ┌───────┴────────┐          ┌────────┴────────┐             ┌────────┴────────┐          ┌────────┴────────┐
-       ▼                ▼          ▼                 ▼             ▼                 ▼          ▼                 ▼
-    yfinance          FRED API   Gemini 3.6       OpenAI /       Google TimesFM     Fallback    Theses         Snapshots
- (Precios/Capex)    (Macro/PPA)    Flash        Ollama / Mock   (PyTorch 200M)    (Damped Holt) Notes          Audit Log
-```
-
----
-
-## 🌟 Principales Funcionalidades
-
-### 1. 🔮 Proyección Temporal con Cono de Incertidumbre (Google TimesFM)
-- Proyección continua hacia adelante con horizontes paramétricos $H \in [30, 60, 90, 180]$ días.
-- Conos de incertidumbre sombreados con intervalos de confianza al **80%**, **90%** y **95%**.
-- Normalización porcentual optativa (**Base 100**) para comparar activos con escalas de precios dispares.
-
-### 2. 📊 Telemetría y Resumen Estadístico (Puro Dato Objetivo)
-- **Tendencia Central**: Desviación porcentual esperada desde el último precio observado hasta el valor objetivo.
-- **Amplitud del Intervalo**: Ancho porcentual del cono al 95% (medida directa de volatilidad e incertidumbre implícita del modelo).
-- **Estado de la Inercia**: Diagnóstico matemático automático (aceleración positiva, negativa o lateralización según la convexidad de los retornos recientes).
-
-### 3. 🤖 Copiloto e Intérprete de Tesis (Asistente LLM)
-- Botón *"Interpretar Situación"* con llamado a `/api/interpret`.
-- Desglose estructurado en tres perspectivas financieras:
-  - **Qué dicen los datos**: Traducción conceptual intuitiva de las curvas.
-  - **Alineación con la tesis**: Validación o refutación cuantitativa de la premisa original.
-  - **Siguiente serie a explorar**: Detección de cuellos de botella macro con botón de navegación directa.
-
-### 4. ⏪ Reality Check (Backtesting Retrospectivo)
-- Simulación *walk-forward*: Corta la serie histórica en una fecha $T_{\text{cutoff}}$ pasada, alimenta el modelo con los datos pre-corte y proyecta hacia el futuro para contrastar la predicción contra la realidad ocurrida.
-- Métricas calculadas:
-  - **MAE (Mean Absolute Error)**: Desvío medio en dólares.
-  - **MAPE (Mean Absolute Percentage Error)**: Error relativo medio.
-  - **Directional Accuracy**: Porcentaje de aciertos en el sentido del movimiento (+ / -).
-
-### 5. 🌐 Matriz de Correlaciones y Comparación Dual
-- Alineación temporal estricta de calendarios bursátiles con series macroeconómicas de FRED.
-- Mapa de calor interactivo con conmutador entre correlación lineal (**Pearson**) y monótona no paramétrica (**Spearman**).
-- Gráfico de doble eje (**Dual-Axis**) para contrastar acciones y variables macro en escalas independientes.
-
-### 6. 💾 Persistencia Relacional Local (SQLite)
-- Almacenamiento local en `backend/database/time_investor.db`.
-- **Mis Tesis**: Panel lateral para guardar tesis, registrar *snapshots* históricos de curvas proyectadas y agregar bitácoras de notas de análisis cualitativo.
-- Sin dependencias de servicios externos ni migraciones manuales (`init_db` automático al arrancar).
-
-### 7. 🚨 Alerta de Quiebre de Tesis y Exportación Ejecutiva
-- Detección automática en caso de que el precio real perfore la banda inferior al 95%.
-- Generación y descarga instantánea de informes ejecutivos en formato Markdown (`exportReport.ts`).
-
----
-
----
-
-## 🚀 Despliegue Rápido con Docker (Opción Recomendada)
-
-La forma más rápida, reproducible y aislada de ejecutar TimeInvestor es a través de Docker y Docker Compose:
-
-### 1. Clonar el repositorio y configurar el entorno
 ```bash
-git clone https://github.com/casper06/timeInvestor.git
-cd timeInvestor
-cp .env.example .env
+cp .env.example .env   # completar FRED_API_KEY / GEMINI_API_KEY según necesidad
+pip install -r requirements.txt
+python run.py           # compila el frontend si hace falta y sirve todo en :8000
 ```
-*(En Windows PowerShell: `Copy-Item .env.example .env`)*
 
-Edita `.env` si cuentas con claves de API para **Gemini** o **FRED** (opcional; si no se configuran, operará con mocks determinísticos de alta fidelidad).
+Ver `.env.example` para el detalle de cada variable de entorno.
 
-### 2. Iniciar con Docker Compose
+### Desarrollo (backend y frontend por separado)
+
+```bash
+# Backend
+pip install -r requirements.txt
+python run.py --no-browser
+
+# Frontend (hot reload)
+cd frontend
+npm install
+npm run dev
+```
+
+### Tests
+
+```bash
+python -m pytest tests/          # backend
+cd frontend && npm run test      # frontend
+```
+
+### Docker
+
 ```bash
 docker compose up --build
 ```
-- 💻 **Dashboard Web**: [http://localhost:8000](http://localhost:8000)
-- 📖 **Documentación Swagger API**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- 💾 **Persistencia de Datos**: Los datos y tesis se almacenan en el volumen nombrado de Docker `timeinvestor-data` (`/app/backend/database/time_investor.db`), persistiendo incluso si se destruyen o recrean los contenedores (`docker compose down`).
 
-Para detener el servicio:
-```bash
-docker compose down
-```
+La imagen default (`Dockerfile`) es liviana: no instala `torch`/`transformers`.
+Para el motor real de TimesFM (PyTorch + CUDA), ver `Dockerfile.timesfm` y
+`requirements-timesfm.txt`.
 
----
+## Selección de motor de proyección: Holt vs TimesFM por serie
 
-### 🚀 Despliegue con Aceleración GPU (Google TimesFM Real)
+TimeInvestor no usa un único motor de proyección para todo el sistema. En vez
+de un interruptor global (`USE_REAL_TIMESFM=true/false` para todas las
+series), `EngineSelector` (`backend/services/engine_selector.py`) elige el
+motor **por serie individual**, según qué demostró funcionar mejor en un
+benchmark walk-forward con datos reales (`scripts/benchmark_real_data.py`), no
+según qué "debería" andar mejor.
 
-Para ejecutar el motor con soporte para modelos neuronales preentrenados y aceleración por GPU CUDA:
-
-```bash
-# Construir la imagen con soporte PyTorch CUDA y TimesFM
-docker build -f Dockerfile.timesfm -t timeinvestor:gpu .
-
-# Ejecutar con soporte GPU y persistencia de pesos de Hugging Face
-docker run --gpus all -p 8000:8000 \
-  -v timeinvestor-data:/app/backend/database \
-  -v huggingface-cache:/app/.cache/huggingface \
-  --env-file .env \
-  timeinvestor:gpu
-```
-
----
-
-## 🛠️ Instalación Local y Desarrollo (Alternativa sin Docker)
-
-Si prefieres ejecutar el código directamente en tu máquina anfitriona:
-
-### Prerrequisitos
-- **Python 3.10** o superior.
-- **Node.js 20+** y **npm**.
-- **Git**.
-
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/casper06/timeInvestor.git
-cd timeInvestor
-```
-
-### 2. Crear y activar el entorno virtual de Python
-En Linux / macOS:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-En Windows (PowerShell):
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-### 3. Instalar dependencias del Backend
-```bash
-pip install -r requirements.txt
-```
-*(Opcional, ~800MB adicionales)* Para habilitar el motor real de Google TimesFM en vez del fallback estadístico (ver sección dedicada más abajo):
-```bash
-pip install -r requirements-timesfm.txt
-```
-
-### 4. Instalar dependencias y compilar el Frontend
-```bash
-cd frontend
-npm install
-npm run build
-cd ..
-```
-
-### 5. Configurar variables de entorno
-Copia el archivo de ejemplo y edita tus claves:
-```bash
-cp .env.example .env
-```
-*(En Windows PowerShell: `Copy-Item .env.example .env`)*
-
-Configura las siguientes variables en `.env`:
-- **`GEMINI_API_KEY`**: [Obtén tu clave gratuita en Google AI Studio](https://aistudio.google.com/app/apikey).
-- **`FRED_API_KEY`**: [Obtén tu clave gratuita en St. Louis Fed FRED](https://fred.stlouisfed.org/docs/api/api_key.html).
-- *(Opcional)* Si no agregas ninguna clave, el sistema conmuta automáticamente a los adaptadores **Mock** de alta fidelidad para operar 100% offline.
-  - **Transparencia de Proveedor LLM**: Tanto en la *Síntesis Cuantitativa de la Tesis* como en el *Copiloto*, un badge visible indica explícitamente si la respuesta proviene de un LLM real (ej: `Gemini 3.6 Flash`) o del `Motor heurístico local — sin LLM`. Cuando el badge cae a mock por una excepción del proveedor real (SDK no instalado, error de autenticación, modelo retirado, rate limit, etc.), el hover/tooltip muestra el motivo real vía el campo `fallback_reason` de la respuesta — nunca solo "sin LLM" sin explicación. También puedes verificar el estado en tiempo real consultando `GET /api/health` (`has_gemini_key`, `llm_provider`).
-  - **Banner de Integridad (Datos Sintéticos)**: Si ves un banner de advertencia ámbar indicando *"Modo Sintético Activo"*, significa que `ALLOW_SYNTHETIC_DATA=true` está habilitado ante la falta de conexión o clave en FRED/yfinance. En este modo, las herramientas analíticas rigurosas (Reality Check, Correlaciones, Optimización y Riesgo) quedan bloqueadas por diseño para prevenir decisiones sobre datos fabricados.
-
-### 6. Iniciar la aplicación (Comando Único)
-```bash
-python run.py
-```
-El script inicializa automáticamente la base de datos SQLite y levanta el servidor:
-- 💻 **Dashboard Web**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- 📖 **Documentación Swagger API**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
----
-
-## ⚙️ Configuración del Motor TimesFM: Real PyTorch vs. Fallback Estadístico
-
-TimeInvestor incluye dos modos de proyección en `backend/services/forecast_engine.py`:
-
-| Parámetro en `.env` | Modo | Descripción |
+| Categoría | Motor ganador | Evidencia |
 |---|---|---|
-| `USE_REAL_TIMESFM=false` *(default)* | **Fallback Estadístico Calibrado** | Suavizado exponencial amortiguado (Holt Linear Trend) con deriva estocástica y conos de incertidumbre. **Arranque instantáneo y cero uso de GPU**. |
-| `USE_REAL_TIMESFM=true` | **Google TimesFM 2.5 (200M) PyTorch Real** | Carga el modelo fundacional preentrenado `google/timesfm-2.5-200m-pytorch` desde Hugging Face vía el paquete oficial `timesfm[torch]`. Detecta automáticamente aceleración por hardware GPU (**CUDA**), Apple Silicon (**MPS**) o CPU. |
+| Series FRED estacionales (`IPG2211A2N`, `RSAFSNA`, `HOUSTNSA`, `MRTSSM4451USN`) | **TimesFM** | Ganó 4/4 series (MASE muy inferior a Holt) |
+| Índices/ETF diversificados (`SPY`, `QQQ`, `XLE`, `XLK`) | **Holt** | TimesFM no ganó en ninguna (0/4) — la hipótesis inicial no se sostuvo |
+| Historia corta / cold-start (contexto de 30/60/90 días) | **Holt** | TimesFM ganó en, como mucho, 1 de 4 tickers en cualquiera de las tres ventanas — nunca alcanzó el umbral en ninguna |
+| Acción individual, historia completa (default) | **Holt** | Comportamiento sin cambios; no es una categoría nueva |
 
-Para habilitar TimesFM real con PyTorch:
-```bash
-pip install -r requirements-timesfm.txt
-```
-Y en tu archivo `.env`:
-```env
-FORECAST_ENGINE=timesfm
-USE_REAL_TIMESFM=true
-```
+La regla que decide es objetiva y se aplica igual a cualquier categoría futura:
+**una categoría solo enruta a TimesFM si TimesFM ganó (menor MASE promedio) en
+al menos el 50% de sus series representativas** en el benchmark real. Si no
+llega a ese umbral, se queda en Holt — sin excepción por intuición.
 
-**Nota sobre precisión vs. Holt:** ver la sección de benchmarking más abajo — activar TimesFM real no es automáticamente "mejor"; el valor de `USE_REAL_TIMESFM` por default en `.env.example` refleja el resultado medido, no una preferencia de diseño.
+Cada respuesta de `/api/forecast` incluye `engine_selection_reason`, un texto
+que explica por qué se eligió ese motor para esa serie puntual (visible en el
+frontend junto al nombre del motor activo).
 
----
+Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para:
+- El diagrama de flujo de decisión del `EngineSelector`.
+- El diagrama de arquitectura general del sistema.
+- El detalle completo del benchmark y los números de MASE/cobertura por serie.
+- La Variante B (selección en tiempo real vía mini-backtest por request) y por
+  qué no está implementada todavía — con la estimación de latencia medida.
 
-## 🧪 Pruebas Automatizadas
+## Glosario de series FRED
 
-La plataforma cuenta con una suite completa de pruebas unitarias y de integración que verifican la estabilidad de los contratos JSON, los cálculos cuantitativos y la persistencia relacional:
+Los IDs de FRED (`IPG2211A2N`, `PCU221110221110`, ...) no son autoexplicativos.
+El endpoint `GET /api/catalog/fred-metadata?series_id=X` devuelve el `title` y
+`notes` reales que FRED publica para esa serie (nunca una descripción escrita
+a mano) — visible en la interfaz como un ícono (ⓘ) junto a cada tab de serie
+FRED en "Serie Activa:".
 
-```bash
-python -m pytest tests/ -v
-```
+## Mensajes de fallback accionables
 
-Cobertura de pruebas:
-- `test_api_endpoints.py`: Verificación de endpoints REST (`/health`, `/forecast`, `/fundamentals`, `/interpret`).
-- `test_backtest_engine.py`: Validación de algoritmos MAE, MAPE y Directional Accuracy.
-- `test_correlation_engine.py`: Verificación de matrices de Pearson y Spearman con alineación temporal.
-- `test_database.py`: Ciclo de vida CRUD de tesis, snapshots y notas de investigación en SQLite.
-- `test_forecast_engine.py`: Conos de confianza, mapeo de frecuencias y contrato compatible con TimesFM.
-- `test_llm_router.py`: Desestructuración semántica de tesis cualitativas e interpretación del copiloto.
-
----
-
-## 📜 Licencia de Software
-
-Este proyecto está bajo la licencia **GNU General Public License v2.0 (GPL-2.0)**. Consulta el archivo [LICENSE](LICENSE) para obtener los términos completos y condiciones de distribución, modificación y uso.
+Cuando el LLM configurado (Gemini/OpenAI/Ollama) falla y el sistema cae al
+motor heurístico local, la respuesta incluye `fallback_category`
+(`rate_limit` / `transient` / `auth_or_config` / `unknown`), para que el
+usuario sepa si conviene esperar o si necesita revisar su configuración —
+mostrado en el tooltip del badge de proveedor LLM en el frontend.
