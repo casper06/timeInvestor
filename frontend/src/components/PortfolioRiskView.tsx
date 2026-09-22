@@ -5,11 +5,13 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Doughnut, Bar } from 'react-chartjs-2';
+import { Doughnut, Bar, Line } from 'react-chartjs-2';
 import {
   PieChart,
   ShieldAlert,
@@ -22,18 +24,22 @@ import {
   Activity,
   Layers,
   Info,
+  Repeat,
+  TrendingUp,
 } from 'lucide-react';
 import {
   optimizePortfolio,
   evaluatePortfolioRisk,
+  runRebalanceBacktest,
   type PortfolioOptimizeResponse,
   type PortfolioRiskResponse,
+  type RebalanceBacktestResponse,
   type TickerSuggestion,
   type ThesisDetailResponse,
   updateThesis,
 } from '../services/api';
 
-ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface PortfolioRiskViewProps {
   activeThesis: ThesisDetailResponse | null;
@@ -93,6 +99,19 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
   const [simulating, setSimulating] = useState(false);
   const [riskResult, setRiskResult] = useState<PortfolioRiskResponse | null>(null);
   const [riskError, setRiskError] = useState<string | null>(null);
+
+  // Sub-view switcher
+  const [activeSubTab, setActiveSubTab] = useState<'allocation_risk' | 'rebalance'>('allocation_risk');
+
+  // Rebalance Backtest state
+  const [rebalanceFreq, setRebalanceFreq] = useState<'monthly' | 'quarterly' | 'none'>('monthly');
+  const [rebalanceMethod, setRebalanceMethod] = useState<'max_sharpe' | 'risk_parity'>('max_sharpe');
+  const [rebalanceCostBps, setRebalanceCostBps] = useState<number>(10);
+  const [rebalanceTaxRate, setRebalanceTaxRate] = useState<number>(0);
+  const [rebalancePeriod, setRebalancePeriod] = useState<string>('5y');
+  const [rebalanceRunning, setRebalanceRunning] = useState<boolean>(false);
+  const [rebalanceResult, setRebalanceResult] = useState<RebalanceBacktestResponse | null>(null);
+  const [rebalanceError, setRebalanceError] = useState<string | null>(null);
 
   // Success message when weights are applied
   const [applySuccess, setApplySuccess] = useState<string | null>(null);
@@ -259,6 +278,72 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
       }
     : null;
 
+  // Rebalance execution handler
+  const handleRunRebalance = async () => {
+    if (tickers.length < 2) {
+      setRebalanceError('Se requieren al menos 2 activos para el backtest de rebalanceo.');
+      return;
+    }
+    setRebalanceRunning(true);
+    setRebalanceError(null);
+
+    try {
+      const res = await runRebalanceBacktest({
+        tickers,
+        method: rebalanceMethod,
+        rebalance_frequency: rebalanceFreq,
+        cost_bps: rebalanceCostBps,
+        capital_gains_tax_rate: rebalanceTaxRate / 100.0,
+        period: rebalancePeriod,
+        initial_capital: initialCapital,
+        risk_free_rate: riskFreeRate,
+      });
+      setRebalanceResult(res);
+    } catch (err: any) {
+      setRebalanceError(err.message || 'Error en el backtest de rebalanceo.');
+    } finally {
+      setRebalanceRunning(false);
+    }
+  };
+
+  // Rebalance multi-curve chart data
+  const rebalanceChartData = rebalanceResult
+    ? {
+        labels: rebalanceResult.curves.map((c) => c.date),
+        datasets: [
+          {
+            label: 'Rebalanceo Neto (con costos e impuestos)',
+            data: rebalanceResult.curves.map((c) => c.rebalance_net),
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.04)',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.1,
+          },
+          {
+            label: 'Rebalanceo Bruto (sin fricciones)',
+            data: rebalanceResult.curves.map((c) => c.rebalance_gross),
+            borderColor: '#38bdf8',
+            borderDash: [5, 5],
+            borderWidth: 1.8,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.1,
+          },
+          {
+            label: 'Buy-and-Hold (sin rebalanceo intermedio)',
+            data: rebalanceResult.curves.map((c) => c.buy_and_hold),
+            borderColor: '#f59e0b',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.1,
+          },
+        ],
+      }
+    : null;
+
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
       {/* Header Banner */}
@@ -331,8 +416,38 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         </div>
       )}
 
-      {/* Grid: 2 Columns (Left: Allocation, Right: Risk Simulation) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Sub-navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+        <button
+          onClick={() => setActiveSubTab('allocation_risk')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeSubTab === 'allocation_risk'
+              ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <PieChart className="h-4 w-4 text-cyan-400" />
+          <span>Asignación Óptima & Riesgo Monte Carlo</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('rebalance')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            activeSubTab === 'rebalance'
+              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Repeat className="h-4 w-4 text-emerald-400" />
+          <span>Rebalanceo Dinámico & Fricciones (Walk-Forward)</span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SUBTAB 1: ALLOCATION & RISK MONTE CARLO                                   */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'allocation_risk' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ========================================================================= */}
         {/* LEFT COLUMN: ALLOCATION & OPTIMIZATION (Col 7) */}
         {/* ========================================================================= */}
@@ -891,6 +1006,339 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
           )}
         </div>
       </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBTAB 2: DYNAMIC REBALANCING & TRANSACTION COSTS (Walk-Forward Backtest) */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'rebalance' && (
+        <div className="space-y-6">
+          {/* Rebalance Controls Card */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 shadow-lg backdrop-blur-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+                <Repeat className="h-4 w-4 text-emerald-400" />
+                <span>Configuración de Rebalanceo Dinámico (Walk-Forward)</span>
+              </div>
+              <button
+                onClick={handleRunRebalance}
+                disabled={rebalanceRunning || isSyntheticActive}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer transition-all"
+              >
+                {rebalanceRunning ? (
+                  <RotateCcw className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+                <span>{rebalanceRunning ? 'Simulando Rebalanceos...' : 'Ejecutar Backtest de Rebalanceo'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+              {/* Rebalance Frequency */}
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">Frecuencia</label>
+                <select
+                  value={rebalanceFreq}
+                  onChange={(e) => setRebalanceFreq(e.target.value as any)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200 focus:outline-none"
+                >
+                  <option value="monthly">Mensual (~21 ruedas)</option>
+                  <option value="quarterly">Trimestral (~63 ruedas)</option>
+                  <option value="none">Sin Rebalanceo (Buy & Hold)</option>
+                </select>
+              </div>
+
+              {/* Rebalance Optimization Method */}
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">Modelo de Asignación</label>
+                <select
+                  value={rebalanceMethod}
+                  onChange={(e) => setRebalanceMethod(e.target.value as any)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200 focus:outline-none"
+                >
+                  <option value="max_sharpe">Máximo Sharpe (SLSQP)</option>
+                  <option value="risk_parity">Paridad de Riesgo (Spinu ERC)</option>
+                </select>
+              </div>
+
+              {/* Cost bps */}
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">
+                  Costo Transacción: <span className="text-cyan-400 font-mono">{rebalanceCostBps} bps</span>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={rebalanceCostBps}
+                  onChange={(e) => setRebalanceCostBps(Number(e.target.value))}
+                  className="w-full accent-cyan-500 cursor-pointer"
+                />
+                <div className="text-[10px] text-slate-500 text-right font-mono">{(rebalanceCostBps / 100).toFixed(2)}% por rotación</div>
+              </div>
+
+              {/* Capital Gains Tax Rate */}
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">
+                  Impuesto Ganancias: <span className="text-amber-400 font-mono">{rebalanceTaxRate}%</span>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="35"
+                  step="1"
+                  value={rebalanceTaxRate}
+                  onChange={(e) => setRebalanceTaxRate(Number(e.target.value))}
+                  className="w-full accent-amber-500 cursor-pointer"
+                />
+                <div className="text-[10px] text-slate-500 text-right font-mono">Sobre ventas con ganancia</div>
+              </div>
+
+              {/* Historical Window */}
+              <div>
+                <label className="block text-slate-400 mb-1 font-medium">Ventana Histórica</label>
+                <select
+                  value={rebalancePeriod}
+                  onChange={(e) => setRebalancePeriod(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200 focus:outline-none"
+                >
+                  <option value="3y">3 años de datos</option>
+                  <option value="5y">5 años (Recomendado)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Alert */}
+          {rebalanceError && (
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <span>{rebalanceError}</span>
+            </div>
+          )}
+
+          {/* Results View */}
+          {rebalanceResult && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Honest Quantitative Verdict Box */}
+              <div
+                className={`p-5 rounded-3xl border backdrop-blur-md shadow-lg ${
+                  rebalanceResult.net_benefit_of_rebalancing >= 0
+                    ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-100'
+                    : 'bg-rose-950/20 border-rose-500/40 text-rose-100'
+                }`}
+              >
+                <div className="flex items-start gap-3.5">
+                  {rebalanceResult.net_benefit_of_rebalancing >= 0 ? (
+                    <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="h-6 w-6 text-rose-400 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm font-bold tracking-tight">
+                      {rebalanceResult.net_benefit_of_rebalancing >= 0
+                        ? 'Veredicto Cuantitativo: El rebalanceo periódico aportó valor neto positivo'
+                        : 'Veredicto Cuantitativo: El rebalanceo periódico costó más de lo que aportó'}
+                    </h3>
+                    <p className="text-xs leading-relaxed opacity-90">
+                      {rebalanceResult.verdict}
+                    </p>
+                    {rebalanceResult.warnings && rebalanceResult.warnings.length > 0 && (
+                      <div className="pt-2 border-t border-white/10 text-[11px] text-slate-400 flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 shrink-0" />
+                        <span>{rebalanceResult.warnings.join(' | ')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Multi-Curve Line Chart */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 shadow-lg backdrop-blur-md space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-emerald-400" />
+                      <span>Evolución de Patrimonio Comparada (Capital Inicial: ${rebalanceResult.initial_capital.toLocaleString()})</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Evaluado en {rebalanceResult.trading_days_evaluated} ruedas bursátiles ({rebalanceResult.start_date} al {rebalanceResult.end_date}) con estricto cero sesgo de anticipación.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                      <span className="w-3 h-0.5 bg-emerald-400 inline-block"></span>
+                      <span>Neto</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 text-cyan-400 font-medium">
+                      <span className="w-3 h-0.5 bg-cyan-400 border-b border-dashed inline-block"></span>
+                      <span>Bruto</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+                      <span className="w-3 h-0.5 bg-amber-400 inline-block"></span>
+                      <span>Buy & Hold</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-80 w-full">
+                  {rebalanceChartData && (
+                    <Line
+                      data={rebalanceChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: {
+                            backgroundColor: '#0f172a',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            titleFont: { size: 11 },
+                            bodyFont: { size: 11 },
+                            callbacks: {
+                              label: (ctx) => `${ctx.dataset.label}: $${Number(ctx.raw).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                            },
+                          },
+                        },
+                        scales: {
+                          x: {
+                            ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 10 },
+                            grid: { color: '#1e293b' },
+                          },
+                          y: {
+                            ticks: {
+                              color: '#64748b',
+                              font: { size: 10 },
+                              callback: (v) => `$${Number(v).toLocaleString()}`,
+                            },
+                            grid: { color: '#1e293b' },
+                          },
+                        },
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Performance Comparison Table & Telemetry */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800 rounded-3xl p-5 shadow-lg backdrop-blur-md">
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
+                    Métricas Comparativas de Rendimiento
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400 font-medium">
+                          <th className="py-2.5 pr-4">Métrica</th>
+                          <th className="py-2.5 px-3 text-emerald-400 font-semibold">Rebalanceo Neto</th>
+                          <th className="py-2.5 px-3 text-cyan-400">Rebalanceo Bruto</th>
+                          <th className="py-2.5 pl-3 text-amber-400 font-semibold">Buy-and-Hold</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-mono text-slate-200">
+                        <tr>
+                          <td className="py-2 pr-4 font-sans text-slate-400">Retorno Total</td>
+                          <td className="py-2 px-3 text-emerald-400 font-semibold">{(rebalanceResult.net_metrics.total_return * 100).toFixed(2)}%</td>
+                          <td className="py-2 px-3 text-cyan-300">{(rebalanceResult.gross_metrics.total_return * 100).toFixed(2)}%</td>
+                          <td className="py-2 pl-3 text-amber-400">{(rebalanceResult.buy_and_hold_metrics.total_return * 100).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-4 font-sans text-slate-400">Retorno Anualizado (CAGR)</td>
+                          <td className="py-2 px-3 text-emerald-400 font-semibold">{(rebalanceResult.net_metrics.annualized_return * 100).toFixed(2)}%</td>
+                          <td className="py-2 px-3 text-cyan-300">{(rebalanceResult.gross_metrics.annualized_return * 100).toFixed(2)}%</td>
+                          <td className="py-2 pl-3 text-amber-400">{(rebalanceResult.buy_and_hold_metrics.annualized_return * 100).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-4 font-sans text-slate-400">Volatilidad Anualizada</td>
+                          <td className="py-2 px-3">{(rebalanceResult.net_metrics.annualized_volatility * 100).toFixed(2)}%</td>
+                          <td className="py-2 px-3">{(rebalanceResult.gross_metrics.annualized_volatility * 100).toFixed(2)}%</td>
+                          <td className="py-2 pl-3">{(rebalanceResult.buy_and_hold_metrics.annualized_volatility * 100).toFixed(2)}%</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-4 font-sans text-slate-400">Ratio de Sharpe (rf = {(riskFreeRate * 100).toFixed(1)}%)</td>
+                          <td className="py-2 px-3 font-semibold text-emerald-400">{rebalanceResult.net_metrics.sharpe_ratio.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-cyan-300">{rebalanceResult.gross_metrics.sharpe_ratio.toFixed(2)}</td>
+                          <td className="py-2 pl-3 text-amber-400">{rebalanceResult.buy_and_hold_metrics.sharpe_ratio.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 pr-4 font-sans text-slate-400">Máximo Drawdown</td>
+                          <td className="py-2 px-3 text-rose-400">{(rebalanceResult.net_metrics.max_drawdown * 100).toFixed(2)}%</td>
+                          <td className="py-2 px-3 text-rose-400">{(rebalanceResult.gross_metrics.max_drawdown * 100).toFixed(2)}%</td>
+                          <td className="py-2 pl-3 text-rose-400">{(rebalanceResult.buy_and_hold_metrics.max_drawdown * 100).toFixed(2)}%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Telemetry of Frictions & Drag */}
+                <div className="lg:col-span-5 bg-slate-900/60 border border-slate-800 rounded-3xl p-5 shadow-lg backdrop-blur-md space-y-4">
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                    Auditoría de Fricciones y Rotación
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
+                      <span className="text-slate-400 block text-[11px]">Rotación Acumulada</span>
+                      <span className="text-base font-bold font-mono text-cyan-400 mt-1 block">
+                        {rebalanceResult.total_turnover.toFixed(2)}x
+                      </span>
+                      <span className="text-[10px] text-slate-500">veces la cartera</span>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
+                      <span className="text-slate-400 block text-[11px]">Rebalanceos Ejecutados</span>
+                      <span className="text-base font-bold font-mono text-white mt-1 block">
+                        {rebalanceResult.n_rebalances_executed}
+                      </span>
+                      <span className="text-[10px] text-slate-500">ajustes periódicos</span>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
+                      <span className="text-slate-400 block text-[11px]">Costos de Corretaje</span>
+                      <span className="text-base font-bold font-mono text-rose-400 mt-1 block">
+                        ${rebalanceResult.total_transaction_costs.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-500">comisiones acumuladas</span>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700/60">
+                      <span className="text-slate-400 block text-[11px]">Impuestos Devengados</span>
+                      <span className="text-base font-bold font-mono text-amber-400 mt-1 block">
+                        ${rebalanceResult.total_tax_paid.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-500">ganancias de capital</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-800/70 border border-slate-700 text-xs flex items-center justify-between">
+                    <div>
+                      <span className="text-slate-300 font-semibold block">Arrastre Total por Fricciones (Drag)</span>
+                      <span className="text-[11px] text-slate-400">Pérdida anualizada directa respecto a rebalanceo bruto</span>
+                    </div>
+                    <span className="text-base font-bold font-mono text-rose-400">
+                      -{(rebalanceResult.cost_drag * 100).toFixed(2)}% / año
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!rebalanceResult && !rebalanceRunning && (
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-12 text-center text-slate-500 text-xs space-y-2">
+              <Repeat className="h-8 w-8 text-slate-600 mx-auto" />
+              <p className="max-w-md mx-auto">
+                Haga clic en <strong>"Ejecutar Backtest de Rebalanceo"</strong> para evaluar empíricamente el impacto del rebalanceo periódico ({rebalanceFreq}) deduciendo costos reales de corretaje e impuestos frente a una estrategia pasiva de Buy-and-Hold.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

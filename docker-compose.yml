@@ -1,0 +1,28 @@
+services:
+  timeinvestor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timeinvestor
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RUNNING_IN_DOCKER=1
+    volumes:
+      - timeinvestor-data:/app/backend/database
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  timeinvestor-data:
+    driver: local

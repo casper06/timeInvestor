@@ -36,6 +36,8 @@ from backend.schemas.models import (
     PortfolioOptimizeResponse,
     PortfolioRiskRequest,
     PortfolioRiskResponse,
+    RebalanceBacktestRequest,
+    RebalanceBacktestResponse,
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
@@ -44,6 +46,7 @@ from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
 from backend.services.portfolio_engine import PortfolioEngine
 from backend.services.risk_engine import RiskEngine
+from backend.services.rebalance_engine import RebalanceEngine
 
 logger = logging.getLogger(__name__)
 
@@ -464,4 +467,22 @@ def evaluate_portfolio_risk(payload: PortfolioRiskRequest):
     except Exception as e:
         logger.error(f"Error evaluating portfolio risk: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Portfolio risk evaluation failed: {str(e)}")
+
+
+@router.post("/portfolio/rebalance-backtest", response_model=RebalanceBacktestResponse)
+def run_rebalance_backtest(payload: RebalanceBacktestRequest):
+    """
+    Simulates walk-forward portfolio rebalancing with transaction costs and tax friction.
+    Contrasts Net Rebalance, Gross Rebalance, and Buy-and-Hold with zero look-ahead bias.
+    """
+    try:
+        return RebalanceEngine.run_rebalance_backtest(payload)
+    except ValueError as ve:
+        err_msg = str(ve)
+        if "synthetic" in err_msg.lower() or "sintética" in err_msg.lower():
+            raise HTTPException(status_code=422, detail=err_msg)
+        raise HTTPException(status_code=400, detail=err_msg)
+    except Exception as e:
+        logger.error(f"Error running rebalance backtest: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Rebalance backtest failed: {str(e)}")
 
