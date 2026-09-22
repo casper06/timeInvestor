@@ -48,6 +48,7 @@ export interface ForecastResponse {
   model_name: string;
   is_fallback?: boolean;
   fitted_params?: Record<string, number>;
+  engine_selection_reason?: string;
 }
 
 export interface FundamentalsMetric {
@@ -148,12 +149,21 @@ export async function fetchForecast(
   points: TimeSeriesPoint[],
   horizon = 60,
   confidence = 0.95,
-  freq = 'D'
+  freq = 'D',
+  seriesId?: string,
+  seriesType?: string
 ): Promise<ForecastResponse> {
   const res = await fetch(`${API_BASE}/forecast`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ points, horizon, confidence, freq }),
+    body: JSON.stringify({
+      points,
+      horizon,
+      confidence,
+      freq,
+      series_id: seriesId,
+      series_type: seriesType,
+    }),
   });
   if (!res.ok) throw new Error('Error generando proyección temporal');
   return res.json();

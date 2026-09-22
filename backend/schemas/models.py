@@ -46,6 +46,8 @@ class ForecastRequest(BaseModel):
     horizon: int = Field(default=30, ge=1, le=365, description="Projection horizon in steps (max 365)")
     confidence: float = Field(default=0.95, ge=0.5, le=0.99, description="Confidence interval level")
     freq: Optional[str] = Field(default="D", description="Frequency: 'D' for daily, 'M' for monthly")
+    series_id: Optional[str] = Field(default=None, description="Series identifier (ticker or FRED series ID), used by EngineSelector to look up its category. None falls back to the default individual-equity selection path.")
+    series_type: Optional[str] = Field(default=None, description="'equity' or 'macro', as in TimeSeriesData.type — used by EngineSelector alongside series_id")
 
 class ForecastResponse(BaseModel):
     timestamps: List[str] = Field(..., description="Projected future timestamps")
@@ -55,6 +57,7 @@ class ForecastResponse(BaseModel):
     model_name: str = Field(default="damped-holt-mle", description="Name of the forecasting model")
     is_fallback: bool = Field(default=False, description="True if model fell back from primary engine")
     fitted_params: Optional[Dict[str, float]] = Field(default=None, description="Fitted smoothing and damping parameters")
+    engine_selection_reason: str = Field(default="", description="Human-readable explanation of why this specific engine was chosen for this series (category, history length, or fallback)")
 
 class FundamentalsMetric(BaseModel):
     ticker: str

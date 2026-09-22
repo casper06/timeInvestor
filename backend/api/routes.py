@@ -42,6 +42,7 @@ from backend.schemas.models import (
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
 from backend.services.forecast_engine import get_forecast_engine
+from backend.services.engine_selector import EngineSelector
 from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
 from backend.services.portfolio_engine import PortfolioEngine
@@ -146,12 +147,13 @@ def generate_forecast(payload: ForecastRequest):
     Returns TimesFM-compliant structure: { timestamps, values, lower_bound, upper_bound }.
     """
     try:
-        engine = get_forecast_engine()
-        result = engine.forecast(
+        result = EngineSelector.select(
             points=payload.points,
+            series_id=payload.series_id,
+            series_type=payload.series_type,
             horizon=payload.horizon,
             confidence=payload.confidence,
-            freq=payload.freq or "D"
+            freq=payload.freq or "D",
         )
         return result
     except Exception as e:
