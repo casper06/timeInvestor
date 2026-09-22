@@ -104,6 +104,42 @@ def test_macro_data_endpoint(monkeypatch):
     assert data["source"] == "live"
 
 
+def test_fred_metadata_endpoint_returns_real_title(monkeypatch):
+    """
+    /api/catalog/fred-metadata must pass through FRED's own title/notes exactly
+    as its API returns them, not a hand-written description — mocks the FRED
+    metadata call, not the endpoint's own logic.
+    """
+    fake_metadata = {
+        "series_id": "IPG2211A2N",
+        "title": "Industrial Production: Utilities: Electric and Gas Utilities (NAICS = 2211,2)",
+        "notes": "This series is an aggregation of two NAICS series...",
+    }
+    monkeypatch.setattr(
+        routes.fred_fetcher, "get_series_metadata", lambda series_id: fake_metadata
+    )
+
+    response = client.get("/api/catalog/fred-metadata?series_id=IPG2211A2N")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["series_id"] == "IPG2211A2N"
+    assert data["title"] == fake_metadata["title"]
+    assert data["notes"] == fake_metadata["notes"]
+
+
+def test_fred_metadata_endpoint_404_without_key(monkeypatch):
+    """No FRED_API_KEY -> same humanized 404 pattern as every other FRED call,
+    not a different error shape for the metadata endpoint."""
+    def raise_no_key(series_id):
+        raise ValueError(f"No se pudo obtener metadata de FRED para '{series_id}' (clave FRED_API_KEY no configurada)")
+
+    monkeypatch.setattr(routes.fred_fetcher, "get_series_metadata", raise_no_key)
+
+    response = client.get("/api/catalog/fred-metadata?series_id=IPG2211A2N")
+    assert response.status_code == 404
+    assert "FRED_API_KEY no configurada" in response.json()["detail"]
+
+
 def test_forecast_endpoint():
     points = [
         {"timestamp": f"2024-01-{i:02d}", "value": 150.0 + i}

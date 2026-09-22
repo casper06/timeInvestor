@@ -362,6 +362,62 @@ class FREDDataFetcher:
         cache.set(cache_key, series_data)
         return series_data
 
+    def get_series_metadata(self, series_id: str) -> Dict[str, str]:
+        """Fetches the REAL title and description ('notes') FRED itself publishes
+        for a series_id, via FRED's own /fred/series metadata endpoint (distinct
+        from /fred/series/observations used by get_series() above). Never
+        hand-written: the whole point is to show the user FRED's own official
+        description, not a guess at what a cryptic ID like PCU221110221110 means.
+
+        Raises ValueError (same shape as get_series()'s no-key/no-data error) when
+        FRED_API_KEY isn't configured or the series_id doesn't exist on FRED —
+        callers (routes.py) already know how to turn that into a humanized 404.
+        """
+        cache_key = f"fred_meta_{series_id}"
+        hit = cache.get(cache_key)
+        if hit:
+            return hit
+
+        if not (self.api_key and self.api_key.strip()):
+            raise ValueError(
+                f"No se pudo obtener metadata de FRED para '{series_id}' "
+                f"(clave FRED_API_KEY no configurada)"
+            )
+
+        try:
+            url = "https://api.stlouisfed.org/fred/series"
+            params = {
+                "series_id": series_id,
+                "api_key": self.api_key,
+                "file_type": "json",
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(url, params=params)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    series_list = data.get("seriess", [])
+                    if series_list:
+                        entry = series_list[0]
+                        metadata = {
+                            "series_id": series_id,
+                            "title": entry.get("title", ""),
+                            "notes": entry.get("notes", ""),
+                        }
+                        cache.set(cache_key, metadata)
+                        return metadata
+                    raise ValueError(f"La serie FRED '{series_id}' no existe (respuesta vacía de la API)")
+                else:
+                    logger.warning(f"FRED metadata API returned HTTP {resp.status_code}: {resp.text}")
+                    raise ValueError(
+                        f"No se pudo obtener metadata de FRED para '{series_id}' "
+                        f"(HTTP {resp.status_code} de la API de FRED)"
+                    )
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to query FRED metadata API for {series_id}: {e}")
+            raise ValueError(f"No se pudo obtener metadata de FRED para '{series_id}': {str(e)}") from e
+
     def _generate_reference_series(self, series_id: str, detail: Optional[str] = None) -> TimeSeriesData:
         catalog_entry = self.SERIES_CATALOG.get(series_id, {
             "name": f"Macro Series {series_id}",

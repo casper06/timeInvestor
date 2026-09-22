@@ -30,6 +30,8 @@ export interface MacroSuggestion {
   expected_correlation: string;
 }
 
+export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'unknown';
+
 export interface ThesisResponse {
   thesis: string;
   summary: string;
@@ -38,6 +40,7 @@ export interface ThesisResponse {
   rationales: Record<string, string>;
   provider_used: string;
   fallback_reason?: string | null;
+  fallback_category?: FallbackCategory | null;
 }
 
 export interface ForecastResponse {
@@ -85,6 +88,7 @@ export interface InterpretationResponse {
   suggested_series_id?: string;
   provider_used: string;
   fallback_reason?: string | null;
+  fallback_category?: FallbackCategory | null;
 }
 
 export interface HealthResponse {
@@ -133,6 +137,21 @@ export async function fetchMacroData(seriesId: string): Promise<TimeSeriesData> 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `Error obteniendo serie macro ${seriesId}`);
+  }
+  return res.json();
+}
+
+export interface FredSeriesMetadata {
+  series_id: string;
+  title: string;
+  notes: string;
+}
+
+export async function fetchFredMetadata(seriesId: string): Promise<FredSeriesMetadata> {
+  const res = await fetch(`${API_BASE}/catalog/fred-metadata?series_id=${encodeURIComponent(seriesId)}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Error obteniendo metadata FRED para ${seriesId}`);
   }
   return res.json();
 }
