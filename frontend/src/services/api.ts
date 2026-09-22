@@ -104,8 +104,9 @@ export async function checkHealth(): Promise<HealthResponse> {
   return res.json();
 }
 
-export async function analyzeThesis(thesis: string): Promise<ThesisResponse> {
-  const res = await fetch(`${API_BASE}/thesis`, {
+export async function analyzeThesis(thesis: string, options?: { forceMock?: boolean }): Promise<ThesisResponse> {
+  const query = options?.forceMock ? '?force_mock=true' : '';
+  const res = await fetch(`${API_BASE}/thesis${query}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ thesis }),
@@ -119,13 +120,19 @@ export async function analyzeThesis(thesis: string): Promise<ThesisResponse> {
 
 export async function fetchMarketData(ticker: string, period = '2y'): Promise<TimeSeriesData> {
   const res = await fetch(`${API_BASE}/data/market?ticker=${encodeURIComponent(ticker)}&period=${encodeURIComponent(period)}`);
-  if (!res.ok) throw new Error(`Error obteniendo precios de ${ticker}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Error obteniendo precios de ${ticker}`);
+  }
   return res.json();
 }
 
 export async function fetchMacroData(seriesId: string): Promise<TimeSeriesData> {
   const res = await fetch(`${API_BASE}/data/macro?series_id=${encodeURIComponent(seriesId)}`);
-  if (!res.ok) throw new Error(`Error obteniendo serie macro ${seriesId}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Error obteniendo serie macro ${seriesId}`);
+  }
   return res.json();
 }
 

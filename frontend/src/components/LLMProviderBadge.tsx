@@ -7,6 +7,20 @@ interface LLMProviderBadgeProps {
   className?: string;
 }
 
+/**
+ * Turns a raw `provider_used` string (e.g. "gemini-3.6-flash", "openai-gpt-4o-mini",
+ * "ollama-llama3.2") into a human-readable label — WITHOUT a hardcoded per-model name
+ * table. Whatever model string the backend reports is what gets shown, so a model
+ * bump (e.g. gemini-3.6-flash -> gemini-4.0-flash) never requires a frontend change:
+ * each hyphen-separated word is capitalized as-is (numbers/versions pass through
+ * untouched, e.g. "3.6" stays "3.6").
+ */
+const humanizeProviderString = (provider: string): string =>
+  provider
+    .split('-')
+    .map((word) => (/^[a-z]/i.test(word) ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(' ');
+
 export const formatLLMProvider = (provider?: string | null): { label: string; isMock: boolean } => {
   if (!provider) {
     return { label: 'Motor no especificado', isMock: true };
@@ -15,17 +29,7 @@ export const formatLLMProvider = (provider?: string | null): { label: string; is
   if (p.startsWith('mock')) {
     return { label: 'Motor heurístico local — sin LLM', isMock: true };
   }
-  if (p.includes('gemini')) {
-    return { label: 'Gemini 3.6 Flash', isMock: false };
-  }
-  if (p.includes('openai') || p.includes('gpt')) {
-    return { label: 'OpenAI GPT-4o Mini', isMock: false };
-  }
-  if (p.startsWith('ollama')) {
-    const model = provider.replace(/^ollama-?/i, '') || 'local';
-    return { label: `Ollama (${model})`, isMock: false };
-  }
-  return { label: provider, isMock: false };
+  return { label: humanizeProviderString(provider), isMock: false };
 };
 
 export const LLMProviderBadge: React.FC<LLMProviderBadgeProps> = ({

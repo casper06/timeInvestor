@@ -68,13 +68,23 @@ async def health_check():
     )
 
 @router.post("/thesis", response_model=ThesisResponse)
-async def analyze_thesis(payload: ThesisRequest):
+async def analyze_thesis(
+    payload: ThesisRequest,
+    force_mock: bool = Query(
+        default=False,
+        description="Si es true, fuerza MockLLMClient (gratis, sin red) ignorando el proveedor "
+                    "configurado. Usado por el frontend para el placeholder inicial en mount, "
+                    "donde nunca se debe consumir cuota de un proveedor real sin acción del usuario."
+    ),
+):
     """
     Translates a free-form investment thesis into structured tickers and macro series.
     Uses Gemini API if configured, or falls back to local semantic router.
+    Note: force_mock can only ever *downgrade* to the free local engine — it cannot
+    be used to select or escalate to a paid provider.
     """
     try:
-        client = get_llm_client()
+        client = get_llm_client("mock") if force_mock else get_llm_client()
         result = await client.parse_thesis(payload.thesis)
         return result
     except Exception as e:

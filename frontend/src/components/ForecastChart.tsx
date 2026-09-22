@@ -57,20 +57,14 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
   onToggleNormalized,
   loading,
 }) => {
-  if (!seriesData || seriesData.points.length === 0) {
-    return (
-      <div className="h-[420px] bg-slate-900/60 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-500">
-        No hay datos de series temporales disponibles.
-      </div>
-    );
-  }
+  const hasData = !!seriesData && seriesData.points.length > 0;
 
   // Slice historical points based on period if desired
-  let historicalPoints = seriesData.points;
-  if (period === '1mo') historicalPoints = seriesData.points.slice(-22);
-  else if (period === '6mo') historicalPoints = seriesData.points.slice(-130);
-  else if (period === '1y') historicalPoints = seriesData.points.slice(-252);
-  else if (period === '2y') historicalPoints = seriesData.points.slice(-504);
+  let historicalPoints = hasData ? seriesData.points : [];
+  if (period === '1mo') historicalPoints = historicalPoints.slice(-22);
+  else if (period === '6mo') historicalPoints = historicalPoints.slice(-130);
+  else if (period === '1y') historicalPoints = historicalPoints.slice(-252);
+  else if (period === '2y') historicalPoints = historicalPoints.slice(-504);
 
   // Normalization logic: base = 100 on first visible point
   const baseValue = historicalPoints[0]?.value || 1.0;
@@ -90,23 +84,27 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
   // Align datasets along allLabels
   const histDatasetData = [...histValues, ...new Array(forecastTimestamps.length).fill(null)];
 
-  // For continuous transition, forecast begins with the last historical point
+  // For continuous transition, forecast begins with the last historical point.
+  // Guard against histValues being empty (no data / a failed series fetch) — that
+  // would make `histValues.length - 1` negative, and `new Array(negative)` throws
+  // a RangeError, crashing the whole component render (not just this chart).
   const lastHistVal = histValues[histValues.length - 1];
+  const leadingPadLength = Math.max(histValues.length - 1, 0);
 
   const forecastDatasetData = [
-    ...new Array(histValues.length - 1).fill(null),
+    ...new Array(leadingPadLength).fill(null),
     lastHistVal,
     ...forecastValues,
   ];
 
   const lowerBoundData = [
-    ...new Array(histValues.length - 1).fill(null),
+    ...new Array(leadingPadLength).fill(null),
     lastHistVal,
     ...lowerBounds,
   ];
 
   const upperBoundData = [
-    ...new Array(histValues.length - 1).fill(null),
+    ...new Array(leadingPadLength).fill(null),
     lastHistVal,
     ...upperBounds,
   ];
@@ -115,7 +113,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
     labels: allLabels,
     datasets: [
       {
-        label: `${seriesData.id} Histórico`,
+        label: `${seriesData?.id ?? ''} Histórico`,
         data: histDatasetData,
         borderColor: '#38bdf8', // Tailwind cyan-400
         backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -188,7 +186,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           label: (context) => {
             const val = context.parsed.y;
             if (val === null || val === undefined) return '';
-            const unit = isNormalized ? 'pts (Base 100)' : seriesData.unit;
+            const unit = isNormalized ? 'pts (Base 100)' : (seriesData?.unit ?? '');
             return ` ${context.dataset.label}: ${val.toFixed(2)} ${unit}`;
           },
         },
@@ -211,7 +209,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
         },
         title: {
           display: true,
-          text: isNormalized ? 'Índice (Base 100)' : `${seriesData.unit}`,
+          text: isNormalized ? 'Índice (Base 100)' : `${seriesData?.unit ?? ''}`,
           color: '#64748b',
           font: { size: 11 },
         },
@@ -316,34 +314,44 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
             </div>
           </div>
         )}
-        <Line data={chartData} options={options} />
+        {hasData ? (
+          <Line data={chartData} options={options} />
+        ) : (
+          !loading && (
+            <div className="absolute inset-0 flex items-center justify-center text-slate-500">
+              No hay datos de series temporales disponibles.
+            </div>
+          )
+        )}
       </div>
 
       {/* Chart Footer Info */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 font-mono">
-        <div className="flex items-center gap-2">
-          <span>
-            Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
-          </span>
-          {seriesData.from_cache && seriesData.source === 'live' && (
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 font-mono inline-flex items-center gap-1"
-              title={seriesData.cached_at ? `En caché local desde ${new Date(seriesData.cached_at).toLocaleTimeString()}` : 'Servido desde caché local'}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-              datos en caché
-            </span>
-          )}
-        </div>
-        <div className="flex items-center space-x-3">
-          <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>
-          {forecast && (
+      {hasData && seriesData && (
+        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 font-mono">
+          <div className="flex items-center gap-2">
             <span>
-              Proyección +{horizon}d: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
+              Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
             </span>
-          )}
+            {seriesData.from_cache && seriesData.source === 'live' && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 font-mono inline-flex items-center gap-1"
+                title={seriesData.cached_at ? `En caché local desde ${new Date(seriesData.cached_at).toLocaleTimeString()}` : 'Servido desde caché local'}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                datos en caché
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-3">
+            <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>
+            {forecast && (
+              <span>
+                Proyección +{horizon}d: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
