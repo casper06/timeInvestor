@@ -112,6 +112,10 @@ python -m venv .venv
 ```bash
 pip install -r requirements.txt
 ```
+*(Opcional, ~800MB adicionales)* Para habilitar el motor real de Google TimesFM en vez del fallback estadístico (ver sección dedicada más abajo):
+```bash
+pip install -r requirements-timesfm.txt
+```
 
 ### 4. Instalar dependencias y compilar el Frontend
 ```bash
@@ -152,17 +156,19 @@ TimeInvestor incluye dos modos de proyección en `backend/services/forecast_engi
 | Parámetro en `.env` | Modo | Descripción |
 |---|---|---|
 | `USE_REAL_TIMESFM=false` *(default)* | **Fallback Estadístico Calibrado** | Suavizado exponencial amortiguado (Holt Linear Trend) con deriva estocástica y conos de incertidumbre. **Arranque instantáneo y cero uso de GPU**. |
-| `USE_REAL_TIMESFM=true` | **Google TimesFM PyTorch Real** | Carga el modelo fundacional preentrenado `google/timesfm-1.0-200m-pytorch` desde Hugging Face. Detecta automáticamente aceleración por hardware GPU (**CUDA**), Apple Silicon (**MPS**) o CPU. |
+| `USE_REAL_TIMESFM=true` | **Google TimesFM 2.5 (200M) PyTorch Real** | Carga el modelo fundacional preentrenado `google/timesfm-2.5-200m-pytorch` desde Hugging Face vía el paquete oficial `timesfm[torch]`. Detecta automáticamente aceleración por hardware GPU (**CUDA**), Apple Silicon (**MPS**) o CPU. |
 
 Para habilitar TimesFM real con PyTorch:
 ```bash
-pip install torch transformers
+pip install -r requirements-timesfm.txt
 ```
 Y en tu archivo `.env`:
 ```env
 FORECAST_ENGINE=timesfm
 USE_REAL_TIMESFM=true
 ```
+
+**Nota sobre precisión vs. Holt:** ver la sección de benchmarking más abajo — activar TimesFM real no es automáticamente "mejor"; el valor de `USE_REAL_TIMESFM` por default en `.env.example` refleja el resultado medido, no una preferencia de diseño.
 
 ---
 
