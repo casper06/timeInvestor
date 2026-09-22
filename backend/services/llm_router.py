@@ -3,7 +3,7 @@ import asyncio
 import json
 import logging
 import re
-from typing import Awaitable, Callable, Dict, List, Optional, TypeVar
+from typing import Awaitable, Callable, Dict, List, Literal, Optional, TypeVar
 import httpx
 
 from backend.config import settings
@@ -23,6 +23,16 @@ T = TypeVar("T")
 # overload. Everything else (bad auth, malformed request, retired/unknown model)
 # will return the exact same error on retry, so retrying it only wastes time.
 RETRYABLE_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
+
+# Status codes that mean "this will never succeed until a human fixes
+# something" — bad/missing API key, forbidden, or (as with the real
+# gemini-2.5-flash retirement this project hit) a model ID that no longer
+# exists. Distinct from RETRYABLE_STATUS_CODES: these are also non-retryable,
+# but non-retryable-and-transient ("just try again later") is a different user
+# message than non-retryable-and-config ("go fix your .env").
+AUTH_OR_CONFIG_STATUS_CODES = frozenset({401, 403, 404})
+
+FallbackCategory = Literal["rate_limit", "transient", "auth_or_config", "unknown"]
 
 # Backoff schedule for the (bounded) retries: 1 retry after 1s, a 2nd after 3s.
 # Total: at most 3 attempts, ~4s of extra latency in the worst case — enough to
@@ -91,6 +101,43 @@ def _classify_retry_label(exc: Exception) -> str:
     if isinstance(exc, (httpx.TimeoutException, httpx.ConnectError, httpx.ConnectTimeout)):
         return "timeout de red"
     return "error transitorio"
+
+
+def classify_fallback_category(exc: Exception) -> FallbackCategory:
+    """
+    Maps a provider failure to an ACTIONABLE category for the end user — not just
+    for the internal retry decision _is_retryable() already makes, but to answer
+    "is waiting going to help, or do I need to go fix something": a 429 (rate
+    limit) resolves itself with time; a 401/403/404 (bad key, retired/unknown
+    model — the same gemini-2.5-flash retirement this project already hit) never
+    will, no matter how long the user waits.
+
+    Reuses the same status-code extraction _is_retryable()/_classify_retry_label()
+    use, so this can't disagree with the retry logic about what kind of error
+    it's looking at.
+
+    RetriesExhaustedError wraps the ORIGINAL exception in __cause__ (raised via
+    `raise RetriesExhaustedError(...) from e`) and its own message is a formatted
+    sentence like "Gemini falló tras 3 intentos (rate limit): 429 ...", where the
+    status code is no longer at the start of the string — _extract_status_code's
+    regex fallback requires that, so parsing the wrapper's own message would
+    misclassify every exhausted-retry rate limit as "unknown". Unwrap to the
+    original exception first, same spirit as _format_fallback_reason's special
+    case for this type.
+    """
+    if isinstance(exc, RetriesExhaustedError) and exc.__cause__ is not None:
+        exc = exc.__cause__
+    status_code = _extract_status_code(exc)
+
+    if status_code == 429:
+        return "rate_limit"
+    if status_code in AUTH_OR_CONFIG_STATUS_CODES:
+        return "auth_or_config"
+    if status_code in (500, 502, 503, 504, 408):
+        return "transient"
+    if isinstance(exc, (httpx.TimeoutException, httpx.ConnectError, httpx.ConnectTimeout)):
+        return "transient"
+    return "unknown"
 
 
 async def _call_with_retry(
@@ -260,10 +307,12 @@ class GeminiLLMClient(BaseLLMClient):
 
         except Exception as e:
             reason = _format_fallback_reason("Gemini", e)
+            category = classify_fallback_category(e)
             logger.error(f"Gemini LLM error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.parse_thesis(thesis)
             result.fallback_reason = reason
+            result.fallback_category = category
             return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
@@ -316,10 +365,12 @@ class GeminiLLMClient(BaseLLMClient):
             )
         except Exception as e:
             reason = _format_fallback_reason("Gemini", e)
+            category = classify_fallback_category(e)
             logger.error(f"Gemini interpretation error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.interpret_situation(ctx)
             result.fallback_reason = reason
+            result.fallback_category = category
             return result
 
 
@@ -367,10 +418,12 @@ class OpenAILLMClient(BaseLLMClient):
             )
         except Exception as e:
             reason = _format_fallback_reason("OpenAI", e)
+            category = classify_fallback_category(e)
             logger.error(f"OpenAI LLM error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.parse_thesis(thesis)
             result.fallback_reason = reason
+            result.fallback_category = category
             return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
@@ -405,10 +458,12 @@ class OpenAILLMClient(BaseLLMClient):
             )
         except Exception as e:
             reason = _format_fallback_reason("OpenAI", e)
+            category = classify_fallback_category(e)
             logger.error(f"OpenAI interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
             result = await mock_client.interpret_situation(ctx)
             result.fallback_reason = reason
+            result.fallback_category = category
             return result
 
 
@@ -447,10 +502,12 @@ class OllamaLLMClient(BaseLLMClient):
             )
         except Exception as e:
             reason = _format_fallback_reason("Ollama", e)
+            category = classify_fallback_category(e)
             logger.error(f"Ollama error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.parse_thesis(thesis)
             result.fallback_reason = reason
+            result.fallback_category = category
             return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
@@ -479,10 +536,12 @@ class OllamaLLMClient(BaseLLMClient):
             )
         except Exception as e:
             reason = _format_fallback_reason("Ollama", e)
+            category = classify_fallback_category(e)
             logger.error(f"Ollama interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
             result = await mock_client.interpret_situation(ctx)
             result.fallback_reason = reason
+            result.fallback_category = category
             return result
 
 
@@ -749,17 +808,26 @@ class _PreFailedMockLLMClient(MockLLMClient):
     """MockLLMClient variant that stamps a fixed fallback_reason, used when a real
     provider's client failed to even construct (e.g. missing/invalid API key)."""
 
-    def __init__(self, reason: str):
+    def __init__(self, reason: str, category: FallbackCategory = "auth_or_config"):
         self._reason = reason
+        # Always "auth_or_config" by construction: the only way a client fails to
+        # even construct in this codebase is a missing/invalid API key (see
+        # GeminiLLMClient.__init__/OpenAILLMClient.__init__ raising ValueError),
+        # which is a config problem no amount of waiting fixes — never run the
+        # generic status-code classifier here, since a ValueError has no status
+        # code to extract and would misclassify as "unknown".
+        self._category = category
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
         result = await super().parse_thesis(thesis)
         result.fallback_reason = self._reason
+        result.fallback_category = self._category
         return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         result = await super().interpret_situation(ctx)
         result.fallback_reason = self._reason
+        result.fallback_category = self._category
         return result
 
 
