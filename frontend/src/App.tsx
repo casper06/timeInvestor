@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import type { DashboardView } from './components/Header';
 import { ThesisBar } from './components/ThesisBar';
-import { ForecastChart } from './components/ForecastChart';
+import { ForecastChart, humanizeSeriesError } from './components/ForecastChart';
 import { FundBarChart } from './components/FundBarChart';
 import { ExposureDonut } from './components/ExposureDonut';
 import { MetricCards } from './components/MetricCards';
@@ -338,7 +338,7 @@ export const App: React.FC = () => {
               <span className="font-bold text-red-300 uppercase tracking-wide">
                 No se pudo cargar la serie {selectedSeriesId}
               </span>
-              <p className="text-slate-300 leading-relaxed text-[11px]">{seriesError}</p>
+              <p className="text-slate-300 leading-relaxed text-[11px]">{humanizeSeriesError(seriesError)}</p>
             </div>
           </div>
         )}
@@ -399,7 +399,9 @@ export const App: React.FC = () => {
             {/* Main Line & Forecast Chart */}
             <ForecastChart
               seriesData={seriesData}
+              seriesError={seriesError}
               forecast={forecast}
+              hasFredKey={health?.has_fred_key ?? true}
               selectedSeriesId={selectedSeriesId}
               allSeriesList={allSeriesList}
               onSelectSeries={handleSelectSeries}

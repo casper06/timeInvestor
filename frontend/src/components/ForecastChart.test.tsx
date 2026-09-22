@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ForecastChart } from './ForecastChart';
+import { ForecastChart, humanizeSeriesError } from './ForecastChart';
 import type { TimeSeriesData } from '../services/api';
 
 const baseProps = {
@@ -77,6 +77,45 @@ describe('ForecastChart — "Serie Activa" selector', () => {
     expect(screen.getByText(/No hay datos de series temporales disponibles/i)).toBeInTheDocument();
   });
 
+  it('shows the real backend error message instead of the generic string when seriesError is set', () => {
+    // A yfinance-side failure (not a missing-key case) — must render verbatim,
+    // not the generic "No hay datos..." placeholder.
+    const specificError = 'No se pudo obtener el histórico para XYZ123: ticker no encontrado en yfinance.';
+    render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={null}
+        seriesError={specificError}
+        selectedSeriesId="XYZ123"
+        allSeriesList={allSeriesList}
+        onSelectSeries={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(specificError)).toBeInTheDocument();
+    expect(screen.queryByText(/^No hay datos de series temporales disponibles\.$/i)).not.toBeInTheDocument();
+  });
+
+  it('humanizes a missing-FRED-key error into user-facing copy', () => {
+    const technicalError = "No se pudieron obtener datos de FRED para 'IPG2211N' (FRED API no disponible (clave no configurada o error de conexión)) y ALLOW_SYNTHETIC_DATA=false";
+    render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={null}
+        seriesError={technicalError}
+        selectedSeriesId="IPG2211N"
+        allSeriesList={allSeriesList}
+        onSelectSeries={vi.fn()}
+      />
+    );
+
+    // The raw technical string (mentioning ALLOW_SYNTHETIC_DATA) must NOT be
+    // shown verbatim — it should be translated to friendly copy naming FRED_API_KEY.
+    expect(screen.queryByText(technicalError)).not.toBeInTheDocument();
+    expect(screen.getByText(/FRED_API_KEY/)).toBeInTheDocument();
+    expect(humanizeSeriesError(technicalError)).toMatch(/FRED_API_KEY/);
+  });
+
   it('highlights the currently selected series tab', () => {
     render(
       <ForecastChart
@@ -91,5 +130,65 @@ describe('ForecastChart — "Serie Activa" selector', () => {
     const ipgTab = screen.getByRole('button', { name: 'IPG2211N' });
     expect(cegTab.className).toContain('bg-cyan-500');
     expect(ipgTab.className).not.toContain('bg-cyan-500');
+  });
+
+  it('shows the real active engine name in the loading spinner, not a hardcoded "TimesFM"', () => {
+    // The forecast for the PREVIOUS series can still be in state while a new one
+    // loads — its model_name is what's actually active (damped-holt-mle in the
+    // common case here, unless real TimesFM weights are installed).
+    const holtForecast = {
+      timestamps: [],
+      values: [],
+      lower_bound: [],
+      upper_bound: [],
+      model_name: 'damped-holt-mle',
+    };
+    render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={cegSeriesData}
+        forecast={holtForecast}
+        loading={true}
+        selectedSeriesId="CEG"
+        allSeriesList={allSeriesList}
+        onSelectSeries={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Calculando proyección damped-holt-mle\.\.\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Calculando proyección TimesFM\.\.\./)).not.toBeInTheDocument();
+  });
+
+  it('flags a macro series tab as requiring FRED_API_KEY when hasFredKey is false', () => {
+    render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={cegSeriesData}
+        selectedSeriesId="CEG"
+        allSeriesList={allSeriesList}
+        onSelectSeries={vi.fn()}
+        hasFredKey={false}
+      />
+    );
+    const ipgTab = screen.getByRole('button', { name: /IPG2211N/ });
+    expect(ipgTab.title).toMatch(/FRED_API_KEY/);
+    // The equity tab (CEG) never needs a FRED key — must not be flagged.
+    const cegTab = screen.getByRole('button', { name: /CEG/ });
+    expect(cegTab.title).toBe('');
+  });
+
+  it('does not flag macro series tabs when hasFredKey is true', () => {
+    render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={cegSeriesData}
+        selectedSeriesId="CEG"
+        allSeriesList={allSeriesList}
+        onSelectSeries={vi.fn()}
+        hasFredKey={true}
+      />
+    );
+    const ipgTab = screen.getByRole('button', { name: /IPG2211N/ });
+    expect(ipgTab.title).toBe('');
   });
 });
