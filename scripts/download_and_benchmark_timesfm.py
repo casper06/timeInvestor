@@ -3,8 +3,13 @@
 TimeInvestor - TimesFM Download, Diagnostics & Benchmarking Utility
 ===================================================================
 Script standalone para verificar el entorno de ejecución, descargar pesos oficiales
-de Hugging Face ('google/timesfm-1.0-200m-pytorch'), y evaluar latencia y precisión
+de Hugging Face ('google/timesfm-2.5-200m-pytorch'), y evaluar latencia y precisión
 frente a Damped Holt y Naive Random Walk.
+
+Nota de versión: el paquete `timesfm` en PyPI (>=2.0) solo distribuye TimesFM 2.5+;
+la versión 1.0.0 es JAX-only (jax/paxml/praxis) y no expone una clase compatible con
+un checkpoint "pytorch". Por eso este script y el motor real usan el checkpoint 2.5,
+no el 1.0 mencionado en versiones anteriores del proyecto.
 
 REGLA DE INTEGRIDAD:
 Si PyTorch o los pesos de TimesFM no están presentes, NUNCA fabrica datos ficticios:
@@ -125,7 +130,7 @@ def report_environment(forced_device: str = None) -> str:
         return "cpu"
 
 
-def check_and_download_weights(repo_id: str = "google/timesfm-1.0-200m-pytorch", auto_confirm: bool = False) -> bool:
+def check_and_download_weights(repo_id: str = "google/timesfm-2.5-200m-pytorch", auto_confirm: bool = False) -> bool:
     """Verifica si el checkpoint está en caché local de HF y gestiona su descarga."""
     print("\n" + "=" * 70)
     print(" 2. VERIFICACIÓN DE CHECKPOINT HUGGING FACE")
@@ -351,7 +356,7 @@ def run_precision_benchmark(real_tfm_engine=None):
 
     if not timesfm_available:
         print("\n [!] AVISO DE INTEGRIDAD METODOLÓGICA:")
-        print("     Google TimesFM no fue evaluado porque PyTorch o los pesos de 'google/timesfm-1.0-200m-pytorch'")
+        print("     Google TimesFM no fue evaluado porque PyTorch o los pesos de 'google/timesfm-2.5-200m-pytorch'")
         print("     no están instalados o cargados en la caché local.")
         print("     TimeInvestor NO fabrica datos simulados para TimesFM.")
     print("\n Nota: MASE < 1.0 indica un desempeño superior al predictor ingenuo de un paso hacia adelante.")

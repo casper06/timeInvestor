@@ -1,0 +1,20 @@
+# Optional dependencies for the real Google TimesFM 2.5 (200M) forecasting engine.
+# Not required for the base install — TimeInvestor runs fully on DampedHoltForecastEngine
+# without any of this. Only install these if you plan to set USE_REAL_TIMESFM=true.
+#
+# Install with:
+#   pip install -r requirements.txt -r requirements-timesfm.txt
+#
+# For a CPU-only machine (no NVIDIA GPU), install torch from the CPU wheel index first
+# to avoid pulling unnecessary CUDA packages:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements-timesfm.txt
+#
+# NOTE on version: the `timesfm` package on PyPI only ships TimesFM 2.5+ under the
+# `timesfm.TimesFM_2p5_200M_torch` PyTorch class (checkpoint: google/timesfm-2.5-200m-pytorch).
+# `timesfm==1.0.0` is JAX-only (requires jax/paxml/praxis) and is NOT what this project uses,
+# despite the checkpoint naming convention from the original TimesFM 1.0 paper.
+timesfm[torch]>=2.0.0,<4.0.0
+torch>=2.0.0,<3.0.0
+transformers>=4.40.0,<6.0.0
+huggingface_hub>=0.23.0,<2.0.0

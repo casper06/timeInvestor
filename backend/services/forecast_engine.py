@@ -210,10 +210,28 @@ StatisticalMockForecastEngine = DampedHoltForecastEngine
 
 class TimesFMForecastEngine(BaseForecastEngine):
     """
-    Adapter for Google TimesFM (PyTorch foundation model for time series).
-    Loads 'google/timesfm-1.0-200m-pytorch' from Hugging Face if enabled.
+    Adapter for Google TimesFM 2.5 (200M), the PyTorch foundation model for time series
+    forecasting, via the official `timesfm` PyPI package (extra `[torch]`).
+    Loads 'google/timesfm-2.5-200m-pytorch' from Hugging Face if enabled.
     Gracefully falls back to DampedHoltForecastEngine when weights or PyTorch are absent.
+
+    Note on checkpoint version: `google/timesfm-1.0-200m-pytorch` (referenced by an
+    earlier version of this adapter) is NOT the checkpoint this loads. The `timesfm`
+    package on PyPI (versions >=2.0) only ships TimesFM 2.5+; version 1.0.0 of that
+    package is JAX-only (requires jax/paxml/praxis, incompatible `backend` values,
+    and numpy/pandas pins that conflict with this project's requirements.txt) and
+    exposes no `TimesFm` class compatible with a "pytorch" checkpoint at all. TimesFM
+    2.5-200M is the closest real, loadable equivalent — same parameter count, same
+    Google model family, actively maintained.
     """
+
+    # Context/horizon limits the model was compiled for. 512 matches this project's
+    # existing context window elsewhere (DampedHoltForecastEngine, benchmark script);
+    # 128 is the largest horizon this project currently requests (see ForecastRequest.horizon,
+    # capped at 365 by the schema but the UI never asks past ~180 in practice) rounded up
+    # to a multiple of the model's output patch size (see compile()'s own rounding logic).
+    MAX_CONTEXT = 512
+    MAX_HORIZON = 128
 
     _instance = None
     _model = None
@@ -240,7 +258,7 @@ class TimesFMForecastEngine(BaseForecastEngine):
     def model_name(self) -> str:
         """Reflects which engine is actually active: real TimesFM weights, or the Damped Holt fallback."""
         if self._model is not None:
-            return f"google-timesfm-200m ({self.device})"
+            return f"timesfm-2.5-200m ({self.device})"
         return "damped-holt-mle (fallback: TimesFM no disponible)"
 
     def _detect_device(self) -> str:
@@ -256,25 +274,36 @@ class TimesFMForecastEngine(BaseForecastEngine):
             return "cpu"
 
     def _load_model(self):
-        logger.info(f"Attempting to load Google TimesFM 200M model onto {self.device}...")
+        logger.info(f"Attempting to load Google TimesFM 2.5 (200M) model onto {self.device}...")
         try:
             import timesfm
-            self._model = timesfm.TimesFm(
-                context_len=512,
-                horizon_len=128,
-                input_patch_len=32,
-                output_patch_len=128,
-                num_layers=20,
-                model_dims=1280,
-                backend=self.device
+
+            model = timesfm.TimesFM_2p5_200M_torch.from_pretrained(
+                "google/timesfm-2.5-200m-pytorch"
             )
-            self._model.load_from_checkpoint(repo_id="google/timesfm-1.0-200m-pytorch")
-            logger.info("Successfully loaded Google TimesFM PyTorch weights.")
+            model.model.to(self.device)
+            model.compile(
+                timesfm.ForecastConfig(
+                    max_context=self.MAX_CONTEXT,
+                    max_horizon=self.MAX_HORIZON,
+                    normalize_inputs=True,
+                    use_continuous_quantile_head=True,
+                    force_flip_invariance=True,
+                    infer_is_positive=True,
+                    fix_quantile_crossing=True,
+                )
+            )
+            self._model = model
+            logger.info("Successfully loaded Google TimesFM 2.5 (200M) PyTorch weights.")
         except Exception as e:
+            # Logged with full detail (not swallowed) so a load failure is diagnosable
+            # from the server log instead of silently falling back with no trace.
             logger.warning(
-                f"Could not load TimesFM PyTorch weights ({e}). "
-                "Ensure 'timesfm', 'torch', and 'transformers' are installed and HF is accessible. "
-                "Will use DampedHoltForecastEngine."
+                f"Could not load TimesFM 2.5 PyTorch weights ({e}). "
+                "Ensure 'timesfm[torch]', 'torch', and 'transformers' are installed and "
+                "the Hugging Face repo 'google/timesfm-2.5-200m-pytorch' is reachable "
+                "(or already cached locally). Will use DampedHoltForecastEngine.",
+                exc_info=True,
             )
             self._model = None
 
@@ -285,38 +314,63 @@ class TimesFMForecastEngine(BaseForecastEngine):
         confidence: float = 0.95,
         freq: str = "D"
     ) -> ForecastResponse:
-        freq_map = {"D": 0, "W": 1, "M": 2}
-        freq_code = freq_map.get(freq.upper(), 0)
-
         if self._model is not None:
             try:
-                context_vals = [p.value for p in points[-512:]]
-                
-                point_forecast, experimental_quantile_forecast = self._model.forecast(
+                if horizon > self.MAX_HORIZON:
+                    raise ValueError(
+                        f"Requested horizon {horizon} exceeds the compiled max_horizon "
+                        f"({self.MAX_HORIZON}) for this TimesFM engine instance."
+                    )
+
+                context_vals = np.array([p.value for p in points[-self.MAX_CONTEXT:]], dtype=np.float64)
+
+                point_forecast, quantile_forecast = self._model.forecast(
+                    horizon=horizon,
                     inputs=[context_vals],
-                    freq=[freq_code]
                 )
 
                 pred_values = [round(float(v), 2) for v in point_forecast[0][:horizon]]
-                
-                if experimental_quantile_forecast is not None and len(experimental_quantile_forecast[0]) >= 2:
-                    lower_b = [round(float(v), 2) for v in experimental_quantile_forecast[0][0][:horizon]]
-                    upper_b = [round(float(v), 2) for v in experimental_quantile_forecast[0][-1][:horizon]]
+
+                # The model's quantile head only exposes deciles (p10..p90 — see
+                # TimesFM_2p5_200M_Definition.quantiles), not a genuine 95% interval.
+                # Reporting the p10/p90 band AS 95% would fabricate a coverage level
+                # the model never actually produced — this project's own diagnostic
+                # script explicitly forbids that. So: use the widest band the model
+                # gives (p10-p90, an 80% empirical interval) as-is, and record the
+                # real coverage level in fitted_params for transparency instead of
+                # silently mislabeling it.
+                num_quantiles = quantile_forecast.shape[-1] if quantile_forecast is not None else 0
+                if num_quantiles >= 2:
+                    lower_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, 0]]
+                    upper_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, -1]]
+                    reported_interval_pct = 80.0  # p10-p90
                 else:
+                    # No quantile head available at all — approximate from recent
+                    # realized volatility, same spirit as the historical fallback
+                    # this replaces, and label it honestly as approximate.
                     spread = np.std(context_vals[-30:]) * np.sqrt(np.arange(1, horizon + 1)) * 0.5
                     lower_b = [round(float(p - s), 2) for p, s in zip(pred_values, spread)]
                     upper_b = [round(float(p + s), 2) for p, s in zip(pred_values, spread)]
+                    reported_interval_pct = None
 
                 last_ts = points[-1].timestamp
                 future_timestamps = self._fallback_engine._generate_future_timestamps(last_ts, horizon, freq)
+
+                fitted_params = None
+                if reported_interval_pct is not None:
+                    fitted_params = {
+                        "requested_confidence_pct": round(confidence * 100.0, 1),
+                        "actual_interval_pct": reported_interval_pct,
+                    }
 
                 return ForecastResponse(
                     timestamps=future_timestamps,
                     values=pred_values,
                     lower_bound=lower_b,
                     upper_bound=upper_b,
-                    model_name=f"google-timesfm-200m ({self.device})",
-                    is_fallback=False
+                    model_name=f"timesfm-2.5-200m ({self.device})",
+                    is_fallback=False,
+                    fitted_params=fitted_params,
                 )
 
             except Exception as e:
