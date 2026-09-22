@@ -30,6 +30,40 @@ def test_analyze_thesis_endpoint(monkeypatch):
     assert len(data["macro_series"]) > 0
 
 
+def test_analyze_thesis_force_mock_ignores_configured_provider(monkeypatch):
+    """
+    /api/thesis?force_mock=true must call get_llm_client("mock") regardless of which
+    provider is configured — this is what the frontend's mount-time bootstrap relies
+    on to never spend real LLM quota without an explicit user action.
+    """
+    calls = []
+
+    def fake_get_llm_client(provider=None):
+        calls.append(provider)
+        return MockLLMClient()
+
+    monkeypatch.setattr(routes, "get_llm_client", fake_get_llm_client)
+    response = client.post("/api/thesis?force_mock=true", json={"thesis": "Demanda de energía por IA"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider_used"] == "mock-semantic-engine"
+    assert calls == ["mock"]
+
+
+def test_analyze_thesis_without_force_mock_uses_default_provider(monkeypatch):
+    """Without force_mock, get_llm_client() is called with no override (the configured provider)."""
+    calls = []
+
+    def fake_get_llm_client(provider=None):
+        calls.append(provider)
+        return MockLLMClient()
+
+    monkeypatch.setattr(routes, "get_llm_client", fake_get_llm_client)
+    response = client.post("/api/thesis", json={"thesis": "Demanda de energía por IA"})
+    assert response.status_code == 200
+    assert calls == [None]
+
+
 def test_market_data_endpoint(monkeypatch):
     mock_data = TimeSeriesData(
         id="NVDA",

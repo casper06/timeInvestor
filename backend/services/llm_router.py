@@ -1,8 +1,9 @@
 import abc
+import asyncio
 import json
 import logging
 import re
-from typing import Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List, Optional, TypeVar
 import httpx
 
 from backend.config import settings
@@ -15,6 +16,124 @@ from backend.schemas.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+# HTTP status codes worth a second try: rate limits and transient server-side
+# overload. Everything else (bad auth, malformed request, retired/unknown model)
+# will return the exact same error on retry, so retrying it only wastes time.
+RETRYABLE_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
+
+# Backoff schedule for the (bounded) retries: 1 retry after 1s, a 2nd after 3s.
+# Total: at most 3 attempts, ~4s of extra latency in the worst case — enough to
+# absorb transient noise (rate limit / overload) without making the user wait
+# tens of seconds for what is, most of the time, a permanent failure anyway.
+RETRY_DELAYS_SECONDS = (1.0, 3.0)
+
+
+class RetriesExhaustedError(Exception):
+    """Wraps the last exception after all retries were used on a retryable error.
+    A dedicated class (rather than re-instantiating the original exception type)
+    because some exception types (e.g. httpx.HTTPStatusError) require constructor
+    args beyond a plain message and would themselves raise if reconstructed that
+    way. `_format_fallback_reason` recognizes this type and uses its message
+    as-is, instead of re-prefixing "{provider} falló: " on top of a message that
+    already explains the retry attempts.
+    """
+    pass
+
+
+def _extract_status_code(exc: Exception) -> Optional[int]:
+    """Best-effort extraction of an HTTP-like status code from an LLM SDK exception.
+
+    Covers:
+    - google-genai's APIError (Gemini): has a `.code` int attribute directly.
+    - httpx.HTTPStatusError (OpenAI/Ollama, from resp.raise_for_status()): has
+      `.response.status_code`.
+    - Anything else: falls back to a regex over str(exc), since some SDKs only
+      expose the code inside the message (e.g. "429 RESOURCE_EXHAUSTED. {...}").
+    """
+    code = getattr(exc, "code", None)
+    if isinstance(code, int):
+        return code
+
+    response = getattr(exc, "response", None)
+    status_code = getattr(response, "status_code", None)
+    if isinstance(status_code, int):
+        return status_code
+
+    match = re.match(r"^\s*(\d{3})\b", str(exc))
+    if match:
+        return int(match.group(1))
+
+    return None
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """True for transient failures (rate limit, overload, timeout, connection
+    errors) worth a second attempt; False for permanent ones (bad auth, malformed
+    request, model not found) that will fail identically on retry."""
+    if isinstance(exc, (httpx.TimeoutException, httpx.ConnectError, httpx.ConnectTimeout)):
+        return True
+    status_code = _extract_status_code(exc)
+    return status_code is not None and status_code in RETRYABLE_STATUS_CODES
+
+
+def _classify_retry_label(exc: Exception) -> str:
+    """Short human label for the retryable condition, used in fallback_reason."""
+    status_code = _extract_status_code(exc)
+    if status_code == 429:
+        return "rate limit"
+    if status_code in (500, 502, 503, 504):
+        return "servicio no disponible"
+    if status_code == 408:
+        return "timeout"
+    if isinstance(exc, (httpx.TimeoutException, httpx.ConnectError, httpx.ConnectTimeout)):
+        return "timeout de red"
+    return "error transitorio"
+
+
+async def _call_with_retry(
+    provider_label: str,
+    operation: Callable[[], Awaitable[T]],
+) -> T:
+    """Runs `operation` with up to 2 retries (3 attempts total) on retryable
+    errors only, with a short exponential-ish backoff (1s, 3s). Re-raises the
+    last exception if every attempt fails — callers still fall back to mock,
+    but now know it wasn't a single unlucky call.
+
+    On exhausting retries, re-raises a wrapped exception whose message states
+    the attempt count and the retry reason, so fallback_reason downstream reads
+    like "Gemini falló tras 3 intentos (rate limit): 429 ..." instead of just
+    the last attempt's error with no context that retries were even tried.
+    """
+    attempts = len(RETRY_DELAYS_SECONDS) + 1
+    last_exc: Optional[Exception] = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            return await operation()
+        except Exception as e:
+            last_exc = e
+            retryable = _is_retryable(e)
+            if not retryable or attempt == attempts:
+                if retryable and attempt == attempts:
+                    label = _classify_retry_label(e)
+                    raise RetriesExhaustedError(
+                        f"{provider_label} falló tras {attempts} intentos ({label}): {e}"
+                    ) from e
+                raise
+            delay = RETRY_DELAYS_SECONDS[attempt - 1]
+            logger.warning(
+                f"{provider_label} attempt {attempt}/{attempts} failed with a retryable error "
+                f"({_classify_retry_label(e)}): {e}. Retrying in {delay}s."
+            )
+            await asyncio.sleep(delay)
+
+    # Unreachable in practice (the loop always returns or raises), but keeps
+    # type checkers happy and guards against a future refactor of the loop.
+    assert last_exc is not None
+    raise last_exc
 
 SYSTEM_PROMPT = """Eres un analista cuantitativo senior y portfolio manager.
 Tu tarea es traducir una hipótesis de inversión en lenguaje natural a una estructura cuantitativa ejecutable.
@@ -70,6 +189,19 @@ class BaseLLMClient(abc.ABC):
         pass
 
 
+def _format_fallback_reason(provider_label: str, exc: Exception) -> str:
+    """Builds a short, user-facing explanation for why a real LLM provider fell back to mock.
+
+    When `exc` is a RetriesExhaustedError, its message already states the provider,
+    the attempt count, and the retry reason (e.g. "Gemini falló tras 3 intentos
+    (rate limit): 429 ..."), so it's used as-is instead of adding another
+    "{provider_label} falló: " prefix on top of it.
+    """
+    if isinstance(exc, RetriesExhaustedError):
+        return str(exc)
+    return f"{provider_label} falló: {exc}"
+
+
 class GeminiLLMClient(BaseLLMClient):
     """LLM client implementation using Google Gemini via google-genai SDK."""
 
@@ -93,19 +225,26 @@ class GeminiLLMClient(BaseLLMClient):
 
             prompt = f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\""
 
-            response = self._client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
+            async def _attempt():
+                return self._client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
-            )
+
+            response = await _call_with_retry("Gemini", _attempt)
 
             raw_json = response.text.strip()
             if raw_json.startswith("```"):
                 raw_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_json, flags=re.DOTALL)
 
-            data = json.loads(raw_json)
+            try:
+                data = json.loads(raw_json)
+            except json.JSONDecodeError:
+                logger.error(f"Gemini returned non-JSON response despite response_mime_type=application/json. Raw text: {raw_json!r}")
+                raise
 
             tickers = [TickerSuggestion(**t) for t in data.get("tickers", [])]
             macro_series = [MacroSuggestion(**m) for m in data.get("macro_series", [])]
@@ -116,13 +255,16 @@ class GeminiLLMClient(BaseLLMClient):
                 tickers=tickers,
                 macro_series=macro_series,
                 rationales=data.get("rationales", {}),
-                provider_used="gemini-2.5-flash"
+                provider_used="gemini-3.6-flash"
             )
 
         except Exception as e:
+            reason = _format_fallback_reason("Gemini", e)
             logger.error(f"Gemini LLM error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.parse_thesis(thesis)
+            result = await mock_client.parse_thesis(thesis)
+            result.fallback_reason = reason
+            return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
@@ -144,30 +286,41 @@ class GeminiLLMClient(BaseLLMClient):
                 f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
             )
 
-            response = self._client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
+            async def _attempt():
+                return self._client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
-            )
+
+            response = await _call_with_retry("Gemini", _attempt)
 
             raw_json = response.text.strip()
             if raw_json.startswith("```"):
                 raw_json = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_json, flags=re.DOTALL)
 
-            data = json.loads(raw_json)
+            try:
+                data = json.loads(raw_json)
+            except json.JSONDecodeError:
+                logger.error(f"Gemini returned non-JSON response despite response_mime_type=application/json. Raw text: {raw_json!r}")
+                raise
+
             return InterpretationResponse(
                 what_data_says=data.get("what_data_says", ""),
                 thesis_alignment=data.get("thesis_alignment", ""),
                 next_series_suggestion=data.get("next_series_suggestion", ""),
                 suggested_series_id=data.get("suggested_series_id"),
-                provider_used="gemini-2.5-flash"
+                provider_used="gemini-3.6-flash"
             )
         except Exception as e:
+            reason = _format_fallback_reason("Gemini", e)
             logger.error(f"Gemini interpretation error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.interpret_situation(ctx)
+            result = await mock_client.interpret_situation(ctx)
+            result.fallback_reason = reason
+            return result
 
 
 class OpenAILLMClient(BaseLLMClient):
@@ -181,67 +334,82 @@ class OpenAILLMClient(BaseLLMClient):
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": f"Hipótesis de inversión: \"{thesis}\""}
-                    ],
-                    "response_format": {"type": "json_object"}
-                }
-                resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
-                resp.raise_for_status()
-                result = resp.json()
-                content = result["choices"][0]["message"]["content"]
-                data = json.loads(content)
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": f"Hipótesis de inversión: \"{thesis}\""}
+                ],
+                "response_format": {"type": "json_object"}
+            }
 
-                return ThesisResponse(
-                    thesis=thesis,
-                    summary=data.get("summary", ""),
-                    tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
-                    macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
-                    rationales=data.get("rationales", {}),
-                    provider_used="openai-gpt-4o-mini"
-                )
+            async def _attempt():
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                    resp.raise_for_status()
+                    return resp.json()
+
+            result = await _call_with_retry("OpenAI", _attempt)
+            content = result["choices"][0]["message"]["content"]
+            data = json.loads(content)
+
+            return ThesisResponse(
+                thesis=thesis,
+                summary=data.get("summary", ""),
+                tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
+                macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
+                rationales=data.get("rationales", {}),
+                provider_used="openai-gpt-4o-mini"
+            )
         except Exception as e:
+            reason = _format_fallback_reason("OpenAI", e)
             logger.error(f"OpenAI LLM error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.parse_thesis(thesis)
+            result = await mock_client.parse_thesis(thesis)
+            result.fallback_reason = reason
+            return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                headers = {
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": "gpt-4o-mini",
-                    "messages": [
-                        {"role": "system", "content": INTERPRETATION_SYSTEM_PROMPT},
-                        {"role": "user", "content": f"Contexto: {ctx.model_dump_json()}"}
-                    ],
-                    "response_format": {"type": "json_object"}
-                }
-                resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
-                resp.raise_for_status()
-                data = json.loads(resp.json()["choices"][0]["message"]["content"])
-                return InterpretationResponse(
-                    what_data_says=data.get("what_data_says", ""),
-                    thesis_alignment=data.get("thesis_alignment", ""),
-                    next_series_suggestion=data.get("next_series_suggestion", ""),
-                    suggested_series_id=data.get("suggested_series_id"),
-                    provider_used="openai-gpt-4o-mini"
-                )
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": INTERPRETATION_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"Contexto: {ctx.model_dump_json()}"}
+                ],
+                "response_format": {"type": "json_object"}
+            }
+
+            async def _attempt():
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                    resp.raise_for_status()
+                    return resp.json()
+
+            resp_json = await _call_with_retry("OpenAI", _attempt)
+            data = json.loads(resp_json["choices"][0]["message"]["content"])
+            return InterpretationResponse(
+                what_data_says=data.get("what_data_says", ""),
+                thesis_alignment=data.get("thesis_alignment", ""),
+                next_series_suggestion=data.get("next_series_suggestion", ""),
+                suggested_series_id=data.get("suggested_series_id"),
+                provider_used="openai-gpt-4o-mini"
+            )
         except Exception as e:
+            reason = _format_fallback_reason("OpenAI", e)
             logger.error(f"OpenAI interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
-            return await mock_client.interpret_situation(ctx)
+            result = await mock_client.interpret_situation(ctx)
+            result.fallback_reason = reason
+            return result
 
 
 class OllamaLLMClient(BaseLLMClient):
@@ -253,53 +421,69 @@ class OllamaLLMClient(BaseLLMClient):
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                payload = {
-                    "model": self.model,
-                    "prompt": f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\"",
-                    "stream": False,
-                    "format": "json"
-                }
-                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
-                resp.raise_for_status()
-                data = json.loads(resp.json().get("response", "{}"))
+            payload = {
+                "model": self.model,
+                "prompt": f"{SYSTEM_PROMPT}\n\nHipótesis de inversión: \"{thesis}\"",
+                "stream": False,
+                "format": "json"
+            }
 
-                return ThesisResponse(
-                    thesis=thesis,
-                    summary=data.get("summary", "Análisis local Ollama"),
-                    tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
-                    macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
-                    rationales=data.get("rationales", {}),
-                    provider_used=f"ollama-{self.model}"
-                )
+            async def _attempt():
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                    resp.raise_for_status()
+                    return resp.json()
+
+            resp_json = await _call_with_retry("Ollama", _attempt)
+            data = json.loads(resp_json.get("response", "{}"))
+
+            return ThesisResponse(
+                thesis=thesis,
+                summary=data.get("summary", "Análisis local Ollama"),
+                tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
+                macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
+                rationales=data.get("rationales", {}),
+                provider_used=f"ollama-{self.model}"
+            )
         except Exception as e:
+            reason = _format_fallback_reason("Ollama", e)
             logger.error(f"Ollama error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
-            return await mock_client.parse_thesis(thesis)
+            result = await mock_client.parse_thesis(thesis)
+            result.fallback_reason = reason
+            return result
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                payload = {
-                    "model": self.model,
-                    "prompt": f"{INTERPRETATION_SYSTEM_PROMPT}\n\nContexto: {ctx.model_dump_json()}",
-                    "stream": False,
-                    "format": "json"
-                }
-                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
-                resp.raise_for_status()
-                data = json.loads(resp.json().get("response", "{}"))
-                return InterpretationResponse(
-                    what_data_says=data.get("what_data_says", ""),
-                    thesis_alignment=data.get("thesis_alignment", ""),
-                    next_series_suggestion=data.get("next_series_suggestion", ""),
-                    suggested_series_id=data.get("suggested_series_id"),
-                    provider_used=f"ollama-{self.model}"
-                )
+            payload = {
+                "model": self.model,
+                "prompt": f"{INTERPRETATION_SYSTEM_PROMPT}\n\nContexto: {ctx.model_dump_json()}",
+                "stream": False,
+                "format": "json"
+            }
+
+            async def _attempt():
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                    resp.raise_for_status()
+                    return resp.json()
+
+            resp_json = await _call_with_retry("Ollama", _attempt)
+            data = json.loads(resp_json.get("response", "{}"))
+            return InterpretationResponse(
+                what_data_says=data.get("what_data_says", ""),
+                thesis_alignment=data.get("thesis_alignment", ""),
+                next_series_suggestion=data.get("next_series_suggestion", ""),
+                suggested_series_id=data.get("suggested_series_id"),
+                provider_used=f"ollama-{self.model}"
+            )
         except Exception as e:
+            reason = _format_fallback_reason("Ollama", e)
             logger.error(f"Ollama interpretation error: {e}. Falling back to Mock.")
             mock_client = MockLLMClient()
-            return await mock_client.interpret_situation(ctx)
+            result = await mock_client.interpret_situation(ctx)
+            result.fallback_reason = reason
+            return result
 
 
 class MockLLMClient(BaseLLMClient):
@@ -561,6 +745,24 @@ class MockLLMClient(BaseLLMClient):
         )
 
 
+class _PreFailedMockLLMClient(MockLLMClient):
+    """MockLLMClient variant that stamps a fixed fallback_reason, used when a real
+    provider's client failed to even construct (e.g. missing/invalid API key)."""
+
+    def __init__(self, reason: str):
+        self._reason = reason
+
+    async def parse_thesis(self, thesis: str) -> ThesisResponse:
+        result = await super().parse_thesis(thesis)
+        result.fallback_reason = self._reason
+        return result
+
+    async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
+        result = await super().interpret_situation(ctx)
+        result.fallback_reason = self._reason
+        return result
+
+
 def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
     """Factory creating the appropriate LLM client based on configuration or explicit provider."""
     prov = (provider or settings.effective_llm_provider).lower()
@@ -569,15 +771,17 @@ def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
         try:
             return GeminiLLMClient()
         except Exception as e:
+            reason = _format_fallback_reason("Gemini (inicialización)", e)
             logger.warning(f"Failed to initialize GeminiLLMClient ({e}), falling back to MockLLMClient")
-            return MockLLMClient()
+            return _PreFailedMockLLMClient(reason)
 
     elif prov == "openai":
         try:
             return OpenAILLMClient()
         except Exception as e:
+            reason = _format_fallback_reason("OpenAI (inicialización)", e)
             logger.warning(f"Failed to initialize OpenAILLMClient ({e}), falling back to MockLLMClient")
-            return MockLLMClient()
+            return _PreFailedMockLLMClient(reason)
 
     elif prov == "ollama":
         return OllamaLLMClient()

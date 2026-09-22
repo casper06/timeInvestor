@@ -35,7 +35,7 @@ El sistema está desacoplado mediante una arquitectura de "cables" (interfaces a
                │                            │                               │                            │
        ┌───────┴────────┐          ┌────────┴────────┐             ┌────────┴────────┐          ┌────────┴────────┐
        ▼                ▼          ▼                 ▼             ▼                 ▼          ▼                 ▼
-    yfinance          FRED API   Gemini 2.5       OpenAI /       Google TimesFM     Fallback    Theses         Snapshots
+    yfinance          FRED API   Gemini 3.6       OpenAI /       Google TimesFM     Fallback    Theses         Snapshots
  (Precios/Capex)    (Macro/PPA)    Flash        Ollama / Mock   (PyTorch 200M)    (Damped Holt) Notes          Audit Log
 ```
 
@@ -132,7 +132,7 @@ Configura las siguientes variables en `.env`:
 - **`GEMINI_API_KEY`**: [Obtén tu clave gratuita en Google AI Studio](https://aistudio.google.com/app/apikey).
 - **`FRED_API_KEY`**: [Obtén tu clave gratuita en St. Louis Fed FRED](https://fred.stlouisfed.org/docs/api/api_key.html).
 - *(Opcional)* Si no agregas ninguna clave, el sistema conmuta automáticamente a los adaptadores **Mock** de alta fidelidad para operar 100% offline.
-  - **Transparencia de Proveedor LLM**: Tanto en la *Síntesis Cuantitativa de la Tesis* como en el *Copiloto*, un badge visible indica explícitamente si la respuesta proviene de un LLM real (ej: `Gemini 2.5 Flash`) o del `Motor heurístico local — sin LLM`. También puedes verificar el estado en tiempo real consultando `GET /api/health` (`has_gemini_key`, `llm_provider`).
+  - **Transparencia de Proveedor LLM**: Tanto en la *Síntesis Cuantitativa de la Tesis* como en el *Copiloto*, un badge visible indica explícitamente si la respuesta proviene de un LLM real (ej: `Gemini 3.6 Flash`) o del `Motor heurístico local — sin LLM`. Cuando el badge cae a mock por una excepción del proveedor real (SDK no instalado, error de autenticación, modelo retirado, rate limit, etc.), el hover/tooltip muestra el motivo real vía el campo `fallback_reason` de la respuesta — nunca solo "sin LLM" sin explicación. También puedes verificar el estado en tiempo real consultando `GET /api/health` (`has_gemini_key`, `llm_provider`).
   - **Banner de Integridad (Datos Sintéticos)**: Si ves un banner de advertencia ámbar indicando *"Modo Sintético Activo"*, significa que `ALLOW_SYNTHETIC_DATA=true` está habilitado ante la falta de conexión o clave en FRED/yfinance. En este modo, las herramientas analíticas rigurosas (Reality Check, Correlaciones, Optimización y Riesgo) quedan bloqueadas por diseño para prevenir decisiones sobre datos fabricados.
 
 ### 6. Iniciar la aplicación (Comando Único)

@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 class BaseForecastEngine(abc.ABC):
     """Abstract interface for Time Series Forecasting engines (Google TimesFM contract)."""
 
+    #: Static identifier for the active engine, exposed to callers (e.g. /api/health)
+    #: that need the real engine name without running a forecast. Subclasses override.
+    model_name: str = "base-forecast-engine"
+
     @abc.abstractmethod
     def forecast(
         self,
@@ -33,6 +37,8 @@ class DampedHoltForecastEngine(BaseForecastEngine):
     (Forecasting: Principles and Practice).
     Models on log-prices with log-normal bias correction for point estimates.
     """
+
+    model_name = "damped-holt-mle"
 
     def forecast(
         self,
@@ -229,6 +235,13 @@ class TimesFMForecastEngine(BaseForecastEngine):
             self._load_model()
         else:
             logger.info("TimesFM PyTorch engine disabled via USE_REAL_TIMESFM=false. Using DampedHoltForecastEngine.")
+
+    @property
+    def model_name(self) -> str:
+        """Reflects which engine is actually active: real TimesFM weights, or the Damped Holt fallback."""
+        if self._model is not None:
+            return f"google-timesfm-200m ({self.device})"
+        return "damped-holt-mle (fallback: TimesFM no disponible)"
 
     def _detect_device(self) -> str:
         try:

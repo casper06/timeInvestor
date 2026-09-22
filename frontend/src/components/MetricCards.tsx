@@ -109,7 +109,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                   <h3 className="text-sm font-semibold text-slate-200">
                     Síntesis Cuantitativa de la Tesis
                   </h3>
-                  <LLMProviderBadge providerUsed={thesisData.provider_used} />
+                  <LLMProviderBadge providerUsed={thesisData.provider_used} fallbackReason={thesisData.fallback_reason} />
                 </div>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   {thesisData.summary}

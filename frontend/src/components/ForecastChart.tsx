@@ -11,6 +11,7 @@ import {
 } from 'chart.js';
 import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { KeyRound } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
 
 ChartJS.register(
@@ -26,6 +27,7 @@ ChartJS.register(
 
 interface ForecastChartProps {
   seriesData: TimeSeriesData | null;
+  seriesError?: string | null;
   forecast: ForecastResponse | null;
   selectedSeriesId: string;
   allSeriesList: { id: string; name: string; type: string }[];
@@ -39,10 +41,34 @@ interface ForecastChartProps {
   isNormalized: boolean;
   onToggleNormalized: () => void;
   loading: boolean;
+  /** When false, every 'macro' series tab shows a small key-required badge —
+   * all macro series in this app come from FRED, so a missing key means every
+   * one of them will fail to load, not just the one the user happens to click. */
+  hasFredKey?: boolean;
 }
+
+/**
+ * Translates a known technical backend error into user-facing copy, when the
+ * cause is recognizably a missing configuration key. Falls back to the raw
+ * message for anything else (yfinance down, invalid ticker, ...) — that's
+ * still more useful than a generic "no data" string. Exported so App.tsx's
+ * top-of-page error banner shows the same friendly text as the chart's own
+ * inline message, instead of the raw technical string in one place and the
+ * humanized one in the other.
+ */
+export const humanizeSeriesError = (rawError: string): string => {
+  if (/FRED_API_KEY|FRED API no disponible/i.test(rawError)) {
+    return 'Esta serie requiere una clave de API de FRED que no está configurada. Podés agregarla en tu .env (FRED_API_KEY).';
+  }
+  if (/GEMINI_API_KEY/i.test(rawError)) {
+    return 'Esta acción requiere una clave de API de Gemini que no está configurada. Podés agregarla en tu .env (GEMINI_API_KEY).';
+  }
+  return rawError;
+};
 
 export const ForecastChart: React.FC<ForecastChartProps> = ({
   seriesData,
+  seriesError,
   forecast,
   selectedSeriesId,
   allSeriesList,
@@ -56,21 +82,16 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
   isNormalized,
   onToggleNormalized,
   loading,
+  hasFredKey = true,
 }) => {
-  if (!seriesData || seriesData.points.length === 0) {
-    return (
-      <div className="h-[420px] bg-slate-900/60 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-500">
-        No hay datos de series temporales disponibles.
-      </div>
-    );
-  }
+  const hasData = !!seriesData && seriesData.points.length > 0;
 
   // Slice historical points based on period if desired
-  let historicalPoints = seriesData.points;
-  if (period === '1mo') historicalPoints = seriesData.points.slice(-22);
-  else if (period === '6mo') historicalPoints = seriesData.points.slice(-130);
-  else if (period === '1y') historicalPoints = seriesData.points.slice(-252);
-  else if (period === '2y') historicalPoints = seriesData.points.slice(-504);
+  let historicalPoints = hasData ? seriesData.points : [];
+  if (period === '1mo') historicalPoints = historicalPoints.slice(-22);
+  else if (period === '6mo') historicalPoints = historicalPoints.slice(-130);
+  else if (period === '1y') historicalPoints = historicalPoints.slice(-252);
+  else if (period === '2y') historicalPoints = historicalPoints.slice(-504);
 
   // Normalization logic: base = 100 on first visible point
   const baseValue = historicalPoints[0]?.value || 1.0;
@@ -90,23 +111,27 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
   // Align datasets along allLabels
   const histDatasetData = [...histValues, ...new Array(forecastTimestamps.length).fill(null)];
 
-  // For continuous transition, forecast begins with the last historical point
+  // For continuous transition, forecast begins with the last historical point.
+  // Guard against histValues being empty (no data / a failed series fetch) — that
+  // would make `histValues.length - 1` negative, and `new Array(negative)` throws
+  // a RangeError, crashing the whole component render (not just this chart).
   const lastHistVal = histValues[histValues.length - 1];
+  const leadingPadLength = Math.max(histValues.length - 1, 0);
 
   const forecastDatasetData = [
-    ...new Array(histValues.length - 1).fill(null),
+    ...new Array(leadingPadLength).fill(null),
     lastHistVal,
     ...forecastValues,
   ];
 
   const lowerBoundData = [
-    ...new Array(histValues.length - 1).fill(null),
+    ...new Array(leadingPadLength).fill(null),
     lastHistVal,
     ...lowerBounds,
   ];
 
   const upperBoundData = [
-    ...new Array(histValues.length - 1).fill(null),
+    ...new Array(leadingPadLength).fill(null),
     lastHistVal,
     ...upperBounds,
   ];
@@ -115,7 +140,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
     labels: allLabels,
     datasets: [
       {
-        label: `${seriesData.id} Histórico`,
+        label: `${seriesData?.id ?? ''} Histórico`,
         data: histDatasetData,
         borderColor: '#38bdf8', // Tailwind cyan-400
         backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -188,7 +213,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           label: (context) => {
             const val = context.parsed.y;
             if (val === null || val === undefined) return '';
-            const unit = isNormalized ? 'pts (Base 100)' : seriesData.unit;
+            const unit = isNormalized ? 'pts (Base 100)' : (seriesData?.unit ?? '');
             return ` ${context.dataset.label}: ${val.toFixed(2)} ${unit}`;
           },
         },
@@ -211,7 +236,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
         },
         title: {
           display: true,
-          text: isNormalized ? 'Índice (Base 100)' : `${seriesData.unit}`,
+          text: isNormalized ? 'Índice (Base 100)' : `${seriesData?.unit ?? ''}`,
           color: '#64748b',
           font: { size: 11 },
         },
@@ -228,19 +253,27 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">
             Serie Activa:
           </span>
-          {allSeriesList.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onSelectSeries(item.id)}
-              className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
-                selectedSeriesId === item.id
-                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/30'
-                  : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700/80'
-              }`}
-            >
-              {item.id}
-            </button>
-          ))}
+          {allSeriesList.map((item) => {
+            // All macro series in this app are FRED-backed — without a key every
+            // one of them will fail to load, not just whichever the user clicks.
+            // Flag that up front instead of letting them find out via a failed click.
+            const needsFredKey = item.type === 'macro' && !hasFredKey;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onSelectSeries(item.id)}
+                title={needsFredKey ? 'Esta serie requiere FRED_API_KEY, que no está configurada' : undefined}
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                  selectedSeriesId === item.id
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/30'
+                    : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700/80'
+                }`}
+              >
+                {item.id}
+                {needsFredKey && <KeyRound className="h-3 w-3 text-amber-400" />}
+              </button>
+            );
+          })}
         </div>
 
         {/* Chart Configuration Controls */}
@@ -312,38 +345,53 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] z-10 flex items-center justify-center">
             <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs">
               <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-              <span>Calculando proyección TimesFM...</span>
+              {/* Reflects the actually active engine (forecast?.model_name — the
+                  same source MetricCards/the projection line label already use),
+                  not a hardcoded "TimesFM" that's wrong whenever the real active
+                  engine is the Damped Holt fallback (the common case in this
+                  project unless real TimesFM weights are installed). */}
+              <span>Calculando proyección {forecast?.model_name || 'TimesFM'}...</span>
             </div>
           </div>
         )}
-        <Line data={chartData} options={options} />
+        {hasData ? (
+          <Line data={chartData} options={options} />
+        ) : (
+          !loading && (
+            <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-center px-8 text-sm">
+              {seriesError ? humanizeSeriesError(seriesError) : 'No hay datos de series temporales disponibles.'}
+            </div>
+          )
+        )}
       </div>
 
       {/* Chart Footer Info */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 font-mono">
-        <div className="flex items-center gap-2">
-          <span>
-            Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
-          </span>
-          {seriesData.from_cache && seriesData.source === 'live' && (
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 font-mono inline-flex items-center gap-1"
-              title={seriesData.cached_at ? `En caché local desde ${new Date(seriesData.cached_at).toLocaleTimeString()}` : 'Servido desde caché local'}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-              datos en caché
-            </span>
-          )}
-        </div>
-        <div className="flex items-center space-x-3">
-          <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>
-          {forecast && (
+      {hasData && seriesData && (
+        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 font-mono">
+          <div className="flex items-center gap-2">
             <span>
-              Proyección +{horizon}d: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
+              Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
             </span>
-          )}
+            {seriesData.from_cache && seriesData.source === 'live' && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 font-mono inline-flex items-center gap-1"
+                title={seriesData.cached_at ? `En caché local desde ${new Date(seriesData.cached_at).toLocaleTimeString()}` : 'Servido desde caché local'}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                datos en caché
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-3">
+            <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>
+            {forecast && (
+              <span>
+                Proyección +{horizon}d: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

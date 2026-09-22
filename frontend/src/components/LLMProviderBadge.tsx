@@ -3,8 +3,23 @@ import { AlertTriangle, Sparkles } from 'lucide-react';
 
 interface LLMProviderBadgeProps {
   providerUsed?: string | null;
+  fallbackReason?: string | null;
   className?: string;
 }
+
+/**
+ * Turns a raw `provider_used` string (e.g. "gemini-3.6-flash", "openai-gpt-4o-mini",
+ * "ollama-llama3.2") into a human-readable label — WITHOUT a hardcoded per-model name
+ * table. Whatever model string the backend reports is what gets shown, so a model
+ * bump (e.g. gemini-3.6-flash -> gemini-4.0-flash) never requires a frontend change:
+ * each hyphen-separated word is capitalized as-is (numbers/versions pass through
+ * untouched, e.g. "3.6" stays "3.6").
+ */
+const humanizeProviderString = (provider: string): string =>
+  provider
+    .split('-')
+    .map((word) => (/^[a-z]/i.test(word) ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+    .join(' ');
 
 export const formatLLMProvider = (provider?: string | null): { label: string; isMock: boolean } => {
   if (!provider) {
@@ -14,33 +29,31 @@ export const formatLLMProvider = (provider?: string | null): { label: string; is
   if (p.startsWith('mock')) {
     return { label: 'Motor heurístico local — sin LLM', isMock: true };
   }
-  if (p.includes('gemini')) {
-    return { label: 'Gemini 2.5 Flash', isMock: false };
-  }
-  if (p.includes('openai') || p.includes('gpt')) {
-    return { label: 'OpenAI GPT-4o Mini', isMock: false };
-  }
-  if (p.startsWith('ollama')) {
-    const model = provider.replace(/^ollama-?/i, '') || 'local';
-    return { label: `Ollama (${model})`, isMock: false };
-  }
-  return { label: provider, isMock: false };
+  return { label: humanizeProviderString(provider), isMock: false };
 };
 
 export const LLMProviderBadge: React.FC<LLMProviderBadgeProps> = ({
   providerUsed,
+  fallbackReason,
   className = '',
 }) => {
   const { label, isMock } = formatLLMProvider(providerUsed);
 
   if (isMock) {
+    // fallback_reason is only set when mock was reached because a real provider
+    // threw (auth, model retired, network, ...) — not when mock was configured on purpose.
+    const title = fallbackReason
+      ? `Se usó el motor heurístico local porque el proveedor real falló: ${fallbackReason}`
+      : 'Generado mediante el parser semántico heurístico local determinístico (sin LLM externo)';
+
     return (
       <span
-        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm ${className}`}
-        title="Generado mediante el parser semántico heurístico local determinístico (sin LLM externo)"
+        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm cursor-help ${className}`}
+        title={title}
       >
         <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
         <span>{label}</span>
+        {fallbackReason && <span className="sr-only">{title}</span>}
       </span>
     );
   }

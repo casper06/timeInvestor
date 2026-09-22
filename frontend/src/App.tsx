@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import type { DashboardView } from './components/Header';
 import { ThesisBar } from './components/ThesisBar';
-import { ForecastChart } from './components/ForecastChart';
+import { ForecastChart, humanizeSeriesError } from './components/ForecastChart';
 import { FundBarChart } from './components/FundBarChart';
 import { ExposureDonut } from './components/ExposureDonut';
 import { MetricCards } from './components/MetricCards';
@@ -24,6 +24,8 @@ import {
   fetchMacroData,
   fetchFundamentals,
   fetchForecast,
+  fetchTheses,
+  fetchThesisDetail,
 } from './services/api';
 import type {
   HealthResponse,
@@ -56,6 +58,7 @@ export const App: React.FC = () => {
   // Time Series & Forecast State
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('NVDA');
   const [seriesData, setSeriesData] = useState<TimeSeriesData | null>(null);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [fundamentals, setFundamentals] = useState<FundamentalsMetric[]>([]);
   const [lastInterpretation, setLastInterpretation] = useState<InterpretationResponse | null>(null);
@@ -66,7 +69,15 @@ export const App: React.FC = () => {
   const [period, setPeriod] = useState<string>('1y');
   const [isNormalized, setIsNormalized] = useState<boolean>(false);
 
-  // Load health check and initial default thesis on mount
+  // Load health check and restore prior state on mount.
+  // IMPORTANT: mount must never trigger a real LLM call on its own — the user hasn't
+  // asked for anything yet. Priority order:
+  //   1. The most recently saved thesis in SQLite, if one exists (free, instant, no LLM).
+  //   2. Otherwise, the same default placeholder thesis as before, but explicitly
+  //      forced through MockLLMClient (force_mock=true) so a brand-new install with
+  //      no saved theses still shows something without spending real provider quota.
+  // A real provider (Gemini/OpenAI/Ollama) is only ever called from an explicit
+  // user action: pressing "Analizar Tesis" in ThesisBar (handleAnalyzeThesis).
   useEffect(() => {
     async function init() {
       try {
@@ -75,16 +86,32 @@ export const App: React.FC = () => {
       } catch (err) {
         console.warn('Backend offline or health check failed', err);
       }
-      handleAnalyzeThesis('Demanda eléctrica por centros de datos de IA');
+
+      try {
+        const saved = await fetchTheses();
+        if (saved.length > 0) {
+          // fetchTheses() is ordered by created_at desc; [0] is the most recent.
+          const detail = await fetchThesisDetail(saved[0].id);
+          loadThesisDetailIntoState(detail);
+          return;
+        }
+      } catch (err) {
+        console.warn('Could not load saved theses, falling back to mock default', err);
+      }
+
+      handleAnalyzeThesis('Demanda eléctrica por centros de datos de IA', { forceMock: true });
     }
     init();
   }, []);
 
-  // Handler for analyzing a new thesis
-  const handleAnalyzeThesis = async (thesisText: string) => {
+  // Handler for analyzing a new thesis. `forceMock` is only ever set true by the
+  // mount-time bootstrap above (no saved thesis yet) — the user-facing "Analizar
+  // Tesis" button in ThesisBar always calls this without it, i.e. using the real
+  // configured provider.
+  const handleAnalyzeThesis = async (thesisText: string, options?: { forceMock?: boolean }) => {
     setLoading(true);
     try {
-      const resp = await analyzeThesis(thesisText);
+      const resp = await analyzeThesis(thesisText, options);
       setThesisData(resp);
       setThesisStatus('Activa');
       setActiveTickers(resp.tickers);
@@ -108,7 +135,13 @@ export const App: React.FC = () => {
     }
   };
 
-  // Helper to load series data and trigger forecast
+  // Helper to load series data and trigger forecast.
+  // IMPORTANT: on failure this must clear the previous seriesData/forecast, not leave
+  // them in place. Leaving stale data around after switching to a series whose fetch
+  // failed (e.g. a FRED macro ID with no FRED_API_KEY configured) makes the chart and
+  // "Serie:" label keep showing the PREVIOUS series while the tab itself highlights as
+  // selected — which looks exactly like "clicking the tab does nothing" even though
+  // the click handler and state update are both working correctly.
   const loadSeriesAndForecast = async (
     id: string,
     type: string,
@@ -117,6 +150,7 @@ export const App: React.FC = () => {
     conf: number
   ) => {
     setChartLoading(true);
+    setSeriesError(null);
     try {
       let data: TimeSeriesData;
       if (type === 'macro' || activeMacro.some((m) => m.series_id === id)) {
@@ -125,6 +159,7 @@ export const App: React.FC = () => {
         data = await fetchMarketData(id, p);
       }
       setSeriesData(data);
+      setForecast(null);
 
       if (data.points.length > 2) {
         const fc = await fetchForecast(data.points, h, conf, 'D');
@@ -132,6 +167,9 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.error(`Error loading series ${id}:`, err);
+      setSeriesData(null);
+      setForecast(null);
+      setSeriesError(err instanceof Error ? err.message : `No se pudo cargar la serie ${id}`);
     } finally {
       setChartLoading(false);
     }
@@ -223,8 +261,11 @@ export const App: React.FC = () => {
     }
   };
 
-  // Restore saved thesis from drawer
-  const handleLoadThesisFromDrawer = (detail: ThesisDetailResponse) => {
+  // Shared hydration for a persisted thesis (SQLite) — used both by the mount-time
+  // bootstrap (loading the last saved thesis, no LLM call) and by the drawer's
+  // "load saved thesis" action. Never calls a real or mock LLM: the data already
+  // exists in the database.
+  const loadThesisDetailIntoState = (detail: ThesisDetailResponse) => {
     setThesisData({
       thesis: detail.prompt,
       summary: detail.summary,
@@ -245,6 +286,11 @@ export const App: React.FC = () => {
 
     const firstSym = detail.tickers[0]?.symbol || 'NVDA';
     handleSelectSeries(firstSym);
+  };
+
+  // Restore saved thesis from drawer
+  const handleLoadThesisFromDrawer = (detail: ThesisDetailResponse) => {
+    loadThesisDetailIntoState(detail);
     setCurrentView('forecast');
   };
 
@@ -282,6 +328,21 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Series Fetch Error Banner — shown when switching "Serie Activa" fails
+            (e.g. a FRED macro series with no FRED_API_KEY configured) instead of
+            silently leaving the previous series' chart on screen. */}
+        {seriesError && (
+          <div className="rounded-2xl p-4 bg-red-950/40 border border-red-500/40 shadow-xl flex items-start gap-3 text-red-200">
+            <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <span className="font-bold text-red-300 uppercase tracking-wide">
+                No se pudo cargar la serie {selectedSeriesId}
+              </span>
+              <p className="text-slate-300 leading-relaxed text-[11px]">{humanizeSeriesError(seriesError)}</p>
+            </div>
+          </div>
+        )}
+
         {/* Synthetic Data Transparency Alert Banner */}
         {isSyntheticActive && (
           <div className="rounded-2xl p-4 bg-amber-950/40 border border-amber-500/40 shadow-xl flex items-start gap-3 text-amber-200">
@@ -338,7 +399,9 @@ export const App: React.FC = () => {
             {/* Main Line & Forecast Chart */}
             <ForecastChart
               seriesData={seriesData}
+              seriesError={seriesError}
               forecast={forecast}
+              hasFredKey={health?.has_fred_key ?? true}
               selectedSeriesId={selectedSeriesId}
               allSeriesList={allSeriesList}
               onSelectSeries={handleSelectSeries}

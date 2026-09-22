@@ -39,6 +39,7 @@ class ThesisResponse(BaseModel):
     macro_series: List[MacroSuggestion]
     rationales: Dict[str, str]
     provider_used: str
+    fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
 
 class ForecastRequest(BaseModel):
     points: List[TimeSeriesPoint] = Field(..., min_length=2, max_length=10_000, description="Historical time series")
@@ -89,7 +90,8 @@ class InterpretationResponse(BaseModel):
     thesis_alignment: str = Field(..., description="Evaluación de si los datos confirman o contradicen la hipótesis")
     next_series_suggestion: str = Field(..., description="Justificación de qué serie mirar a continuación")
     suggested_series_id: Optional[str] = Field(default=None, description="ID del ticker o serie sugerida para explorar")
-    provider_used: str = Field(..., description="Proveedor real que generó esta interpretación: gemini-2.5-flash, openai-gpt-4o-mini, ollama-<model>, o mock-semantic-engine")
+    provider_used: str = Field(..., description="Proveedor real que generó esta interpretación: gemini-3.6-flash, openai-gpt-4o-mini, ollama-<model>, o mock-semantic-engine")
+    fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
 
 class HealthResponse(BaseModel):
     status: str
