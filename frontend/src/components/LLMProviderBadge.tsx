@@ -1,11 +1,33 @@
 import React from 'react';
 import { AlertTriangle, Sparkles } from 'lucide-react';
+import type { FallbackCategory } from '../services/api';
 
 interface LLMProviderBadgeProps {
   providerUsed?: string | null;
   fallbackReason?: string | null;
+  fallbackCategory?: FallbackCategory | null;
   className?: string;
 }
+
+/**
+ * Turns fallback_category into an ACTIONABLE explanation — whether waiting
+ * helps or the user needs to go fix something — instead of leaving them to
+ * guess from the raw fallback_reason string alone. 'unknown' intentionally
+ * falls through to the raw reason rather than inventing a category that
+ * doesn't apply.
+ */
+const describeFallbackCategory = (category: FallbackCategory | null | undefined, rawReason: string): string => {
+  switch (category) {
+    case 'rate_limit':
+      return 'Se alcanzó el límite de uso de tu cuenta de Gemini. Probá de nuevo en unos minutos, o revisá la facturación en Google AI Studio.';
+    case 'transient':
+      return 'Falla temporal del servicio. Reintentá la consulta.';
+    case 'auth_or_config':
+      return 'Problema de configuración (clave inválida o modelo no disponible). Esto no se arregla esperando — revisá tu .env o los logs del servidor.';
+    default:
+      return rawReason;
+  }
+};
 
 /**
  * Turns a raw `provider_used` string (e.g. "gemini-3.6-flash", "openai-gpt-4o-mini",
@@ -35,6 +57,7 @@ export const formatLLMProvider = (provider?: string | null): { label: string; is
 export const LLMProviderBadge: React.FC<LLMProviderBadgeProps> = ({
   providerUsed,
   fallbackReason,
+  fallbackCategory,
   className = '',
 }) => {
   const { label, isMock } = formatLLMProvider(providerUsed);
@@ -43,7 +66,7 @@ export const LLMProviderBadge: React.FC<LLMProviderBadgeProps> = ({
     // fallback_reason is only set when mock was reached because a real provider
     // threw (auth, model retired, network, ...) — not when mock was configured on purpose.
     const title = fallbackReason
-      ? `Se usó el motor heurístico local porque el proveedor real falló: ${fallbackReason}`
+      ? `Se usó el motor heurístico local porque el proveedor real falló: ${describeFallbackCategory(fallbackCategory, fallbackReason)}`
       : 'Generado mediante el parser semántico heurístico local determinístico (sin LLM externo)';
 
     return (

@@ -30,6 +30,8 @@ export interface MacroSuggestion {
   expected_correlation: string;
 }
 
+export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'unknown';
+
 export interface ThesisResponse {
   thesis: string;
   summary: string;
@@ -38,6 +40,7 @@ export interface ThesisResponse {
   rationales: Record<string, string>;
   provider_used: string;
   fallback_reason?: string | null;
+  fallback_category?: FallbackCategory | null;
 }
 
 export interface ForecastResponse {
@@ -48,6 +51,7 @@ export interface ForecastResponse {
   model_name: string;
   is_fallback?: boolean;
   fitted_params?: Record<string, number>;
+  engine_selection_reason?: string;
 }
 
 export interface FundamentalsMetric {
@@ -84,6 +88,7 @@ export interface InterpretationResponse {
   suggested_series_id?: string;
   provider_used: string;
   fallback_reason?: string | null;
+  fallback_category?: FallbackCategory | null;
 }
 
 export interface HealthResponse {
@@ -136,6 +141,21 @@ export async function fetchMacroData(seriesId: string): Promise<TimeSeriesData> 
   return res.json();
 }
 
+export interface FredSeriesMetadata {
+  series_id: string;
+  title: string;
+  notes: string;
+}
+
+export async function fetchFredMetadata(seriesId: string): Promise<FredSeriesMetadata> {
+  const res = await fetch(`${API_BASE}/catalog/fred-metadata?series_id=${encodeURIComponent(seriesId)}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Error obteniendo metadata FRED para ${seriesId}`);
+  }
+  return res.json();
+}
+
 export async function fetchFundamentals(tickers: string[]): Promise<FundamentalsMetric[]> {
   if (tickers.length === 0) return [];
   const res = await fetch(`${API_BASE}/data/fundamentals?tickers=${encodeURIComponent(tickers.join(','))}`);
@@ -148,12 +168,21 @@ export async function fetchForecast(
   points: TimeSeriesPoint[],
   horizon = 60,
   confidence = 0.95,
-  freq = 'D'
+  freq = 'D',
+  seriesId?: string,
+  seriesType?: string
 ): Promise<ForecastResponse> {
   const res = await fetch(`${API_BASE}/forecast`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ points, horizon, confidence, freq }),
+    body: JSON.stringify({
+      points,
+      horizon,
+      confidence,
+      freq,
+      series_id: seriesId,
+      series_type: seriesType,
+    }),
   });
   if (!res.ok) throw new Error('Error generando proyección temporal');
   return res.json();

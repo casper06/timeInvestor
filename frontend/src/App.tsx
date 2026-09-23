@@ -162,7 +162,7 @@ export const App: React.FC = () => {
       setForecast(null);
 
       if (data.points.length > 2) {
-        const fc = await fetchForecast(data.points, h, conf, 'D');
+        const fc = await fetchForecast(data.points, h, conf, 'D', data.id, data.type);
         setForecast(fc);
       }
     } catch (err) {
@@ -187,7 +187,7 @@ export const App: React.FC = () => {
     setHorizon(newHorizon);
     if (seriesData && seriesData.points.length > 2) {
       setChartLoading(true);
-      fetchForecast(seriesData.points, newHorizon, confidence, 'D')
+      fetchForecast(seriesData.points, newHorizon, confidence, 'D', seriesData.id, seriesData.type)
         .then((fc) => setForecast(fc))
         .catch((e) => console.error(e))
         .finally(() => setChartLoading(false));
@@ -199,7 +199,7 @@ export const App: React.FC = () => {
     setConfidence(newConf);
     if (seriesData && seriesData.points.length > 2) {
       setChartLoading(true);
-      fetchForecast(seriesData.points, horizon, newConf, 'D')
+      fetchForecast(seriesData.points, horizon, newConf, 'D', seriesData.id, seriesData.type)
         .then((fc) => setForecast(fc))
         .catch((e) => console.error(e))
         .finally(() => setChartLoading(false));

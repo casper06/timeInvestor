@@ -38,10 +38,12 @@ from backend.schemas.models import (
     PortfolioRiskResponse,
     RebalanceBacktestRequest,
     RebalanceBacktestResponse,
+    FredSeriesMetadata,
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
 from backend.services.forecast_engine import get_forecast_engine
+from backend.services.engine_selector import EngineSelector
 from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
 from backend.services.portfolio_engine import PortfolioEngine
@@ -146,12 +148,13 @@ def generate_forecast(payload: ForecastRequest):
     Returns TimesFM-compliant structure: { timestamps, values, lower_bound, upper_bound }.
     """
     try:
-        engine = get_forecast_engine()
-        result = engine.forecast(
+        result = EngineSelector.select(
             points=payload.points,
+            series_id=payload.series_id,
+            series_type=payload.series_type,
             horizon=payload.horizon,
             confidence=payload.confidence,
-            freq=payload.freq or "D"
+            freq=payload.freq or "D",
         )
         return result
     except Exception as e:
@@ -175,6 +178,25 @@ async def interpret_thesis_situation(payload: InterpretationContext):
 async def get_macro_catalog():
     """Returns curated catalog of macroeconomic and energy indicators available."""
     return FREDDataFetcher.SERIES_CATALOG
+
+@router.get("/catalog/fred-metadata", response_model=FredSeriesMetadata)
+def get_fred_series_metadata(
+    series_id: str = Query(..., description="FRED series ID, e.g. IPG2211A2N or PCU221110221110")
+):
+    """
+    Fetches FRED's own official title and description ('notes') for a series_id,
+    via FRED's metadata endpoint (/fred/series) — never a hand-written guess at
+    what a cryptic ID like PCU221110221110 measures.
+    """
+    try:
+        metadata = fred_fetcher.get_series_metadata(series_id=series_id)
+        return FredSeriesMetadata(**metadata)
+    except ValueError as ve:
+        logger.warning(f"Validation/Missing metadata for FRED {series_id}: {ve}")
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Error fetching FRED metadata for {series_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not retrieve FRED metadata for {series_id}: {str(e)}")
 
 
 # ----------------- FASE 2: PERSISTENCIA CRUD DE TESIS -----------------

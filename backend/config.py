@@ -35,7 +35,14 @@ class Settings:
     # Forecast Engine configuration
     # Options: "mock", "timesfm"
     FORECAST_ENGINE: str = os.getenv("FORECAST_ENGINE", "mock")
-    USE_REAL_TIMESFM: bool = os.getenv("USE_REAL_TIMESFM", "false").lower() in ("true", "1", "t")
+    # Default true: EngineSelector (backend/services/engine_selector.py) already
+    # restricts real TimesFM usage to a handful of benchmark-confirmed
+    # categories (seasonal FRED series) — this flag no longer means "use the
+    # heavy model for everything", just "let EngineSelector use it where the
+    # benchmark says it wins, if the weights happen to be available". Leaving
+    # it on doesn't trigger broad heavy-model usage; every other category
+    # stays on Holt regardless of this flag.
+    USE_REAL_TIMESFM: bool = os.getenv("USE_REAL_TIMESFM", "true").lower() in ("true", "1", "t")
 
     # Data configuration
     ALLOW_SYNTHETIC_DATA: bool = os.getenv("ALLOW_SYNTHETIC_DATA", "false").lower() in ("true", "1", "t")

@@ -90,8 +90,11 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
           <div className="text-sm font-bold font-mono text-indigo-300 truncate mt-1">
             {forecast?.model_name || 'TimesFM'}
           </div>
-          <div className="text-[11px] text-slate-500 font-mono mt-1">
-            Residuos estocásticos
+          <div
+            className="text-[11px] text-slate-500 font-mono mt-1 line-clamp-2"
+            title={forecast?.engine_selection_reason || undefined}
+          >
+            {forecast?.engine_selection_reason || 'Residuos estocásticos'}
           </div>
         </div>
       </div>
@@ -109,7 +112,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                   <h3 className="text-sm font-semibold text-slate-200">
                     Síntesis Cuantitativa de la Tesis
                   </h3>
-                  <LLMProviderBadge providerUsed={thesisData.provider_used} fallbackReason={thesisData.fallback_reason} />
+                  <LLMProviderBadge providerUsed={thesisData.provider_used} fallbackReason={thesisData.fallback_reason} fallbackCategory={thesisData.fallback_category} />
                 </div>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   {thesisData.summary}

@@ -1,7 +1,35 @@
+import builtins
 import pytest
 from pathlib import Path
 from backend.schemas.models import TimeSeriesPoint
 from backend.services.forecast_engine import StatisticalMockForecastEngine, TimesFMForecastEngine
+
+
+def test_default_config_has_timesfm_enabled():
+    """
+    Settings.USE_REAL_TIMESFM's CODE default is True as of EngineSelector: the
+    selector itself already restricts real TimesFM usage to a handful of
+    benchmark-confirmed categories (seasonal FRED series), so there's no
+    downside to leaving this on by default — it doesn't trigger broad heavy
+    model usage, only enables it where the benchmark says it wins.
+
+    Settings' fields are class attributes evaluated once at class-definition
+    time (os.getenv(...) runs when backend.config is first imported, not
+    inside __init__), so instantiating a fresh Settings() later can't
+    re-observe a changed environment — this test reads the source directly
+    for the literal default string passed to os.getenv, which is the only
+    reliable way to assert the CODE default independent of whatever a local
+    .env happens to set at import time (this repo's own .env sets it to
+    false, overriding the default for actual runtime behavior — expected).
+    """
+    import inspect
+    from backend.config import Settings
+
+    source = inspect.getsource(Settings)
+    assert 'os.getenv("USE_REAL_TIMESFM", "true")' in source, (
+        "Settings.USE_REAL_TIMESFM's default argument to os.getenv must be "
+        '"true" — found a different default in backend/config.py'
+    )
 
 def test_statistical_mock_forecast():
     engine = StatisticalMockForecastEngine()
@@ -34,9 +62,8 @@ def isolated_timesfm_singleton():
     """
     TimesFMForecastEngine caches itself as a class-level singleton (__new__ returns
     a shared _instance across calls), so a test that forces a real model load would
-    otherwise leak a warm _model into every later test that expects the untouched
-    default (USE_REAL_TIMESFM=false -> _model is None). Reset the singleton before
-    and after each test that touches it.
+    otherwise leak a warm _model into every later test expecting a fresh one.
+    Reset the singleton before and after each test that touches it.
     """
     TimesFMForecastEngine._instance = None
     yield
@@ -60,7 +87,14 @@ def _timesfm_weights_available() -> bool:
     return repo_dir.exists() and any(repo_dir.iterdir())
 
 
-def test_timesfm_adapter_fallback(isolated_timesfm_singleton):
+def test_timesfm_adapter_fallback(isolated_timesfm_singleton, monkeypatch):
+    """USE_REAL_TIMESFM=false must never even attempt to load the real model —
+    forced explicitly here (independent of Settings' default, which is true as
+    of this project's EngineSelector work) so this test can't accidentally pass
+    or fail based on whichever real default happens to be configured."""
+    from backend.config import settings
+    monkeypatch.setattr(settings, "USE_REAL_TIMESFM", False)
+
     engine = TimesFMForecastEngine()
     points = [
         TimeSeriesPoint(timestamp="2024-01-01", value=50.0),
@@ -71,6 +105,57 @@ def test_timesfm_adapter_fallback(isolated_timesfm_singleton):
     assert len(resp.values) == 5
     assert "damped-holt-mle" in resp.model_name
     assert resp.is_fallback is True
+
+
+def test_light_image_graceful_fallback_no_repeated_errors(isolated_timesfm_singleton, monkeypatch):
+    """
+    Simulates the default (light) Docker image: torch/timesfm genuinely absent
+    (blocks the import itself, not just missing weights) — this is the exact
+    scenario a EngineSelector-routed seasonal FRED series hits with
+    USE_REAL_TIMESFM=true but no requirements-timesfm.txt installed.
+
+    _load_model() must run AT MOST ONCE across repeated forecast() calls on the
+    same (singleton) engine instance — the failed-to-load result is cached at
+    the process level via self._model staying None, not re-attempted on every
+    request. Re-attempting every time would mean paying the failed-import cost
+    (and re-logging the same warning) on every single forecast for these series.
+    """
+    from backend.config import settings
+    monkeypatch.setattr(settings, "USE_REAL_TIMESFM", True)
+
+    real_import = builtins.__import__
+
+    def blocking_import(name, *args, **kwargs):
+        if name == "timesfm":
+            raise ImportError(f"No module named {name!r} (simulated light image)")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", blocking_import)
+
+    load_attempts = {"n": 0}
+    original_load_model = TimesFMForecastEngine._load_model
+
+    def counting_load_model(self):
+        load_attempts["n"] += 1
+        original_load_model(self)
+
+    monkeypatch.setattr(TimesFMForecastEngine, "_load_model", counting_load_model)
+
+    points = [
+        TimeSeriesPoint(timestamp=f"2020-{(i // 28) % 12 + 1:02d}-{i % 28 + 1:02d}", value=100.0 + i * 0.3)
+        for i in range(300)
+    ]
+
+    for _ in range(3):
+        engine = TimesFMForecastEngine()
+        resp = engine.forecast(points, horizon=6, confidence=0.95, freq="M")
+        assert resp.is_fallback is True
+        assert "damped-holt-mle" in resp.model_name
+
+    assert load_attempts["n"] == 1, (
+        f"_load_model was invoked {load_attempts['n']} times across 3 forecasts — "
+        "the failed load must be cached after the first attempt, not retried per request"
+    )
 
 
 @pytest.mark.skipif(

@@ -23,6 +23,11 @@ class TickerSuggestion(BaseModel):
     weight: float = Field(default=0.2, description="Suggested allocation weight (0.0 to 1.0)")
     thesis_role: str = Field(..., description="Specific role or angle in the investment thesis")
 
+class FredSeriesMetadata(BaseModel):
+    series_id: str
+    title: str
+    notes: str
+
 class MacroSuggestion(BaseModel):
     series_id: str = Field(..., description="FRED or Macro series ID (e.g. IPG2211A2N)")
     name: str = Field(..., description="Series description")
@@ -40,12 +45,15 @@ class ThesisResponse(BaseModel):
     rationales: Dict[str, str]
     provider_used: str
     fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
+    fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient) o si requiere intervención (auth_or_config). None si mock fue elegido explícitamente (sin fallback_reason)")
 
 class ForecastRequest(BaseModel):
     points: List[TimeSeriesPoint] = Field(..., min_length=2, max_length=10_000, description="Historical time series")
     horizon: int = Field(default=30, ge=1, le=365, description="Projection horizon in steps (max 365)")
     confidence: float = Field(default=0.95, ge=0.5, le=0.99, description="Confidence interval level")
     freq: Optional[str] = Field(default="D", description="Frequency: 'D' for daily, 'M' for monthly")
+    series_id: Optional[str] = Field(default=None, description="Series identifier (ticker or FRED series ID), used by EngineSelector to look up its category. None falls back to the default individual-equity selection path.")
+    series_type: Optional[str] = Field(default=None, description="'equity' or 'macro', as in TimeSeriesData.type — used by EngineSelector alongside series_id")
 
 class ForecastResponse(BaseModel):
     timestamps: List[str] = Field(..., description="Projected future timestamps")
@@ -55,6 +63,7 @@ class ForecastResponse(BaseModel):
     model_name: str = Field(default="damped-holt-mle", description="Name of the forecasting model")
     is_fallback: bool = Field(default=False, description="True if model fell back from primary engine")
     fitted_params: Optional[Dict[str, float]] = Field(default=None, description="Fitted smoothing and damping parameters")
+    engine_selection_reason: str = Field(default="", description="Human-readable explanation of why this specific engine was chosen for this series (category, history length, or fallback)")
 
 class FundamentalsMetric(BaseModel):
     ticker: str
@@ -92,6 +101,7 @@ class InterpretationResponse(BaseModel):
     suggested_series_id: Optional[str] = Field(default=None, description="ID del ticker o serie sugerida para explorar")
     provider_used: str = Field(..., description="Proveedor real que generó esta interpretación: gemini-3.6-flash, openai-gpt-4o-mini, ollama-<model>, o mock-semantic-engine")
     fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
+    fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient) o si requiere intervención (auth_or_config). None si mock fue elegido explícitamente (sin fallback_reason)")
 
 class HealthResponse(BaseModel):
     status: str

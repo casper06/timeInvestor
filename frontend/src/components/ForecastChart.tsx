@@ -13,6 +13,7 @@ import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { KeyRound } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
+import { FredInfoTooltip } from './FredInfoTooltip';
 
 ChartJS.register(
   CategoryScale,
@@ -259,19 +260,21 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
             // Flag that up front instead of letting them find out via a failed click.
             const needsFredKey = item.type === 'macro' && !hasFredKey;
             return (
-              <button
-                key={item.id}
-                onClick={() => onSelectSeries(item.id)}
-                title={needsFredKey ? 'Esta serie requiere FRED_API_KEY, que no está configurada' : undefined}
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
-                  selectedSeriesId === item.id
-                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/30'
-                    : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700/80'
-                }`}
-              >
-                {item.id}
-                {needsFredKey && <KeyRound className="h-3 w-3 text-amber-400" />}
-              </button>
+              <span key={item.id} className="inline-flex items-center gap-1">
+                <button
+                  onClick={() => onSelectSeries(item.id)}
+                  title={needsFredKey ? 'Esta serie requiere FRED_API_KEY, que no está configurada' : undefined}
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                    selectedSeriesId === item.id
+                      ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/30'
+                      : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700/80'
+                  }`}
+                >
+                  {item.id}
+                  {needsFredKey && <KeyRound className="h-3 w-3 text-amber-400" />}
+                </button>
+                {item.type === 'macro' && !needsFredKey && <FredInfoTooltip seriesId={item.id} />}
+              </span>
             );
           })}
         </div>

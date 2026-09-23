@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from backend.services.llm_router import MockLLMClient, get_llm_client
+from backend.services.llm_router import MockLLMClient, get_llm_client, classify_fallback_category
 
 def test_mock_llm_client_datacenter_thesis():
     client = MockLLMClient()
@@ -260,6 +260,75 @@ def test_no_retry_on_permanent_error(monkeypatch):
     assert "404" in resp.fallback_reason
     # Must NOT claim retries happened for a permanent error that was never retried.
     assert "intentos" not in resp.fallback_reason
+
+
+def test_fallback_category_rate_limit_suggests_waiting(monkeypatch):
+    """
+    A 429 (rate limit) must classify as 'rate_limit', not 'transient' or
+    'unknown' — the whole point of fallback_category is telling the user
+    whether waiting helps, and a rate limit is the clearest "yes, wait" case.
+    """
+    import asyncio as _asyncio
+    from backend.services.llm_router import GeminiLLMClient
+
+    monkeypatch.setattr(_asyncio, "sleep", AsyncNoopSleep())
+
+    def always_rate_limited(*args, **kwargs):
+        raise _FakeAPIError(429, "RESOURCE_EXHAUSTED. Quota exceeded for this project.")
+
+    def mock_gemini_init(self, api_key=None):
+        self.api_key = api_key or "fake-test-key-123"
+        self._client = MagicMock()
+        self._client.models.generate_content.side_effect = always_rate_limited
+
+    from unittest.mock import MagicMock
+    monkeypatch.setattr(GeminiLLMClient, "__init__", mock_gemini_init)
+
+    client = GeminiLLMClient()
+    resp = asyncio.run(client.parse_thesis("Demanda de energía por IA"))
+
+    assert resp.provider_used == "mock-semantic-engine"
+    assert resp.fallback_category == "rate_limit"
+
+
+def test_fallback_category_auth_error_suggests_config_check(monkeypatch):
+    """
+    A 401 (bad/invalid API key) must classify as 'auth_or_config', distinct from
+    'rate_limit' — this is the case where waiting never helps and the user needs
+    to go fix their .env or the model configuration.
+    """
+    import asyncio as _asyncio
+    from unittest.mock import MagicMock
+    from backend.services.llm_router import GeminiLLMClient
+
+    monkeypatch.setattr(_asyncio, "sleep", AsyncNoopSleep())
+
+    def always_unauthorized(*args, **kwargs):
+        raise _FakeAPIError(401, "UNAUTHENTICATED. API key not valid.")
+
+    def mock_gemini_init(self, api_key=None):
+        self.api_key = api_key or "fake-test-key-123"
+        self._client = MagicMock()
+        self._client.models.generate_content.side_effect = always_unauthorized
+
+    monkeypatch.setattr(GeminiLLMClient, "__init__", mock_gemini_init)
+
+    client = GeminiLLMClient()
+    resp = asyncio.run(client.parse_thesis("Demanda de energía por IA"))
+
+    assert resp.provider_used == "mock-semantic-engine"
+    assert resp.fallback_category == "auth_or_config"
+
+
+def test_classify_fallback_category_distinguishes_rate_limit_from_auth(monkeypatch):
+    """Unit-level check on the classifier itself, independent of any provider
+    plumbing: a 429 and a 401 must never collapse into the same category."""
+    assert classify_fallback_category(_FakeAPIError(429, "RESOURCE_EXHAUSTED")) == "rate_limit"
+    assert classify_fallback_category(_FakeAPIError(401, "UNAUTHENTICATED")) == "auth_or_config"
+    assert classify_fallback_category(_FakeAPIError(403, "PERMISSION_DENIED")) == "auth_or_config"
+    assert classify_fallback_category(_FakeAPIError(404, "NOT_FOUND")) == "auth_or_config"
+    assert classify_fallback_category(_FakeAPIError(503, "UNAVAILABLE")) == "transient"
+    assert classify_fallback_category(ValueError("something unexpected")) == "unknown"
 
 
 def test_health_reports_actual_forecast_engine(monkeypatch):
