@@ -29,8 +29,19 @@ class Settings:
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
     # LLM Router configuration
-    # Options: "auto", "gemini", "openai", "ollama", "mock"
+    # Options: "auto", "gemini", "openai", "ollama", "gemini_cli", "claude_cli", "mock"
+    # "gemini_cli"/"claude_cli" use the user's subscription session (Google AI
+    # Pro / Claude Pro-Max) via the official CLIs instead of a billed API key —
+    # see README.md's "Proveedores LLM por suscripción" section for setup,
+    # quota differences, and why neither is the default here.
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini")
+
+    # Model alias used for `claude -p ... --model <this>` when LLM_PROVIDER=claude_cli.
+    # Defaults to the cheapest model to minimize consumption of the user's
+    # SHARED 5-hour/weekly Claude usage window (see ClaudeCliLLMClient's own
+    # docstring) — override to "sonnet" for better quality at the cost of more
+    # of that shared quota per call.
+    CLAUDE_CLI_MODEL: str = os.getenv("CLAUDE_CLI_MODEL", "haiku")
 
     # Forecast Engine configuration
     # Options: "mock", "timesfm"
