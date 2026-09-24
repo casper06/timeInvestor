@@ -7,7 +7,7 @@ request, given a series' identity, type, and available history:
 
 ```mermaid
 flowchart TD
-    A["Forecast request:\nseries_id, series_type, points"] --> B{"series_id in\nSEASONAL_FRED_CATALOG?"}
+    A["Forecast request:\nseries_id, series_type, points, db session"] --> B{"series_id in\nSEASONAL_FRED_CATALOG?"}
     B -- yes --> C{"USE_REAL_TIMESFM\nand weights loaded?"}
     C -- yes --> D["TimesFM\nreason: 'Serie FRED estacional — TimesFM\nganó 4/4 en el benchmark real'"]
     C -- no --> E["Holt (fallback)\nreason: 'Categoría favorece TimesFM,\npero TimesFM no disponible'"]
@@ -15,7 +15,13 @@ flowchart TD
     B -- no --> F{"series_id in\nDIVERSIFIED_ETF_CATALOG?"}
     F -- yes --> G["Holt\nreason: 'Índice/ETF — TimesFM no le ganó\na Holt en el benchmark (0/4)'"]
 
-    F -- no --> H{"len(points) <\nLOW_CONFIDENCE_HISTORY_THRESHOLD (90)?"}
+    F -- no --> M{"db session given AND\nlen(points) >= 90?"}
+    M -- yes --> N["AutoDiscoveryEngine.decide()\n(Variant B, see below)"]
+    N --> O{"cached decision\nfound/produced?"}
+    O -- yes --> P["Holt or TimesFM per the\ncached mini-backtest MASE winner\nreason: 'Auto-evaluado el {fecha}: X ganó\nMASE {x} vs Y {y}'"]
+    O -- no (mini-backtest\nfailed or unavailable) --> H
+
+    M -- no --> H{"len(points) <\nLOW_CONFIDENCE_HISTORY_THRESHOLD (90)?"}
     H -- yes --> I["Holt + fitted_params.low_confidence=1\nreason: 'Historia insuficiente — ningún\numbral corto favoreció a TimesFM'"]
 
     H -- no --> J["Holt (default)\nreason: 'Acción individual,\nhistoria suficiente — Holt (default)'"]
@@ -23,6 +29,7 @@ flowchart TD
     D --> K["ForecastResponse\n(model_name, engine_selection_reason)"]
     E --> K
     G --> K
+    P --> K
     I --> K
     J --> K
 ```
@@ -47,75 +54,81 @@ structural limitations:
    the benchmark script and manually updating the catalogs — there's no
    feedback loop that keeps the routing current on its own.
 
-## Variant B (not implemented): real-time per-series mini-backtest
+## Variant B (implemented): real-time per-series mini-backtest, cached
 
-Instead of consulting a static catalog, run a **small walk-forward backtest on
-the specific series being forecast**, right before serving the real forecast:
+`backend/services/auto_discovery.py`'s `AutoDiscoveryEngine` implements what
+this section originally only proposed. Any series outside both curated
+catalogs, with enough history (`n_points >= 90`, same threshold as the
+cold-start check), gets its own evidence instead of silently defaulting to
+Holt without ever being measured — this was the scaling problem with
+Variant A alone: a series Gemini brings back that was never part of the
+original benchmark round (e.g. `IPG3344S`, a semiconductor manufacturing
+FRED series) got no evidence-based routing at all before this existed.
 
-1. Take the series' available history (whatever was fetched for this request).
-2. Pick 2-3 cutoffs near the end of that history (e.g. leaving the last 10-20
-   points out at each cutoff).
-3. At each cutoff, run **both** Holt and TimesFM forward over a short horizon
-   (e.g. 5-10 steps) and compute MASE against the actually-known held-out data.
-4. Pick whichever engine had the lower mean MASE across those cutoffs.
-5. Run the *winning* engine one more time on the full history at the real
-   requested horizon, and serve that as the forecast.
+How it works:
 
-This eliminates the need for curated catalogs entirely — every series gets its
-own evidence, not a category's aggregate evidence — and adapts automatically
-to regime changes without a human re-running a benchmark script and editing a
-Python set literal.
+1. Take the series' available history (re-fetched via `BacktestEngine`, which
+   already knows how to pull FRED vs. yfinance data — reused, not duplicated).
+2. Pick 3 cutoffs spaced over that history, each leaving `MINI_BACKTEST_HORIZON`
+   (30) points for evaluation — mirrors `scripts/benchmark_real_data.py`'s own
+   walk-forward spacing, at a cheaper 3-cutoff scale.
+3. At each cutoff, run **both** Holt and TimesFM (via
+   `BacktestEngine.run_backtest(engine_override=...)`, a new optional parameter
+   that forces a specific engine instance instead of the global default) and
+   record MASE and interval coverage.
+4. TimesFM only wins if it beats Holt's mean MASE **and** its mean interval
+   coverage isn't more than 30 points below Holt's (`MAX_ACCEPTABLE_COVERAGE_GAP_PP`)
+   — winning on MASE at the cost of a catastrophically uncalibrated interval
+   doesn't count as a real win.
+5. The decision (`engine_choice`, `mase_holt`, `mase_timesfm`, `evaluated_at`,
+   `n_points_at_evaluation`) is cached in SQLite (`engine_decisions` table, one
+   row per `series_id`) — chosen over a flat file since this project already
+   uses SQLAlchemy/SQLite for theses/snapshots/notes, and a per-series decision
+   with fields that need querying/updating fits that pattern better than
+   reading-and-rewriting a JSON blob.
+6. Every later request for the same series is a single indexed lookup — no
+   inference re-run — until the decision goes stale.
 
-### Why not implemented now: added latency
+**Invalidation** (both conditions checked, either one triggers re-evaluation):
+- More than `DECISION_TTL_DAYS` (30) since `evaluated_at` — a regime shift
+  shouldn't be locked in forever from one measurement.
+- The series has grown by `STALE_GROWTH_FRACTION` (20%) or more new points
+  since `n_points_at_evaluation` — e.g. a daily equity accumulating ~21 new
+  trading days/month eventually has enough new signal to be worth re-checking
+  independent of the calendar.
 
-This requires up to **2×3 + 1 = 7 inferences** per forecast request in the
-worst case (3 cutoffs × 2 engines, plus the final real forecast), instead of 1.
-TimesFM dominates that cost — its inference is far slower than Holt's closed-form
-fit on this project's hardware (see `scripts/download_and_benchmark_timesfm.py`'s
-latency benchmark, context=512, CPU, this repo's dev machine):
+A failed mini-backtest (e.g. a data-provider hiccup) is caught and logged, and
+`decide()` returns `None` (or a stale cached decision if one exists) rather
+than raising — the actual `/forecast` request that triggered it must not break
+just because the auto-discovery side-quest failed.
 
-| Engine | Horizon | p50 latency |
+The curated catalogs (`SEASONAL_FRED_CATALOG`, `DIVERSIFIED_ETF_CATALOG`) are
+checked FIRST and remain a fast, free shortcut for the series already measured
+in the original benchmark round — auto-discovery only runs for series outside
+both.
+
+### Measured cost
+
+A **new** series' first forecast request pays for 3 cutoffs × 2 engines = up
+to 6 backtests (each re-fetching data and running one inference), before the
+real forecast is even served. Measured on this repo's dev machine (CPU,
+`USE_REAL_TIMESFM=true`, real fetched data):
+
+| Series | Call | Latency |
 |---|---|---|
-| Damped Holt MLE | 30 | ~65 ms |
-| Damped Holt MLE | 60 | ~103 ms |
-| Damped Holt MLE | 90 | ~105 ms |
-| TimesFM 2.5 (200M, CPU) | 30 | ~349 ms |
-| TimesFM 2.5 (200M, CPU) | 60 | ~332 ms |
-| TimesFM 2.5 (200M, CPU) | 90 | ~349 ms |
+| JNJ (equity) | 1st (triggers mini-backtest) | ~4.3 s |
+| JNJ (equity) | 2nd (cached decision) | ~0.13 s |
+| IPG3344S (FRED, uncatalogued) | 1st (triggers mini-backtest) | ~3.4 s |
+| IPG3344S (FRED, uncatalogued) | 2nd (cached decision) | ~0.02 s |
+| XOM (equity) | 1st (triggers mini-backtest) | ~4.2 s |
 
-A single forecast request today costs one engine call: **~65-350 ms** depending
-on which engine `EngineSelector` picks. Under Variant B, assuming a short
-mini-backtest horizon (so TimesFM's mini-backtest calls cost close to its H=30
-number, ~350 ms each) and 3 cutoffs:
-
-- Mini-backtest phase: 3 × (Holt ~65 ms + TimesFM ~350 ms) ≈ **1.25 s**
-- Final real forecast: whichever engine won, ~65-350 ms
-- **Total: ~1.3-1.6 s per forecast request**, vs ~0.07-0.35 s today —
-  roughly **4-20x slower**, entirely dominated by TimesFM's per-call cost on CPU
-  (a GPU deployment would shrink this gap substantially, per the
-  `Dockerfile.timesfm` CUDA build, but this project doesn't run on GPU by default).
-
-Whether that's acceptable depends on how forecasts are consumed: a single
-on-demand `/forecast` call in the UI can likely absorb ~1.5s; a batch job
-scoring hundreds of thesis tickers per run would multiply that into minutes.
-This tradeoff — universal, self-adapting per-series accuracy vs. a ~5-20x
-latency cost concentrated in TimesFM's own inference time — is the deciding
-factor for a future phase, not something to resolve preemptively here.
-
-### Possible mitigations if this is built later
-
-- Cache the per-series engine choice (not the forecast itself) for some TTL,
-  so the mini-backtest only re-runs periodically per series instead of on
-  every request — trades staleness for latency, the same tradeoff Variant A
-  already makes, just on a shorter cycle.
-- Run the mini-backtest asynchronously/in the background after serving a fast
-  default-engine forecast immediately, then only apply the "better" engine's
-  choice on the *next* request for that series (accepts one stale request
-  per series instead of paying the cost synchronously every time).
-- Only trigger the mini-backtest for series outside both curated catalogs
-  (i.e. keep Variant A's cheap path for known categories, and use Variant B's
-  expensive path only as a fallback for genuinely novel series) — a hybrid
-  that keeps the common case cheap.
+So: **~3-20x slower on the first request for a genuinely new series**, back to
+normal (a single engine call, same as before this feature) on every request
+after — this matches the "mitigation" this section originally proposed before
+implementation (cache the decision, not the forecast; only trigger the
+expensive path for series outside the cheap catalogs) rather than the more
+elaborate async/background variant, which was judged unnecessary complexity
+for a cost this localized (one slow request per series, ever, per TTL window).
 
 ## General architecture
 
