@@ -782,7 +782,32 @@ _GEMINI_CLI_AUTH_PATTERNS = (
     "not running in a trusted directory",
     "please sign in",
     "not authenticated",
+    # Account-level rejection by Google, not a session problem — see
+    # _GEMINI_CLI_INELIGIBLE_RE below.
+    "ineligibletiererror",
 )
+
+# Real stderr observed on 2026-09-24 with Gemini CLI 0.61.0 and a freshly
+# logged-in personal Google account (exit code 1):
+#   An unexpected critical error occurred:IneligibleTierError: This client is
+#   no longer supported for Gemini Code Assist for individuals. To continue
+#   using Gemini, please migrate to the Antigravity suite of products: ...
+# (with `reasonCode: 'UNSUPPORTED_CLIENT'`, `tierId: 'free-tier'`). Google
+# refuses the account itself: re-logging in does not help, so it gets its own
+# message instead of the generic "your session expired" one.
+_GEMINI_CLI_INELIGIBLE_RE = re.compile(r"IneligibleTierError:\s*([^\n]+)")
+_GEMINI_CLI_CRITICAL_RE = re.compile(r"An unexpected critical error occurred:\s*([^\n]+)")
+
+
+def _gemini_cli_stderr_summary(stderr: str) -> Optional[str]:
+    """The one stderr line that says why the CLI died. Its stderr is mostly
+    startup/debug noise, so without this a failure surfaces only as "salió
+    con código 1", hiding the actual cause."""
+    match = _GEMINI_CLI_CRITICAL_RE.search(stderr or "")
+    if match:
+        return match.group(1).strip()
+    error_lines = [line.strip() for line in (stderr or "").splitlines() if "error" in line.lower()]
+    return error_lines[-1][:300] if error_lines else None
 
 
 def _unwrap_retries_exhausted(exc: Exception) -> Exception:
@@ -825,12 +850,19 @@ def _gemini_cli_error_message(exc: CliProcessError, category: FallbackCategory) 
     deliberately different from GeminiLLMClient's .env-focused message, since
     telling a CLI-session user to "check your .env" would send them looking
     in the wrong place entirely."""
+    ineligible = _GEMINI_CLI_INELIGIBLE_RE.search(exc.stderr or "")
+    if ineligible:
+        return (
+            "Google rechazó tu cuenta para Gemini CLI (no es un problema de sesión: "
+            f"volver a loguearte no lo arregla). Mensaje de Google: {ineligible.group(1).strip()}"
+        )
     if category == "auth_or_config":
         return (
             "Tu sesión de Gemini CLI expiró o no iniciaste sesión. Corré `gemini` "
             "en una terminal y volvé a loguearte."
         )
-    return f"Gemini CLI falló: {exc}"
+    summary = _gemini_cli_stderr_summary(exc.stderr)
+    return f"Gemini CLI falló: {exc} — {summary}" if summary else f"Gemini CLI falló: {exc}"
 
 
 # Patterns for Claude CLI's usage-limit error. Anthropic's own product surfaces
