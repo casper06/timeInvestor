@@ -7,11 +7,15 @@ import { ExplainerPanel } from './ExplainerPanel';
 interface CorrelationHeatmapProps {
   activeTickers: TickerSuggestion[];
   activeMacro: MacroSuggestion[];
+  /** Notifies the parent of the latest successful matrix, so the exported
+   * report can include a one-line verdict summary of what was reviewed here. */
+  onResult?: (result: CorrelationMatrixResponse) => void;
 }
 
 export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
   activeTickers,
   activeMacro,
+  onResult,
 }) => {
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
   const [period, setPeriod] = useState<string>('2y');
@@ -36,6 +40,7 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
     try {
       const res = await fetchCorrelations(seriesIds, period);
       setData(res);
+      onResult?.(res);
     } catch (err) {
       // Previously swallowed silently (console.error only), leaving `data` at
       // its initial null forever — the header's "(0 activos)" count reads

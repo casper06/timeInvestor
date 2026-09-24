@@ -47,6 +47,9 @@ interface PortfolioRiskViewProps {
   suggestedTickers: TickerSuggestion[];
   isSyntheticActive?: boolean;
   onRefreshThesis?: () => void;
+  /** Notifies the parent of the latest optimization result, so the exported
+   * report can include a one-line verdict summary of what was reviewed here. */
+  onOptimizeResult?: (result: PortfolioOptimizeResponse) => void;
 }
 
 export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
@@ -54,6 +57,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
   suggestedTickers,
   isSyntheticActive = false,
   onRefreshThesis,
+  onOptimizeResult,
 }) => {
   // Initial tickers from active thesis or suggestions
   const initialTickers =
@@ -156,6 +160,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         risk_free_rate: riskFreeRate,
       });
       setOptResult(res);
+      onOptimizeResult?.(res);
       // If no risk run yet, auto-simulate risk on the optimal portfolio
       handleSimulateRisk(res.portfolios.max_sharpe.weights);
     } catch (err: any) {

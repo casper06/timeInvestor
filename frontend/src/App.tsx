@@ -37,6 +37,9 @@ import type {
   MacroSuggestion,
   ThesisDetailResponse,
   InterpretationResponse,
+  BacktestResponse,
+  CorrelationMatrixResponse,
+  PortfolioOptimizeResponse,
 } from './services/api';
 
 export const App: React.FC = () => {
@@ -54,6 +57,12 @@ export const App: React.FC = () => {
   const [activeTickers, setActiveTickers] = useState<TickerSuggestion[]>([]);
   const [activeMacro, setActiveMacro] = useState<MacroSuggestion[]>([]);
   const [activeThesisDetail, setActiveThesisDetail] = useState<ThesisDetailResponse | null>(null);
+
+  // Last-seen results per analysis tab, kept only for the exported report's
+  // one-line verdict summaries — never re-fetched or re-rendered here.
+  const [lastBacktest, setLastBacktest] = useState<BacktestResponse | null>(null);
+  const [lastCorrelation, setLastCorrelation] = useState<CorrelationMatrixResponse | null>(null);
+  const [lastPortfolioOptimization, setLastPortfolioOptimization] = useState<PortfolioOptimizeResponse | null>(null);
 
   // Time Series & Forecast State
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('NVDA');
@@ -304,6 +313,9 @@ export const App: React.FC = () => {
       interpretation: lastInterpretation,
       horizon,
       confidence,
+      lastBacktest,
+      lastCorrelation,
+      lastPortfolioOptimization,
     });
   };
 
@@ -458,6 +470,7 @@ export const App: React.FC = () => {
           <BacktestPanel
             seriesData={seriesData}
             activeSeriesId={selectedSeriesId}
+            onResult={setLastBacktest}
           />
         )}
 
@@ -468,6 +481,7 @@ export const App: React.FC = () => {
           <CorrelationHeatmap
             activeTickers={activeTickers}
             activeMacro={activeMacro}
+            onResult={setLastCorrelation}
           />
         )}
 
@@ -489,6 +503,7 @@ export const App: React.FC = () => {
             activeThesis={activeThesisDetail}
             suggestedTickers={activeTickers}
             isSyntheticActive={isSyntheticActive}
+            onOptimizeResult={setLastPortfolioOptimization}
           />
         )}
       </main>

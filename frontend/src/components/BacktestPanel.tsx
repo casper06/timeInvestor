@@ -22,9 +22,12 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 interface BacktestPanelProps {
   seriesData: TimeSeriesData | null;
   activeSeriesId: string;
+  /** Notifies the parent of the latest result, so the exported report can
+   * include a one-line verdict summary of what the user actually reviewed here. */
+  onResult?: (result: BacktestResponse) => void;
 }
 
-export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, activeSeriesId }) => {
+export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, activeSeriesId, onResult }) => {
   const [cutoffIndex, setCutoffIndex] = useState<number>(0);
   const [horizon, setHorizon] = useState<number>(60);
   const [loading, setLoading] = useState<boolean>(false);
@@ -50,6 +53,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
     try {
       const res = await runBacktest(activeSeriesId, selectedDate, horizon, 0.95);
       setResult(res);
+      onResult?.(res);
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : 'Error al ejecutar backtest');
