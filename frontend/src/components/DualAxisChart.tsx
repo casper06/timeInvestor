@@ -14,6 +14,7 @@ import { Line } from 'react-chartjs-2';
 import { GitCompare } from 'lucide-react';
 import { fetchMarketData, fetchMacroData } from '../services/api';
 import type { TimeSeriesData } from '../services/api';
+import { ExplainerPanel } from './ExplainerPanel';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -221,6 +222,26 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
           </button>
         </div>
       </div>
+
+      <ExplainerPanel>
+        <p>
+          <strong className="text-slate-200">¿Para qué sirve comparar dos series con escalas distintas?</strong> Un
+          ticker que cotiza en cientos de dólares y un índice macro que se mueve en unidades completamente distintas
+          (por ejemplo, un índice de producción industrial) no se pueden poner en el mismo eje sin que uno aplaste
+          visualmente al otro. Con un eje Y independiente para cada serie (o normalizando ambas a "Base 100" desde el
+          mismo punto de partida), podés comparar la <em>forma</em> de sus movimientos — sus tendencias, giros y
+          velocidad relativa — sin que la diferencia de escala numérica te distraiga.
+        </p>
+        <p>
+          <strong className="text-slate-200">Qué buscar visualmente:</strong> ¿las dos curvas suben y bajan juntas
+          (co-movimiento), o se despegan en algún tramo — una sigue subiendo mientras la otra se aplana o cae? Un
+          despegue sostenido puede señalar que la relación que asumías entre esa acción y ese indicador macro se está
+          debilitando o cambiando de régimen; una divergencia puntual y breve puede ser solo ruido de corto plazo. La
+          vista "Base 100 Sincronizada" es la más útil para este tipo de comparación visual directa; el modo de doble
+          eje independiente conserva las unidades originales de cada serie, útil cuando te importa el nivel absoluto y
+          no solo la forma relativa.
+        </p>
+      </ExplainerPanel>
 
       {/* Chart Area */}
       <div className="relative h-[380px] w-full">

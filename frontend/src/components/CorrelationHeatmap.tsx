@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Network, RefreshCw, Info } from 'lucide-react';
 import { fetchCorrelations } from '../services/api';
 import type { CorrelationMatrixResponse, TickerSuggestion, MacroSuggestion } from '../services/api';
+import { ExplainerPanel } from './ExplainerPanel';
 
 interface CorrelationHeatmapProps {
   activeTickers: TickerSuggestion[];
@@ -139,6 +140,33 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
           </button>
         </div>
       </div>
+
+      <ExplainerPanel>
+        <p>
+          <strong className="text-slate-200">Pearson vs Spearman:</strong> Pearson mide qué tan lineal es la relación
+          entre dos series — si una sube un 1%, ¿la otra tiende a subir (o bajar) siempre una proporción parecida? Es
+          sensible a valores extremos y asume que la relación es una línea recta. Spearman en cambio mide si las series
+          se mueven en el mismo sentido en términos de <em>ranking</em> (cuando una sube, ¿la otra tiende a subir,
+          aunque no sea en la misma proporción?) — es más robusto ante relaciones no lineales o outliers puntuales.
+          Cuando ambos coinciden, la relación es más confiable; cuando difieren mucho, vale la pena mirar los datos
+          crudos antes de sacar conclusiones.
+        </p>
+        <p>
+          <strong className="text-slate-200">¿Por qué importa que la cartera no esté toda correlacionada entre
+          sí?</strong> Si todos tus activos suben y bajan juntos (correlación alta y positiva), en la práctica tenés una
+          sola apuesta grande disfrazada de varias posiciones — cuando el escenario adverso llega, todo cae al mismo
+          tiempo y no hay nada que amortigüe la caída. Una cartera con activos poco correlacionados (o negativamente
+          correlacionados) diversifica de verdad: cuando algunos caen, otros pueden mantenerse o subir, suavizando el
+          resultado total. Esto es lo que en la jerga se llama "concentración de riesgo" cuando falta.
+        </p>
+        <p>
+          <strong className="text-slate-200">Cómo leer el rango -1 a +1:</strong> +1 significa que dos series se mueven
+          exactamente juntas en la misma dirección; -1 que se mueven exactamente en direcciones opuestas (una cobertura
+          perfecta); 0 significa que no hay relación lineal detectable entre ellas. En la práctica, valores por encima
+          de +0.7 u por debajo de -0.7 se consideran relaciones fuertes; entre -0.3 y +0.3 se consideran débiles o
+          prácticamente inexistentes.
+        </p>
+      </ExplainerPanel>
 
       {/* Heatmap Table */}
       <div className="overflow-x-auto">

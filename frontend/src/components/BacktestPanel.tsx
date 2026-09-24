@@ -15,6 +15,7 @@ import { Line } from 'react-chartjs-2';
 import { Play, RotateCcw, Award, CheckCircle, Sliders } from 'lucide-react';
 import { runBacktest } from '../services/api';
 import type { BacktestResponse, TimeSeriesData } from '../services/api';
+import { ExplainerPanel } from './ExplainerPanel';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -197,7 +198,44 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
             Corta la serie en una fecha pasada y comprueba si TimesFM habría anticipado lo que ocurrió después.
           </p>
         </div>
+      </div>
 
+      <ExplainerPanel>
+        <p>
+          <strong className="text-slate-200">¿Qué es "cortar la serie en una fecha pasada"?</strong> Elegís un día en el
+          pasado (la "fecha de corte") y le mostrás al modelo únicamente los datos anteriores a esa fecha, como si estuvieras
+          parado ahí y no supieras qué pasó después. El modelo genera una proyección hacia adelante, y esa proyección se
+          compara contra lo que <em>realmente</em> ocurrió (que ya conocemos, porque es historia). Es la única forma
+          honesta de medir qué tan bien hubiera funcionado el modelo — a diferencia de una proyección hacia el futuro real,
+          acá sabemos la respuesta correcta.
+        </p>
+        <p>
+          <strong className="text-slate-200">Acierto Direccional:</strong> de cada paso hacia adelante, ¿el modelo acertó
+          si el precio iba a subir o bajar (sin importar cuánto)? 50% es lo que lograría tirar una moneda al aire; por
+          encima de eso, el modelo está capturando algo real sobre la dirección del movimiento.
+        </p>
+        <p>
+          <strong className="text-slate-200">MAPE (Error Porcentual Absoluto Medio):</strong> en promedio, ¿por cuántos
+          por ciento se equivocó la proyección respecto al valor real? Un MAPE de 5% significa que, en promedio, la
+          proyección estuvo a un 5% de distancia del precio real en cada punto evaluado.
+        </p>
+        <p>
+          <strong className="text-slate-200">MAE (Error Medio Absoluto):</strong> lo mismo que el MAPE pero en las
+          unidades de la serie (dólares, puntos de índice) en vez de porcentaje — más fácil de interpretar cuando ya
+          conocés la escala típica del activo.
+        </p>
+        <p>
+          <strong className="text-slate-200">¿Qué significa el veredicto ("el modelo supera/no supera al Random
+          Walk")?</strong> El Random Walk (paseo aleatorio) es el benchmark más simple posible: "mañana el precio va a
+          ser igual al de hoy". Cualquier modelo serio tiene que superar a ese benchmark ingenuo para justificar su uso —
+          si no lo supera, la proyección no está agregando información real, y tomarla en serio como base para decidir
+          sería sobrestimar lo que el modelo realmente sabe sobre esa serie particular. Que el modelo supere al Random
+          Walk en un cutoff no garantiza que lo haga siempre, pero si ni siquiera le gana ahí, es una señal fuerte de que
+          conviene desconfiar de sus proyecciones para esa serie específica.
+        </p>
+      </ExplainerPanel>
+
+      <div className="flex justify-end border-b border-slate-800 pb-4">
         <div className="flex items-center flex-wrap gap-3 text-xs">
           {/* Horizon Selector */}
           <div className="flex items-center space-x-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1">
