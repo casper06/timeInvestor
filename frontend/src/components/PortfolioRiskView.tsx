@@ -38,6 +38,7 @@ import {
   type ThesisDetailResponse,
   updateThesis,
 } from '../services/api';
+import { ExplainerPanel } from './ExplainerPanel';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -46,6 +47,9 @@ interface PortfolioRiskViewProps {
   suggestedTickers: TickerSuggestion[];
   isSyntheticActive?: boolean;
   onRefreshThesis?: () => void;
+  /** Notifies the parent of the latest optimization result, so the exported
+   * report can include a one-line verdict summary of what was reviewed here. */
+  onOptimizeResult?: (result: PortfolioOptimizeResponse) => void;
 }
 
 export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
@@ -53,6 +57,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
   suggestedTickers,
   isSyntheticActive = false,
   onRefreshThesis,
+  onOptimizeResult,
 }) => {
   // Initial tickers from active thesis or suggestions
   const initialTickers =
@@ -155,6 +160,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         risk_free_rate: riskFreeRate,
       });
       setOptResult(res);
+      onOptimizeResult?.(res);
       // If no risk run yet, auto-simulate risk on the optimal portfolio
       handleSimulateRisk(res.portfolios.max_sharpe.weights);
     } catch (err: any) {
@@ -447,6 +453,56 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
       {/* SUBTAB 1: ALLOCATION & RISK MONTE CARLO                                   */}
       {/* ========================================================================= */}
       {activeSubTab === 'allocation_risk' && (
+        <div className="space-y-6">
+        <ExplainerPanel>
+          <p>
+            <strong className="text-slate-200">Sharpe Ratio:</strong> mide cuánto retorno extra (por encima de la tasa
+            libre de riesgo) obtenés por cada unidad de volatilidad que asumís. Un Sharpe más alto significa que la
+            cartera está siendo más eficiente en convertir riesgo en retorno — no que gane más en términos absolutos,
+            sino que gana más <em>por cada unidad de riesgo tomado</em>.
+          </p>
+          <p>
+            <strong className="text-slate-200">Max Drawdown:</strong> la peor caída que hubiera sufrido esta cartera
+            desde un pico hasta el valle siguiente, en el período histórico evaluado. Es la forma más directa de
+            responder "¿cuánto podría llegar a perder si entro en el peor momento posible?" — a diferencia de la
+            volatilidad (que es un promedio), el drawdown captura el escenario doloroso específico.
+          </p>
+          <p>
+            <strong className="text-slate-200">Ratio de Diversificación:</strong> compara el riesgo de la cartera
+            combinada contra la suma del riesgo de cada activo por separado. Un ratio alto (bien por encima de 1)
+            indica que los activos se compensan entre sí — la diversificación está funcionando de verdad. Un ratio
+            cercano a 1 indica que, aunque tengas varios tickers, en la práctica se mueven todos parecido y la
+            diversificación real es baja.
+          </p>
+          <p>
+            <strong className="text-slate-200">Shrinkage (δ*) y Número de Condición:</strong> ambos son indicadores de
+            qué tan confiable es la matriz de covarianza que se usó para optimizar la cartera (no de la cartera en sí).
+            Con pocos datos históricos o activos muy correlacionados entre sí, la matriz de covarianza "cruda" queda
+            estadísticamente inestable — el Número de Condición mide justamente eso: valores muy altos son señal de
+            datos poco confiables para optimizar sobre ellos tal cual. El Shrinkage (δ*) es la corrección que se le
+            aplica a esa matriz para hacerla más estable, "encogiéndola" hacia una versión más simple y menos ruidosa;
+            un δ* más alto significa que el ajuste tuvo que ser más agresivo porque los datos originales eran menos
+            confiables por sí solos.
+          </p>
+          <p>
+            <strong className="text-slate-200">VaR vs CVaR:</strong> el VaR (Value at Risk) al 95% responde "¿cuál es
+            la pérdida que, con 95% de confianza, no debería superarse en este horizonte?" — pero no dice nada sobre
+            qué tan mala puede ser esa pérdida en el 5% de casos restante. El CVaR (Conditional VaR, o Expected
+            Shortfall) sí lo hace: es el promedio de las pérdidas <em>dentro</em> de ese peor 5% de escenarios. Por eso
+            el CVaR siempre es igual o peor que el VaR al mismo nivel de confianza — es la pregunta de seguimiento
+            natural a "¿y si sí pasa lo malo, qué tan malo es en promedio?".
+          </p>
+          <p>
+            <strong className="text-slate-200">Block Bootstrap vs Gaussiano:</strong> el método Gaussiano asume que los
+            retornos siguen una distribución normal (campana simétrica, sin eventos extremos frecuentes) — es rápido de
+            calcular pero subestima sistemáticamente la probabilidad de caídas grandes, porque los mercados reales
+            tienen "colas gordas" (crashes más frecuentes de lo que una normal predeciría). El Block Bootstrap en
+            cambio remuestrea bloques de retornos históricos reales tal cual ocurrieron, preservando esas colas gordas
+            y la estructura de dependencia temporal (los días malos suelen agruparse) — es más lento de calcular pero
+            más realista para estimar el riesgo de eventos extremos.
+          </p>
+        </ExplainerPanel>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ========================================================================= */}
         {/* LEFT COLUMN: ALLOCATION & OPTIMIZATION (Col 7) */}
@@ -1005,6 +1061,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
             </div>
           )}
         </div>
+      </div>
       </div>
       )}
 

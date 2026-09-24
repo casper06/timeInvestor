@@ -8,7 +8,7 @@ from backend.schemas.models import (
     BacktestResponse,
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
-from backend.services.forecast_engine import get_forecast_engine
+from backend.services.forecast_engine import BaseForecastEngine, get_forecast_engine
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,16 @@ class BacktestEngine:
         horizon: int = 60,
         confidence: float = 0.95,
         is_macro: bool = False,
+        engine_override: Optional[BaseForecastEngine] = None,
     ) -> BacktestResponse:
+        """
+        `engine_override`: forces a specific engine instance instead of the
+        globally configured one (get_forecast_engine()) — used by
+        EngineSelector's per-series auto-discovery mini-backtest (see
+        backend/services/auto_discovery.py) to run Holt and TimesFM head-to-head
+        on the SAME train/test split, which get_forecast_engine()'s single
+        global choice can't do.
+        """
         # 1. Fetch full historical series
         clean_id = series_id.strip().upper()
         if is_macro or clean_id in FREDDataFetcher.SERIES_CATALOG:
@@ -60,7 +69,7 @@ class BacktestEngine:
         eval_horizon = len(actual_eval_points)
 
         # 3. Run forecast engine on training data
-        engine = get_forecast_engine()
+        engine = engine_override if engine_override is not None else get_forecast_engine()
         freq = "M" if data.type == "macro" else "D"
         forecast_res = engine.forecast(
             train_points,

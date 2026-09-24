@@ -65,3 +65,20 @@ class ResearchNoteModel(Base):
     created_at = Column(DateTime, default=get_utc_now, nullable=False)
 
     thesis = relationship("ThesisModel", back_populates="notes")
+
+
+class EngineDecisionModel(Base):
+    """
+    Caches EngineSelector's per-series auto-discovery decision (Holt vs TimesFM),
+    so the mini-backtest that produces it (see backend/services/auto_discovery.py)
+    only runs once per series per TTL window, not on every forecast request.
+    One row per series_id — "set" semantics (upsert), never appended history.
+    """
+    __tablename__ = "engine_decisions"
+
+    series_id = Column(String(50), primary_key=True)
+    engine_choice = Column(String(20), nullable=False)  # "holt" or "timesfm"
+    evaluated_at = Column(DateTime, default=get_utc_now, nullable=False)
+    mase_holt = Column(Float, nullable=False)
+    mase_timesfm = Column(Float, nullable=True)  # null if TimesFM was unavailable during evaluation
+    n_points_at_evaluation = Column(Integer, nullable=False)

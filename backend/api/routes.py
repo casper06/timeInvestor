@@ -142,7 +142,7 @@ def get_fundamentals_data(
         raise HTTPException(status_code=500, detail=f"Could not retrieve fundamentals: {str(e)}")
 
 @router.post("/forecast", response_model=ForecastResponse)
-def generate_forecast(payload: ForecastRequest):
+def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
     """
     Generates time series projection and confidence intervals.
     Returns TimesFM-compliant structure: { timestamps, values, lower_bound, upper_bound }.
@@ -155,6 +155,7 @@ def generate_forecast(payload: ForecastRequest):
             horizon=payload.horizon,
             confidence=payload.confidence,
             freq=payload.freq or "D",
+            db=db,
         )
         return result
     except Exception as e:

@@ -185,7 +185,17 @@ class RiskEngine:
         warning_msg = "El método gaussiano subestima sistemáticamente el riesgo de cola (kurtosis)."
         T, K = returns.shape
         mu_daily = np.mean(returns, axis=0)
-        Sigma_daily = np.cov(returns, rowvar=False)
+
+        # Ledoit-Wolf (2004) shrinkage, same estimator portfolio_engine.py uses
+        # for optimization — reused (not reimplemented) via PortfolioEngine.
+        # estimate_covariance() so both engines agree on what "the" covariance
+        # matrix for this asset set is, instead of this simulation using raw
+        # sample covariance while optimization uses the shrunk one. That method
+        # returns an ANNUALIZED matrix (x252); de-annualized back here since
+        # simulate_gaussian generates day-by-day shocks.
+        from backend.services.portfolio_engine import PortfolioEngine
+        Sigma_annual, _, _ = PortfolioEngine.estimate_covariance(returns, method="ledoit_wolf")
+        Sigma_daily = Sigma_annual / 252.0
 
         # Enforce PSD
         Sigma_psd = cls.ensure_psd(Sigma_daily, min_eigenval=1e-8)

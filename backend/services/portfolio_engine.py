@@ -193,7 +193,8 @@ class PortfolioEngine:
         Sigma: np.ndarray,
         max_weight: float = 0.35,
         rf: float = 0.045,
-        n_restarts: int = 10
+        n_restarts: int = 10,
+        seed: int = 42
     ) -> np.ndarray:
         """
         Finds the tangency (Max Sharpe) portfolio using SLSQP with multiple
@@ -213,7 +214,7 @@ class PortfolioEngine:
         bounds = [(0.0, effective_max_weight) for _ in range(K)]
         constraints = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}]
 
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(seed)
         best_w = None
         best_fun = float("inf")
 
@@ -355,7 +356,7 @@ class PortfolioEngine:
         # 4. Optimization Strategies
         # A. Max Sharpe
         w_sharpe = cls.optimize_max_sharpe(
-            mu, Sigma, max_weight=req.max_weight, rf=req.risk_free_rate
+            mu, Sigma, max_weight=req.max_weight, rf=req.risk_free_rate, seed=req.seed
         )
 
         # B. Risk Parity (Equal Risk Contribution)

@@ -35,13 +35,18 @@ Benchmark results (5 walk-forward cutoffs per series, real data, run 2026-09-22)
     default behavior (Holt), not a new category being added to a catalog, so it
     is left unchanged per the task's own instruction.
 
-See `docs/ARCHITECTURE.md` for Variant B (a real-time per-series mini-backtest
-that would replace these curated catalogs entirely) and its estimated latency
-cost, deliberately not implemented here.
+BEYOND THE CATALOGS: these curated catalogs only cover series tested by hand in
+the original benchmark round — any new series (e.g. one Gemini brings back that
+was never part of that round) used to silently fall through to the Holt default
+without ever being measured. `backend/services/auto_discovery.py`'s
+AutoDiscoveryEngine (Variant B, see docs/ARCHITECTURE.md) now runs a per-series
+mini-backtest for anything outside both catalogs with enough history, and
+caches the result in SQLite — see `select()`'s `db` parameter below.
 """
 
 import logging
 from typing import List, Optional
+from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.schemas.models import TimeSeriesPoint, ForecastResponse
@@ -64,6 +69,11 @@ DIVERSIFIED_ETF_CATALOG = {"SPY", "QQQ", "XLE", "XLK"}
 # docstring). This is only used to flag low confidence in fitted_params.
 LOW_CONFIDENCE_HISTORY_THRESHOLD = 90
 
+# Same threshold as auto_discovery.MIN_HISTORY_FOR_AUTODISCOVERY (imported
+# directly, not duplicated as a literal) — a series needs at least this many
+# points before a per-series mini-backtest produces a meaningful decision.
+AUTO_DISCOVERY_MIN_HISTORY = LOW_CONFIDENCE_HISTORY_THRESHOLD
+
 
 class EngineSelector:
     """Chooses a forecast engine for one specific series and reports why."""
@@ -76,12 +86,23 @@ class EngineSelector:
         horizon: int = 30,
         confidence: float = 0.95,
         freq: str = "D",
+        db: Optional[Session] = None,
     ) -> ForecastResponse:
         """Runs the appropriate engine for this series and returns its
         ForecastResponse with `engine_selection_reason` filled in.
 
         Callers pass the same `points` they'd pass to any BaseForecastEngine —
         this does not fetch data itself, it only decides which engine runs.
+
+        `db`: optional SQLAlchemy session. When provided AND the series isn't
+        in either curated catalog AND has enough history, this enables
+        Variant B auto-discovery (backend/services/auto_discovery.py) — a
+        per-series mini-backtest whose result is cached in SQLite instead of
+        silently falling through to the Holt default for any series that was
+        never part of the original benchmark round. Callers that don't pass
+        `db` (or pass None) simply skip auto-discovery and keep the old
+        catalog-only behavior — this keeps `db` optional rather than required,
+        since not every caller of EngineSelector has a session handy.
         """
         clean_id = (series_id or "").strip().upper()
         n_points = len(points)
@@ -113,6 +134,13 @@ class EngineSelector:
                 ),
             )
 
+        if db is not None and clean_id and n_points >= AUTO_DISCOVERY_MIN_HISTORY:
+            auto_result = EngineSelector._try_auto_discovery(
+                db, clean_id, series_type, points, n_points, horizon, confidence, freq,
+            )
+            if auto_result is not None:
+                return auto_result
+
         if n_points < LOW_CONFIDENCE_HISTORY_THRESHOLD:
             return EngineSelector._run_holt(
                 points,
@@ -137,6 +165,74 @@ class EngineSelector:
             freq=freq,
             reason="Acción individual, historia suficiente — Holt (default).",
         )
+
+    @staticmethod
+    def _try_auto_discovery(
+        db: Session,
+        clean_id: str,
+        series_type: Optional[str],
+        points: List[TimeSeriesPoint],
+        n_points: int,
+        horizon: int,
+        confidence: float,
+        freq: str,
+    ) -> Optional[ForecastResponse]:
+        """Consults (or triggers) Variant B auto-discovery for a series outside
+        both curated catalogs. Returns None if auto-discovery couldn't produce
+        a decision (e.g. the mini-backtest itself failed) — the caller then
+        falls through to the existing cold-start/default path unchanged."""
+        from backend.services.auto_discovery import AutoDiscoveryEngine
+
+        is_macro = series_type == "macro"
+        decision = AutoDiscoveryEngine.decide(db, clean_id, n_points, is_macro=is_macro)
+        if decision is None:
+            return None
+
+        if decision.engine_choice == "timesfm" and settings.USE_REAL_TIMESFM:
+            engine = TimesFMForecastEngine()
+            res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+            if not res.is_fallback:
+                res.engine_selection_reason = (
+                    f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: "
+                    f"TimesFM ganó MASE {decision.mase_timesfm:.3f} vs Holt "
+                    f"{decision.mase_holt:.3f} en un mini-backtest de esta serie puntual."
+                )
+                return res
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} — TimesFM había "
+                f"ganado MASE {decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}, pero "
+                f"TimesFM no está disponible ahora mismo — usando Holt como fallback transparente."
+            )
+            return res
+
+        engine = DampedHoltForecastEngine()
+        res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+        if decision.engine_choice == "timesfm":
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} — TimesFM había "
+                f"ganado MASE {decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}, pero "
+                f"USE_REAL_TIMESFM=false en este entorno — usando Holt como fallback transparente."
+            )
+        elif decision.mase_timesfm is not None and decision.mase_timesfm < decision.mase_holt:
+            # TimesFM actually had the lower (better) MASE but was disqualified by
+            # the calibration guard (its interval coverage was too far below
+            # Holt's) — saying "Holt ganó MASE" here would be literally false
+            # (mase_timesfm < mase_holt), so the reason must say what actually
+            # happened: TimesFM won on MASE alone, lost on calibration.
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: TimesFM tuvo mejor "
+                f"MASE ({decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}) pero su intervalo "
+                f"de confianza quedó mal calibrado en el mini-backtest — Holt (elegido por calibración, "
+                f"no porque haya ganado en MASE)."
+            )
+        else:
+            mase_tfm_str = f"{decision.mase_timesfm:.3f}" if decision.mase_timesfm is not None else "no evaluado"
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: Holt ganó MASE "
+                f"{decision.mase_holt:.3f} vs TimesFM {mase_tfm_str} en un mini-backtest de esta "
+                f"serie puntual — Holt (elegido por auto-evaluación, no por catálogo ni default)."
+            )
+        return res
 
     @staticmethod
     def _run_holt(

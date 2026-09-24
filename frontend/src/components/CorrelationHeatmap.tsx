@@ -2,20 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Network, RefreshCw, Info } from 'lucide-react';
 import { fetchCorrelations } from '../services/api';
 import type { CorrelationMatrixResponse, TickerSuggestion, MacroSuggestion } from '../services/api';
+import { ExplainerPanel } from './ExplainerPanel';
 
 interface CorrelationHeatmapProps {
   activeTickers: TickerSuggestion[];
   activeMacro: MacroSuggestion[];
+  /** Notifies the parent of the latest successful matrix, so the exported
+   * report can include a one-line verdict summary of what was reviewed here. */
+  onResult?: (result: CorrelationMatrixResponse) => void;
 }
 
 export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
   activeTickers,
   activeMacro,
+  onResult,
 }) => {
   const [method, setMethod] = useState<'pearson' | 'spearman'>('pearson');
   const [period, setPeriod] = useState<string>('2y');
   const [data, setData] = useState<CorrelationMatrixResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{
     row: string;
     col: string;
@@ -30,11 +36,20 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
   const loadCorrelations = async () => {
     if (seriesIds.length < 2) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetchCorrelations(seriesIds, period);
       setData(res);
+      onResult?.(res);
     } catch (err) {
+      // Previously swallowed silently (console.error only), leaving `data` at
+      // its initial null forever — the header's "(0 activos)" count reads
+      // from data?.series_ids, so a failed request looked IDENTICAL to an
+      // empty portfolio: no spinner, no error, just a permanent "0 activos"
+      // even with a full portfolio loaded in activeTickers/activeMacro.
       console.error('Error fetching correlations:', err);
+      setData(null);
+      setError(err instanceof Error ? err.message : 'Error al calcular la matriz de correlación');
     } finally {
       setLoading(false);
     }
@@ -73,7 +88,7 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
           <Network className="h-5 w-5 text-indigo-400" />
           <div>
             <h3 className="text-base font-bold text-white">
-              Matriz de Correlación Multiserie ({ids.length} activos)
+              Matriz de Correlación Multiserie ({data ? ids.length : seriesIds.length} activos)
             </h3>
             <p className="text-xs text-slate-400">
               Alineación temporal de series de mercado con indicadores macroeconómicos
@@ -131,6 +146,33 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
         </div>
       </div>
 
+      <ExplainerPanel>
+        <p>
+          <strong className="text-slate-200">Pearson vs Spearman:</strong> Pearson mide qué tan lineal es la relación
+          entre dos series — si una sube un 1%, ¿la otra tiende a subir (o bajar) siempre una proporción parecida? Es
+          sensible a valores extremos y asume que la relación es una línea recta. Spearman en cambio mide si las series
+          se mueven en el mismo sentido en términos de <em>ranking</em> (cuando una sube, ¿la otra tiende a subir,
+          aunque no sea en la misma proporción?) — es más robusto ante relaciones no lineales o outliers puntuales.
+          Cuando ambos coinciden, la relación es más confiable; cuando difieren mucho, vale la pena mirar los datos
+          crudos antes de sacar conclusiones.
+        </p>
+        <p>
+          <strong className="text-slate-200">¿Por qué importa que la cartera no esté toda correlacionada entre
+          sí?</strong> Si todos tus activos suben y bajan juntos (correlación alta y positiva), en la práctica tenés una
+          sola apuesta grande disfrazada de varias posiciones — cuando el escenario adverso llega, todo cae al mismo
+          tiempo y no hay nada que amortigüe la caída. Una cartera con activos poco correlacionados (o negativamente
+          correlacionados) diversifica de verdad: cuando algunos caen, otros pueden mantenerse o subir, suavizando el
+          resultado total. Esto es lo que en la jerga se llama "concentración de riesgo" cuando falta.
+        </p>
+        <p>
+          <strong className="text-slate-200">Cómo leer el rango -1 a +1:</strong> +1 significa que dos series se mueven
+          exactamente juntas en la misma dirección; -1 que se mueven exactamente en direcciones opuestas (una cobertura
+          perfecta); 0 significa que no hay relación lineal detectable entre ellas. En la práctica, valores por encima
+          de +0.7 u por debajo de -0.7 se consideran relaciones fuertes; entre -0.3 y +0.3 se consideran débiles o
+          prácticamente inexistentes.
+        </p>
+      </ExplainerPanel>
+
       {/* Heatmap Table */}
       <div className="overflow-x-auto">
         {loading && (
@@ -139,7 +181,14 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
           </div>
         )}
 
-        {!loading && matrix && (
+        {!loading && error && (
+          <div className="py-8 text-center text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4">
+            <strong className="block mb-1">No se pudo calcular la matriz de correlación</strong>
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && matrix && (
           <table className="w-full text-xs font-mono border-collapse">
             <thead>
               <tr>
