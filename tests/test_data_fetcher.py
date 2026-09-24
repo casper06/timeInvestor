@@ -101,3 +101,61 @@ def test_fred_metadata_passes_through_real_title_and_notes(monkeypatch):
     assert metadata["series_id"] == "IPG2211A2N"
     assert metadata["title"] == fake_payload["seriess"][0]["title"]
     assert metadata["notes"] == fake_payload["seriess"][0]["notes"]
+
+
+def test_fred_get_series_requests_most_recent_observations(monkeypatch):
+    """
+    Root cause of the "0 activos" correlation bug: get_series() previously
+    queried FRED with sort_order=asc + limit=500, which for a long-running
+    series (e.g. INDPRO, live since 1919) returns the OLDEST 500 points —
+    ending in 1960 — instead of the most recent ones. Aligned against any
+    modern equity series, that produces zero overlapping dates.
+
+    Must now request sort_order=desc (the N most recent observations) and
+    return them re-sorted back to ascending chronological order.
+    """
+    import httpx as httpx_module
+    from backend.config import settings
+
+    monkeypatch.setattr(settings, "FRED_API_KEY", "fake-test-key")
+
+    # Simulate FRED's real desc-sorted response: most recent observations first.
+    fake_payload = {
+        "observations": [
+            {"date": "2026-08-01", "value": "150.0"},
+            {"date": "2026-07-01", "value": "149.0"},
+            {"date": "2026-06-01", "value": "148.0"},
+        ]
+    }
+
+    captured_params = {}
+
+    class FakeResponse:
+        status_code = 200
+        def json(self):
+            return fake_payload
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def get(self, url, params=None):
+            captured_params.update(params)
+            return FakeResponse()
+
+    monkeypatch.setattr(httpx_module, "Client", FakeClient)
+
+    fetcher = FREDDataFetcher()
+    series = fetcher.get_series("INDPRO")
+
+    assert captured_params["sort_order"] == "desc", (
+        "get_series() must request sort_order=desc to get the MOST RECENT "
+        "observations, not the oldest ones from decades ago"
+    )
+    # Points must come back in ascending chronological order regardless of the
+    # descending order FRED returned them in.
+    assert [p.timestamp for p in series.points] == ["2026-06-01", "2026-07-01", "2026-08-01"]
+    assert [p.value for p in series.points] == [148.0, 149.0, 150.0]

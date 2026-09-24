@@ -316,7 +316,15 @@ class FREDDataFetcher:
                     "series_id": series_id,
                     "api_key": self.api_key,
                     "file_type": "json",
-                    "sort_order": "asc",
+                    # "desc" + limit returns the N MOST RECENT observations. Long-running
+                    # series like INDPRO (starts 1919) or DGS10 (starts 1962) would
+                    # otherwise return the OLDEST `limit` points with "asc" + limit —
+                    # e.g. INDPRO's first 500 observations end in 1960, decades before
+                    # any equity series this gets correlated/backtested against, silently
+                    # producing zero overlapping dates. Reversed back to ascending order
+                    # below, since every caller (correlation alignment, backtest train/test
+                    # split) expects chronological order.
+                    "sort_order": "desc",
                     "limit": limit
                 }
                 with httpx.Client(timeout=10.0) as client:
@@ -335,6 +343,7 @@ class FREDDataFetcher:
                                     ))
                                 except ValueError:
                                     continue
+                        points.reverse()
                         if points:
                             catalog_entry = self.SERIES_CATALOG.get(series_id, {})
                             series_data = TimeSeriesData(

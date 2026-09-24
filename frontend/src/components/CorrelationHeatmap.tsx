@@ -16,6 +16,7 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
   const [period, setPeriod] = useState<string>('2y');
   const [data, setData] = useState<CorrelationMatrixResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{
     row: string;
     col: string;
@@ -30,11 +31,19 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
   const loadCorrelations = async () => {
     if (seriesIds.length < 2) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetchCorrelations(seriesIds, period);
       setData(res);
     } catch (err) {
+      // Previously swallowed silently (console.error only), leaving `data` at
+      // its initial null forever — the header's "(0 activos)" count reads
+      // from data?.series_ids, so a failed request looked IDENTICAL to an
+      // empty portfolio: no spinner, no error, just a permanent "0 activos"
+      // even with a full portfolio loaded in activeTickers/activeMacro.
       console.error('Error fetching correlations:', err);
+      setData(null);
+      setError(err instanceof Error ? err.message : 'Error al calcular la matriz de correlación');
     } finally {
       setLoading(false);
     }
@@ -73,7 +82,7 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
           <Network className="h-5 w-5 text-indigo-400" />
           <div>
             <h3 className="text-base font-bold text-white">
-              Matriz de Correlación Multiserie ({ids.length} activos)
+              Matriz de Correlación Multiserie ({data ? ids.length : seriesIds.length} activos)
             </h3>
             <p className="text-xs text-slate-400">
               Alineación temporal de series de mercado con indicadores macroeconómicos
@@ -139,7 +148,14 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
           </div>
         )}
 
-        {!loading && matrix && (
+        {!loading && error && (
+          <div className="py-8 text-center text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4">
+            <strong className="block mb-1">No se pudo calcular la matriz de correlación</strong>
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && matrix && (
           <table className="w-full text-xs font-mono border-collapse">
             <thead>
               <tr>
