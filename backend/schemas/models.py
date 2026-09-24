@@ -103,10 +103,19 @@ class InterpretationResponse(BaseModel):
     fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
     fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "content_filtered", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient), si requiere intervención (auth_or_config), o si el proveedor bloqueó la respuesta por su filtro de contenido (content_filtered — no se arregla ni esperando ni reconfigurando). None si mock fue elegido explícitamente (sin fallback_reason)")
 
+ENGINE_MODE_PER_SERIES = "per_series_auto_selection"
+FORECAST_ENGINE_PER_SERIES_NOTICE = "variable (per-series, ver engine_selection_reason en cada forecast)"
+
 class HealthResponse(BaseModel):
     status: str
     llm_provider: str
-    forecast_engine: str
+    # EngineSelector decides Holt vs TimesFM per series, so there is no single
+    # engine to name here. forecast_engine is kept only for existing consumers,
+    # with an honest value instead of a specific engine name.
+    engine_mode: str = ENGINE_MODE_PER_SERIES
+    forecast_engine: str = FORECAST_ENGINE_PER_SERIES_NOTICE
+    # Whether TimesFM is enabled as an OPTION for EngineSelector — not whether
+    # it is being used for any particular series.
     use_real_timesfm: bool = False
     has_gemini_key: bool
     has_fred_key: bool

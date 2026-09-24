@@ -331,22 +331,27 @@ def test_classify_fallback_category_distinguishes_rate_limit_from_auth(monkeypat
     assert classify_fallback_category(ValueError("something unexpected")) == "unknown"
 
 
-def test_health_reports_actual_forecast_engine(monkeypatch):
+def test_health_does_not_claim_single_global_engine(monkeypatch):
     """
-    Verifies /api/health returns the active forecast engine's real model_name
-    (e.g. 'damped-holt-mle'), not a stale hardcoded 'mock' string left over
-    from before StatisticalMockForecastEngine was renamed to DampedHoltForecastEngine.
+    /forecast routes every series through EngineSelector (Holt or TimesFM per
+    series), so /api/health must describe the selection mode — never name one
+    specific engine as if it were what the dashboard is using. Checked with
+    TimesFM both enabled and disabled: neither may leak an engine name.
     """
     from fastapi.testclient import TestClient
     from backend.main import app
     from backend.config import settings
 
-    monkeypatch.setattr(settings, "FORECAST_ENGINE", "mock")
-    monkeypatch.setattr(settings, "USE_REAL_TIMESFM", False)
-
     test_client = TestClient(app)
-    resp = test_client.get("/api/health")
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert data["forecast_engine"] == "damped-holt-mle"
-    assert data["forecast_engine"] != "mock"
+
+    for use_real in (True, False):
+        monkeypatch.setattr(settings, "USE_REAL_TIMESFM", use_real)
+        resp = test_client.get("/api/health")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["engine_mode"] == "per_series_auto_selection"
+        assert data["use_real_timesfm"] is use_real
+        # Legacy field kept for compatibility, but no longer names an engine.
+        assert data["forecast_engine"].startswith("variable")
+        for engine_name in ("timesfm-2.5", "damped-holt-mle", "mock"):
+            assert engine_name not in data["forecast_engine"]

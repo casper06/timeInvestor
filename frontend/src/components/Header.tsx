@@ -185,7 +185,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Quick Engine Badges on the right of tabs */}
           <div className="flex items-center space-x-2 text-[11px] text-slate-400 py-1 shrink-0">
-            <span className="hidden lg:flex items-center gap-1">
+            <span
+              className="hidden lg:flex items-center gap-1"
+              title="Si TimesFM está habilitado como opción. El motor de cada serie (Holt o TimesFM) lo elige el selector por serie — ver el motor en cada proyección."
+            >
               <Cpu className="h-3 w-3 text-cyan-400" />
               TimesFM {health?.use_real_timesfm ? 'PyTorch Real' : 'Mock v1'}
             </span>
