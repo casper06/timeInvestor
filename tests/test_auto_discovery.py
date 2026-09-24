@@ -141,6 +141,41 @@ def test_mini_backtest_failure_does_not_break_the_forecast(db_session, monkeypat
     assert AutoDiscoveryEngine.get_cached_decision(db_session, "BROKENTICKER") is None
 
 
+def test_engine_selector_reason_reflects_calibration_disqualification(db_session):
+    """
+    Regression test for a real bug found via manual UI testing: when TimesFM
+    has the LOWER (better) MASE but is disqualified by the coverage-calibration
+    guard (see auto_discovery.MAX_ACCEPTABLE_COVERAGE_GAP_PP), engine_choice is
+    correctly "holt" — but the reason text must say TimesFM actually won on
+    MASE and lost on calibration, NOT "Holt ganó MASE X vs TimesFM Y" (which
+    would be literally false when Y < X, i.e. TimesFM's MASE was better).
+    """
+    from backend.services.engine_selector import EngineSelector
+
+    decision = EngineDecisionModel(
+        series_id="CEG",
+        engine_choice="holt",  # correctly disqualified by calibration guard
+        mase_holt=5.477,
+        mase_timesfm=4.237,  # BETTER than Holt's — this is the bug trigger
+        n_points_at_evaluation=170,
+    )
+    db_session.add(decision)
+    db_session.commit()
+
+    points = [TimeSeriesPoint(timestamp=f"2020-{(i // 28) % 12 + 1:02d}-{i % 28 + 1:02d}", value=100.0 + i * 0.3) for i in range(200)]
+    res = EngineSelector._try_auto_discovery(
+        db_session, "CEG", "equity", points, len(points), horizon=10, confidence=0.95, freq="D",
+    )
+
+    assert res is not None
+    assert res.model_name == "damped-holt-mle"
+    assert "Holt ganó MASE" not in res.engine_selection_reason, (
+        "must not claim Holt won on MASE when TimesFM's MASE (4.237) was actually lower than Holt's (5.477)"
+    )
+    assert "TimesFM tuvo mejor MASE" in res.engine_selection_reason
+    assert "calibra" in res.engine_selection_reason.lower()
+
+
 def test_engine_selector_falls_through_to_default_when_autodiscovery_unavailable(monkeypatch):
     """End-to-end: EngineSelector.select() with a db session, for a series
     outside both curated catalogs, where the mini-backtest fails — must still

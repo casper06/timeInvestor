@@ -213,6 +213,18 @@ class EngineSelector:
                 f"ganado MASE {decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}, pero "
                 f"USE_REAL_TIMESFM=false en este entorno — usando Holt como fallback transparente."
             )
+        elif decision.mase_timesfm is not None and decision.mase_timesfm < decision.mase_holt:
+            # TimesFM actually had the lower (better) MASE but was disqualified by
+            # the calibration guard (its interval coverage was too far below
+            # Holt's) — saying "Holt ganó MASE" here would be literally false
+            # (mase_timesfm < mase_holt), so the reason must say what actually
+            # happened: TimesFM won on MASE alone, lost on calibration.
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: TimesFM tuvo mejor "
+                f"MASE ({decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}) pero su intervalo "
+                f"de confianza quedó mal calibrado en el mini-backtest — Holt (elegido por calibración, "
+                f"no porque haya ganado en MASE)."
+            )
         else:
             mase_tfm_str = f"{decision.mase_timesfm:.3f}" if decision.mase_timesfm is not None else "no evaluado"
             res.engine_selection_reason = (
