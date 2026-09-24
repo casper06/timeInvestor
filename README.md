@@ -89,8 +89,93 @@ FRED en "Serie Activa:".
 
 ## Mensajes de fallback accionables
 
-Cuando el LLM configurado (Gemini/OpenAI/Ollama) falla y el sistema cae al
-motor heurístico local, la respuesta incluye `fallback_category`
-(`rate_limit` / `transient` / `auth_or_config` / `unknown`), para que el
-usuario sepa si conviene esperar o si necesita revisar su configuración —
-mostrado en el tooltip del badge de proveedor LLM en el frontend.
+Cuando el LLM configurado falla y el sistema cae al motor heurístico local, la
+respuesta incluye `fallback_category` (`rate_limit` / `transient` /
+`auth_or_config` / `content_filtered` / `unknown`), para que el usuario sepa
+si conviene esperar, si necesita revisar su configuración, o si Gemini bloqueó
+la respuesta por su filtro de contenido (este último caso no se arregla ni
+esperando ni reconfigurando — hay que reformular la tesis) — mostrado en el
+tooltip del badge de proveedor LLM en el frontend.
+
+## Proveedores LLM por suscripción (Gemini CLI / Claude Code CLI)
+
+La API key gratuita de Gemini (250 req/día, 10 RPM) puede quedarse corta para
+uso real, y habilitar facturación de API por separado —para Gemini o para
+Claude— no siempre es lo que querés. Ambos proveedores oficiales tienen un CLI
+que se autentica con tu **sesión de suscripción** (Google AI Pro / Claude
+Pro-Max) en vez de una API key facturada por uso. `GeminiCliLLMClient` y
+`ClaudeCliLLMClient` (`backend/services/llm_router.py`) usan esos CLIs — son
+proveedores **nuevos**, no reemplazan a `GeminiLLMClient` (API key) ni a
+`MockLLMClient`, que siguen disponibles.
+
+### Instalación (una vez, herramientas de Node — no forman parte de `pip install`)
+
+```bash
+npm install -g @google/gemini-cli
+npm install -g @anthropic-ai/claude-code
+```
+
+### Login (manual, interactivo, una sola vez por máquina — no lo automatices)
+
+```bash
+gemini   # elegí "Sign in with Google" y segui el flujo en el navegador
+claude   # si Claude Code ya lo usás interactivamente en esta máquina, ya estás logueado
+```
+
+Las credenciales quedan cacheadas localmente:
+- Gemini CLI: `~/.gemini/oauth_creds.json` (confirmado leyendo el código fuente
+  instalado del paquete — `Storage.getGlobalGeminiDir()` en
+  `@google/gemini-cli`). Borrar ese archivo fuerza un nuevo login.
+- Claude Code CLI: usa el mismo mecanismo de sesión que Claude Code interactivo
+  ya tiene guardado en esta máquina — si `claude --version` ya funciona sin
+  pedir login, ya estás autenticado.
+
+### Activar cada uno
+
+```bash
+# En tu .env
+LLM_PROVIDER=gemini_cli
+# o
+LLM_PROVIDER=claude_cli
+CLAUDE_CLI_MODEL=haiku   # o "sonnet" para mejor calidad a costa de más cupo compartido
+```
+
+Ninguno de los dos es el default en `.env.example` — ambos requieren
+instalación y login manual primero. Si el binario correspondiente no está
+instalado o no hay sesión iniciada, el sistema degrada a `MockLLMClient` con
+la razón específica (`fallback_category="auth_or_config"`), nunca crashea el
+servidor al arrancar.
+
+### ⚠️ Diferencia importante de cuota — leé esto antes de elegir uno
+
+|  | Gemini CLI | Claude Code CLI |
+|---|---|---|
+| Cuota | **Independiente** de cualquier otro uso de Gemini (API key, AI Studio) | **Compartida** con TODO el resto de tu uso de Claude |
+| Límite (Google AI Pro) | ~1000 req/día, 60 RPM | Ventana rodante de 5 horas + tope semanal |
+| Qué más consume la misma cuota | Nada — es un cupo aparte | Claude Code interactivo, chat de claude.ai, cualquier otra sesión de Claude en tu cuenta |
+
+**Esto cambia cuándo conviene usar cada uno.** `gemini_cli` es seguro de dejar
+prendido de forma continua: no le quita cupo a nada más. `claude_cli` en
+cambio gasta del mismo cupo que estás usando ahora mismo para trabajar con
+Claude Code — cada tesis que este proyecto analiza con `claude_cli` es una
+llamada menos de cupo disponible para tu sesión interactiva. Preferí
+`gemini_cli` como default razonable, y reservá `claude_cli` para cuando
+específicamente querés la calidad de Claude y sabés que tenés cupo de sobra.
+
+### Solo para uso local — no funciona en la imagen Docker
+
+Ambos requieren el login interactivo por navegador la primera vez. La imagen
+Docker (`Dockerfile`/`docker-compose.yml`) corre headless, sin navegador ni
+sesión de usuario — no hay forma limpia de hacer ese login ahí. Si corrés en
+Docker, seguí usando `GeminiLLMClient` (API key) o `MockLLMClient`. Esta
+limitación queda anotada como conocida, no resuelta en esta ronda.
+
+### Costo de Claude CLI (no es facturación — es visibilidad de cupo)
+
+Cada respuesta de `claude -p ... --output-format json` incluye un
+`total_cost_usd` equivalente (lo que hubiera costado como API pagada, aunque
+acá corre por suscripción). `ClaudeCliLLMClient` acumula ese valor por día y
+modelo en SQLite (tabla `claude_cli_usage`) y lo loguea — es la única forma de
+ver cuánto de tu cupo compartido de 5h/semanal está gastando esta
+funcionalidad específicamente, ya que esa cuota no es visible desde ningún
+otro lado del proyecto.

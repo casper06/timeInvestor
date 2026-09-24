@@ -82,3 +82,22 @@ class EngineDecisionModel(Base):
     mase_holt = Column(Float, nullable=False)
     mase_timesfm = Column(Float, nullable=True)  # null if TimesFM was unavailable during evaluation
     n_points_at_evaluation = Column(Integer, nullable=False)
+
+
+class ClaudeCliUsageModel(Base):
+    """
+    Tracks Claude Code CLI usage (backend/services/llm_router.py's
+    ClaudeCliLLMClient) per day per model. Not for billing — Claude CLI runs on
+    the user's Pro/Max SUBSCRIPTION, not pay-per-use — but total_cost_usd is
+    the only signal available anywhere for how much of the user's SHARED
+    5-hour/weekly Claude usage window this feature is consuming, since that
+    quota isn't visible from any other part of this project. One row per
+    (usage_date, model) pair, incremented across calls that day.
+    """
+    __tablename__ = "claude_cli_usage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    usage_date = Column(String(10), nullable=False)  # ISO date, e.g. "2026-09-24"
+    model = Column(String(50), nullable=False)
+    call_count = Column(Integer, default=0, nullable=False)
+    total_cost_usd = Column(Float, default=0.0, nullable=False)

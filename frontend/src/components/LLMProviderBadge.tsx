@@ -24,6 +24,8 @@ const describeFallbackCategory = (category: FallbackCategory | null | undefined,
       return 'Falla temporal del servicio. Reintentá la consulta.';
     case 'auth_or_config':
       return 'Problema de configuración (clave inválida o modelo no disponible). Esto no se arregla esperando — revisá tu .env o los logs del servidor.';
+    case 'content_filtered':
+      return 'Gemini bloqueó esta respuesta por su filtro de contenido. Probá reformular la tesis; esto no es un problema de cuota ni de configuración.';
     default:
       return rawReason;
   }
