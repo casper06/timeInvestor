@@ -188,7 +188,10 @@ describe('ForecastChart — "Serie Activa" selector', () => {
         hasFredKey={true}
       />
     );
-    const ipgTab = screen.getByRole('button', { name: /IPG2211N/ });
+    // Exact match: with hasFredKey=true, FredInfoTooltip also renders a button
+    // whose aria-label contains "IPG2211N" ("Información de la serie FRED
+    // IPG2211N") — the tab button's accessible name is the ticker alone.
+    const ipgTab = screen.getByRole('button', { name: 'IPG2211N' });
     expect(ipgTab.title).toBe('');
   });
 });
