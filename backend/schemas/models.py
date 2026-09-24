@@ -254,6 +254,7 @@ class PortfolioOptimizeRequest(BaseModel):
     forecast_horizon: int = Field(default=30, ge=5, le=365, description="Horizon in days for forecast-based expected return")
     max_weight: float = Field(default=0.35, ge=0.05, le=1.0, description="Maximum allocation per asset")
     risk_free_rate: float = Field(default=0.045, ge=0.0, le=0.20, description="Annual risk-free rate")
+    seed: int = Field(default=42, description="Random seed for the Max Sharpe multi-start optimizer's Dirichlet restarts — fixed by default for reproducible results, overridable for sensitivity analysis")
 
 
 class PortfolioAllocationSummary(BaseModel):
