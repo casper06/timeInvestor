@@ -30,7 +30,7 @@ export interface MacroSuggestion {
   expected_correlation: string;
 }
 
-export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'unknown';
+export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'content_filtered' | 'unknown';
 
 export interface ThesisResponse {
   thesis: string;
