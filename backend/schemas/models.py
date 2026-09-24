@@ -112,6 +112,33 @@ class HealthResponse(BaseModel):
     has_fred_key: bool
     has_openai_key: bool
 
+# Runtime LLM provider selector (Header dropdown). The switch is IN MEMORY
+# ONLY — never written to .env; a server restart goes back to the .env value.
+RUNTIME_ONLY_NOTICE = "Válido hasta el próximo reinicio del server. Para dejarlo fijo, editá LLM_PROVIDER en tu .env."
+
+class LLMProviderOption(BaseModel):
+    id: str
+    label: str
+    available: bool
+    reason: Optional[str] = None
+    note: Optional[str] = None
+
+class LLMProvidersResponse(BaseModel):
+    active: str
+    env_default: str
+    persisted: bool = False
+    notice: str = RUNTIME_ONLY_NOTICE
+    providers: List[LLMProviderOption]
+
+class LLMProviderSwitchRequest(BaseModel):
+    provider: str
+
+class LLMProviderSwitchResponse(BaseModel):
+    active: str
+    previous: str
+    persisted: bool = False
+    notice: str = RUNTIME_ONLY_NOTICE
+
 # ----------------- FASE 2: PERSISTENCIA, BACKTEST Y CORRELACIÓN -----------------
 
 class ResearchNoteCreateRequest(BaseModel):

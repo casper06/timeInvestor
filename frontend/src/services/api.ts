@@ -109,6 +109,49 @@ export async function checkHealth(): Promise<HealthResponse> {
   return res.json();
 }
 
+export interface LLMProviderOption {
+  id: string;
+  label: string;
+  available: boolean;
+  reason?: string | null;
+  note?: string | null;
+}
+
+export interface LLMProvidersResponse {
+  active: string;
+  env_default: string;
+  persisted: boolean;
+  notice: string;
+  providers: LLMProviderOption[];
+}
+
+export interface LLMProviderSwitchResponse {
+  active: string;
+  previous: string;
+  persisted: boolean;
+  notice: string;
+}
+
+export async function fetchLLMProviders(): Promise<LLMProvidersResponse> {
+  const res = await fetch(`${API_BASE}/config/llm-providers`);
+  if (!res.ok) throw new Error(`No se pudo obtener la lista de proveedores LLM: ${res.statusText}`);
+  return res.json();
+}
+
+/** Switches the active LLM provider in the server's memory only — never written to .env. */
+export async function switchLLMProvider(provider: string): Promise<LLMProviderSwitchResponse> {
+  const res = await fetch(`${API_BASE}/config/llm-provider`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'No se pudo cambiar el proveedor LLM');
+  }
+  return res.json();
+}
+
 export async function analyzeThesis(thesis: string, options?: { forceMock?: boolean }): Promise<ThesisResponse> {
   const query = options?.forceMock ? '?force_mock=true' : '';
   const res = await fetch(`${API_BASE}/thesis${query}`, {

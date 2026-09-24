@@ -12,6 +12,7 @@ import {
   PieChart,
 } from 'lucide-react';
 import type { HealthResponse } from '../services/api';
+import { LLMProviderSelector } from './LLMProviderSelector';
 
 export type DashboardView = 'forecast' | 'backtest' | 'correlation' | 'dual' | 'risk';
 
@@ -23,6 +24,7 @@ interface HeaderProps {
   onOpenThesesDrawer: () => void;
   onExportReport: () => void;
   isSyntheticActive?: boolean;
+  onLLMProviderChanged?: (provider: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenThesesDrawer,
   onExportReport,
   isSyntheticActive = false,
+  onLLMProviderChanged,
 }) => {
   return (
     <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
@@ -91,8 +94,10 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* View Switcher Tabs Sub-bar */}
       <div className="border-t border-slate-800/80 bg-slate-950/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between overflow-x-auto">
-          <div className="flex space-x-1 py-1 text-xs">
+        {/* overflow-x-auto only on the tabs: on the whole row it would also clip
+            the LLM provider dropdown that opens below the badges. */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-2">
+          <div className="flex space-x-1 py-1 text-xs overflow-x-auto min-w-0">
             <button
               onClick={() => onChangeView('forecast')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors font-medium cursor-pointer ${
@@ -179,16 +184,18 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Quick Engine Badges on the right of tabs */}
-          <div className="hidden lg:flex items-center space-x-2 text-[11px] text-slate-400 py-1">
-            <span className="flex items-center gap-1">
+          <div className="flex items-center space-x-2 text-[11px] text-slate-400 py-1 shrink-0">
+            <span className="hidden lg:flex items-center gap-1">
               <Cpu className="h-3 w-3 text-cyan-400" />
               TimesFM {health?.use_real_timesfm ? 'PyTorch Real' : 'Mock v1'}
             </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
+            <span className="hidden lg:inline">•</span>
+            <span className="hidden lg:flex items-center gap-1">
               <Database className="h-3 w-3 text-emerald-400" />
               SQLite Activo
             </span>
+            <span className="hidden lg:inline">•</span>
+            <LLMProviderSelector onProviderChanged={onLLMProviderChanged} />
           </div>
         </div>
       </div>

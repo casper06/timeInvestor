@@ -39,7 +39,12 @@ from backend.schemas.models import (
     RebalanceBacktestRequest,
     RebalanceBacktestResponse,
     FredSeriesMetadata,
+    LLMProviderOption,
+    LLMProvidersResponse,
+    LLMProviderSwitchRequest,
+    LLMProviderSwitchResponse,
 )
+from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
 from backend.services.forecast_engine import get_forecast_engine
@@ -71,6 +76,43 @@ async def health_check():
         has_fred_key=bool(settings.FRED_API_KEY and settings.FRED_API_KEY.strip()),
         has_openai_key=bool(settings.OPENAI_API_KEY and settings.OPENAI_API_KEY.strip())
     )
+
+# Plain `def` (not async): availability checks may spawn `claude auth status`
+# or probe Ollama, so FastAPI runs them in its threadpool instead of blocking
+# the event loop.
+@router.get("/config/llm-providers", response_model=LLMProvidersResponse)
+def list_llm_providers(
+    refresh: bool = Query(default=False, description="Ignora el cache corto de los chequeos de CLI/Ollama."),
+):
+    """Every known LLM provider with real availability and, if unavailable, why."""
+    providers = [LLMProviderOption(**vars(p)) for p in get_provider_availability(force_refresh=refresh)]
+    return LLMProvidersResponse(
+        active=settings.effective_llm_provider,
+        env_default=settings.LLM_PROVIDER_FROM_ENV.lower(),
+        providers=providers,
+    )
+
+@router.post("/config/llm-provider", response_model=LLMProviderSwitchResponse)
+def switch_llm_provider(payload: LLMProviderSwitchRequest):
+    """
+    Switches the active LLM provider IN MEMORY ONLY — nothing is written to .env.
+    get_llm_client() reads settings.LLM_PROVIDER on every request, so the next
+    thesis already uses the new provider; a server restart goes back to .env.
+    """
+    provider = payload.provider.strip().lower()
+    if provider not in KNOWN_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Proveedor desconocido: '{payload.provider}'. Opciones: {', '.join(KNOWN_PROVIDERS)}",
+        )
+    available, reason = check_provider(provider)
+    if not available:
+        raise HTTPException(status_code=400, detail=f"Proveedor '{provider}' no disponible: {reason}")
+
+    previous = settings.effective_llm_provider
+    settings.LLM_PROVIDER = provider
+    logger.info(f"LLM provider switched at runtime: {previous} -> {provider} (in memory only, .env untouched)")
+    return LLMProviderSwitchResponse(active=provider, previous=previous)
 
 @router.post("/thesis", response_model=ThesisResponse)
 async def analyze_thesis(

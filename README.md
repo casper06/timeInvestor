@@ -179,3 +179,47 @@ modelo en SQLite (tabla `claude_cli_usage`) y lo loguea — es la única forma d
 ver cuánto de tu cupo compartido de 5h/semanal está gastando esta
 funcionalidad específicamente, ya que esa cuota no es visible desde ningún
 otro lado del proyecto.
+
+## Cambiar de proveedor LLM desde la UI (sin reiniciar)
+
+En el Header, al lado de los badges `TimesFM` / `SQLite`, el selector
+**LLM: …** muestra el proveedor activo y permite cambiarlo en caliente. La
+próxima tesis que se analice ya usa el nuevo proveedor — `get_llm_client()`
+lee `settings.LLM_PROVIDER` en cada request, no hace falta reiniciar nada.
+
+> **El cambio es solo en memoria.** No se escribe nada a `.env`. Si el server
+> se reinicia, vuelve al `LLM_PROVIDER` de tu `.env`. Para dejarlo fijo,
+> editá `.env` vos mismo. La app nunca escribe ese archivo a propósito: no hace
+> falta para esto y es innecesariamente riesgoso.
+
+Los proveedores sin sus prerequisitos aparecen **deshabilitados, con el
+motivo** (mismo criterio que las series FRED sin `FRED_API_KEY`: no se ofrece
+algo que sabemos que va a fallar sin decir por qué):
+
+| Proveedor | Disponible si… | Cómo se verifica (sin gastar una llamada al modelo) |
+|---|---|---|
+| `gemini` | hay `GEMINI_API_KEY` | lectura de settings |
+| `openai` | hay `OPENAI_API_KEY` | lectura de settings |
+| `gemini_cli` | `gemini` está en el PATH **y** hay sesión iniciada | `shutil.which` + existencia de `~/.gemini/oauth_creds.json` (o `gemini-credentials.json` en modo cifrado) |
+| `claude_cli` | `claude` está en el PATH **y** hay sesión iniciada | `shutil.which` + `claude auth status --json` → `loggedIn` |
+| `ollama` | Ollama responde en `OLLAMA_BASE_URL` | `GET /api/tags` con timeout de 1.5 s |
+| `mock` | siempre | — |
+
+Los chequeos de CLI y Ollama se cachean 60 s, para no relanzar procesos en
+cada apertura del dropdown (`GET /api/config/llm-providers?refresh=true`
+ignora el cache).
+
+Junto a `claude_cli` el dropdown recuerda *"Comparte cupo con tu uso de Claude
+Code"* (ver la tabla de cuotas más arriba).
+
+API:
+
+```bash
+curl localhost:8000/api/config/llm-providers
+curl -X POST localhost:8000/api/config/llm-provider \
+     -H 'Content-Type: application/json' -d '{"provider": "gemini_cli"}'
+# → {"active": "gemini_cli", "previous": "gemini", "persisted": false, "notice": "Válido hasta el próximo reinicio…"}
+```
+
+Un proveedor desconocido o no disponible devuelve **400** con el motivo, y el
+proveedor activo no cambia.
