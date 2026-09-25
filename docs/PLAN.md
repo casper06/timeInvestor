@@ -33,8 +33,9 @@ Rama: `chore/fase-0-higiene`
   2026-09-25; TimesFM-3 existe y no fue evaluado).
   Hecho cuando: el archivo existe, tiene esas dos notas y quedó decidido si se
   versiona.
-  Estado: bloqueado. `CONTEXT.md` no existe en el repo (2026-09-25); falta
-  decidir si se crea y se versiona.
+  Estado: bloqueado. Se decidió crearlo en la raíz y versionarlo (rama
+  `docs/context-md`), pero falta el documento base: no está en el repo y no se
+  reconstruye de memoria.
 
 ## Fase 1 — Auto-discovery: "no evaluado" ≠ "Holt ganó"
 
@@ -58,13 +59,20 @@ Rama: `fix/autodiscovery-not-evaluated`
 
 Rama: a definir.
 
-- [ ] **2.1 Medir cuánto oscilan hoy las decisiones** (3 cutoffs, gana TimesFM
+- [ ] **2.1 Detectar el fallback interno de TimesFM→Holt dentro de
+  `BacktestEngine.run_backtest`.** Hoy `BacktestResponse` no lo expone, así que
+  `mase_timesfm` podría ser en realidad de Holt, y eso es una métrica fabricada.
+  Va primero: medir oscilaciones o fijar un margen sobre un `mase_timesfm` que
+  puede no ser de TimesFM no tiene sentido.
+  Hecho cuando: el mini-backtest descarta o marca los cutoffs donde TimesFM no
+  corrió de verdad, con un test que lo demuestre.
+- [ ] **2.2 Medir cuánto oscilan hoy las decisiones** (3 cutoffs, gana TimesFM
   con MASE estrictamente menor, sin margen).
   Hecho cuando: hay una medición reproducible (script + resultado) de cuántas
   decisiones cambian entre corridas o ventanas cercanas.
-- [ ] **2.2 Decisión más robusta:** 5–8 cutoffs, un margen (por ejemplo
+- [ ] **2.3 Decisión más robusta:** 5–8 cutoffs, un margen (por ejemplo
   `MASE_tfm ≤ 0.95·MASE_holt` o Diebold-Mariano) y que un empate lo gane Holt.
-  Hecho cuando: el umbral está elegido a partir de la medición de 2.1, no antes,
+  Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
   y hay tests del margen y del empate.
 
 ## Fase 3 — Experimento TimesFM-3
