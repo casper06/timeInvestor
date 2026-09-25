@@ -225,11 +225,19 @@ class EngineSelector:
                 f"de confianza quedó mal calibrado en el mini-backtest — Holt (elegido por calibración, "
                 f"no porque haya ganado en MASE)."
             )
+        elif decision.mase_timesfm is None:
+            # TimesFM couldn't run at evaluation time: Holt wasn't compared against
+            # anything, so "Holt ganó" would be false. AutoDiscoveryEngine._is_stale
+            # re-evaluates this as soon as TimesFM is available.
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} con TimesFM no "
+                f"disponible: TimesFM no evaluado, Holt (MASE {decision.mase_holt:.3f}) sin "
+                f"comparación — se re-evalúa apenas TimesFM esté disponible, sin esperar el TTL."
+            )
         else:
-            mase_tfm_str = f"{decision.mase_timesfm:.3f}" if decision.mase_timesfm is not None else "no evaluado"
             res.engine_selection_reason = (
                 f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: Holt ganó MASE "
-                f"{decision.mase_holt:.3f} vs TimesFM {mase_tfm_str} en un mini-backtest de esta "
+                f"{decision.mase_holt:.3f} vs TimesFM {decision.mase_timesfm:.3f} en un mini-backtest de esta "
                 f"serie puntual — Holt (elegido por auto-evaluación, no por catálogo ni default)."
             )
         return res

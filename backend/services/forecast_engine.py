@@ -254,6 +254,22 @@ class TimesFMForecastEngine(BaseForecastEngine):
         else:
             logger.info("TimesFM PyTorch engine disabled via USE_REAL_TIMESFM=false. Using DampedHoltForecastEngine.")
 
+    @classmethod
+    def is_available(cls) -> bool:
+        """Whether real TimesFM weights are loaded in this process, cheap enough to
+        ask on every request.
+
+        With USE_REAL_TIMESFM=false it never touches the singleton. Otherwise the
+        first call per process does the one-time load that any TimesFM use does
+        anyway; every later call only reads `_model`, because __init__ marks the
+        singleton initialized before loading and never retries a failed load.
+        Caching it per process is exact: installing the package, downloading the
+        weights or flipping USE_REAL_TIMESFM all require a restart.
+        """
+        if not settings.USE_REAL_TIMESFM:
+            return False
+        return cls()._model is not None
+
     @property
     def model_name(self) -> str:
         """Reflects which engine is actually active: real TimesFM weights, or the Damped Holt fallback."""
