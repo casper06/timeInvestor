@@ -94,7 +94,11 @@ export interface InterpretationResponse {
 export interface HealthResponse {
   status: string;
   llm_provider: string;
+  /** Always per-series: EngineSelector picks Holt or TimesFM for each series. */
+  engine_mode: 'per_series_auto_selection';
+  /** Legacy field — no longer names an engine; see each forecast's model_name. */
   forecast_engine: string;
+  /** TimesFM is enabled as an option for EngineSelector (not "in use for this series"). */
   use_real_timesfm?: boolean;
   has_gemini_key: boolean;
   has_fred_key: boolean;

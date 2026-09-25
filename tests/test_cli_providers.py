@@ -126,6 +126,52 @@ def test_gemini_cli_auth_expired_message(monkeypatch):
     assert ".env" not in resp.fallback_reason
 
 
+def test_gemini_cli_ineligible_account_message(monkeypatch):
+    """Real stderr (trimmed) from Gemini CLI 0.61.0 on 2026-09-24: Google
+    rejects the account itself (IneligibleTierError / UNSUPPORTED_CLIENT) with
+    exit code 1. The reason must carry Google's own message and must NOT tell
+    the user to log in again, which doesn't help here."""
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("asyncio.sleep", AsyncNoopSleep())
+
+    real_stderr = (
+        "  ineligibleTiers: [\n"
+        "    {\n"
+        "      reasonCode: 'UNSUPPORTED_CLIENT',\n"
+        "      tierId: 'free-tier',\n"
+        "    }\n"
+        "  ]\n"
+        "[STARTUP] Recording metric for phase: authenticate duration: 918.8\n"
+        "An unexpected critical error occurred:IneligibleTierError: This client is no longer "
+        "supported for Gemini Code Assist for individuals. To continue using Gemini, please "
+        "migrate to the Antigravity suite of products: https://antigravity.google\n"
+        "    at throwIneligibleOrProjectIdError (file:///.../chunk-JDPZ4CE3.js:311090:11)\n"
+    )
+
+    with patch("subprocess.run", return_value=_fake_completed_process(1, "", real_stderr)):
+        client = GeminiCliLLMClient()
+        resp = asyncio.run(client.parse_thesis("Demanda eléctrica por IA"))
+
+    assert resp.fallback_category == "auth_or_config"
+    assert "This client is no longer supported for Gemini Code Assist for individuals" in resp.fallback_reason
+    assert "volver a loguearte no lo arregla" in resp.fallback_reason
+    assert "salió con código 1" not in resp.fallback_reason
+
+
+def test_gemini_cli_unknown_failure_includes_stderr_cause(monkeypatch):
+    """An unclassified failure still says WHY, not only the exit code."""
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("asyncio.sleep", AsyncNoopSleep())
+
+    stderr = "[STARTUP] noise\nAn unexpected critical error occurred:SomethingNewError: boom\n    at x (y.js:1:1)\n"
+    with patch("subprocess.run", return_value=_fake_completed_process(1, "", stderr)):
+        resp = asyncio.run(GeminiCliLLMClient().parse_thesis("Demanda eléctrica por IA"))
+
+    assert resp.fallback_category == "unknown"
+    assert "código 1" in resp.fallback_reason
+    assert "SomethingNewError: boom" in resp.fallback_reason
+
+
 def test_gemini_cli_not_installed_falls_back_to_mock(monkeypatch):
     """If the gemini binary isn't on PATH, get_llm_client must degrade to Mock
     instead of crashing the server at startup."""

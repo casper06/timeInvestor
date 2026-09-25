@@ -43,11 +43,12 @@ from backend.schemas.models import (
     LLMProvidersResponse,
     LLMProviderSwitchRequest,
     LLMProviderSwitchResponse,
+    ENGINE_MODE_PER_SERIES,
+    FORECAST_ENGINE_PER_SERIES_NOTICE,
 )
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
-from backend.services.forecast_engine import get_forecast_engine
 from backend.services.engine_selector import EngineSelector
 from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
@@ -65,12 +66,20 @@ fred_fetcher = FREDDataFetcher()
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Returns operational status and active engine configurations."""
-    engine = get_forecast_engine()
+    """Returns operational status and active engine configurations.
+
+    There is no single global forecast engine: /forecast goes through
+    EngineSelector, which picks Holt or TimesFM per series. So health reports
+    the selection MODE, never a specific engine name — naming one (as the old
+    get_forecast_engine() binary factory did) contradicted the dashboard
+    whenever the active series was routed elsewhere. The engine actually used
+    for a series is in each forecast's model_name/engine_selection_reason.
+    """
     return HealthResponse(
         status="ok",
         llm_provider=settings.effective_llm_provider,
-        forecast_engine=engine.model_name,
+        engine_mode=ENGINE_MODE_PER_SERIES,
+        forecast_engine=FORECAST_ENGINE_PER_SERIES_NOTICE,
         use_real_timesfm=settings.USE_REAL_TIMESFM,
         has_gemini_key=bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip()),
         has_fred_key=bool(settings.FRED_API_KEY and settings.FRED_API_KEY.strip()),
