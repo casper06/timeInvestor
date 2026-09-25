@@ -82,3 +82,6 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# --- Bitácora local de rondas de trabajo (no se versiona) ---
+.bitacora/
