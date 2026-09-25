@@ -10,6 +10,7 @@ from typing import Awaitable, Callable, Dict, List, Literal, Optional, TypeVar
 import httpx
 
 from backend.config import settings
+from backend.services.llm_availability import mark_account_rejected
 from backend.schemas.models import (
     ThesisResponse,
     TickerSuggestion,
@@ -844,17 +845,25 @@ def _classify_gemini_cli_error(exc: Exception) -> FallbackCategory:
     return "unknown"
 
 
+def _gemini_cli_account_rejection(exc: CliProcessError) -> Optional[str]:
+    """Google's own message when it refused the ACCOUNT (IneligibleTierError),
+    None for any other failure. Permanent, unlike every other Gemini CLI error:
+    neither retrying nor logging in again changes it."""
+    ineligible = _GEMINI_CLI_INELIGIBLE_RE.search(exc.stderr or "")
+    return ineligible.group(1).strip() if ineligible else None
+
+
 def _gemini_cli_error_message(exc: CliProcessError, category: FallbackCategory) -> str:
     """User-facing message for a Gemini CLI failure — the auth_or_config case
     gets a message specific to the CLI's OWN login flow (`gemini` command),
     deliberately different from GeminiLLMClient's .env-focused message, since
     telling a CLI-session user to "check your .env" would send them looking
     in the wrong place entirely."""
-    ineligible = _GEMINI_CLI_INELIGIBLE_RE.search(exc.stderr or "")
-    if ineligible:
+    rejection = _gemini_cli_account_rejection(exc)
+    if rejection:
         return (
             "Google rechazó tu cuenta para Gemini CLI (no es un problema de sesión: "
-            f"volver a loguearte no lo arregla). Mensaje de Google: {ineligible.group(1).strip()}"
+            f"volver a loguearte no lo arregla). Mensaje de Google: {rejection}"
         )
     if category == "auth_or_config":
         return (
@@ -956,6 +965,26 @@ def _extract_json_from_cli_text(text: str) -> dict:
         return json.loads(brace_match.group(0))
 
     raise json.JSONDecodeError("No JSON object found in CLI output", text, 0)
+
+
+def _gemini_cli_fallback(e: Exception) -> tuple:
+    """(fallback_category, fallback_reason) for a failed Gemini CLI call. An
+    account rejection is also reported to the provider selector, so the
+    dropdown stops offering gemini_cli instead of letting it fail every time."""
+    unwrapped = _unwrap_retries_exhausted(e)
+    if isinstance(unwrapped, CliProcessError):
+        category = _classify_gemini_cli_error(unwrapped)
+        rejection = _gemini_cli_account_rejection(unwrapped)
+        if rejection:
+            mark_account_rejected(
+                "gemini_cli",
+                "Google rechazó esta cuenta para Gemini CLI (no es un problema de sesión: "
+                f"volver a loguearte no lo arregla). Mensaje de Google: {rejection}",
+            )
+        return category, _gemini_cli_error_message(unwrapped, category)
+    if isinstance(unwrapped, CliNotInstalledError):
+        return "auth_or_config", str(unwrapped)
+    return classify_fallback_category(e), _format_fallback_reason("Gemini CLI", e)
 
 
 class GeminiCliLLMClient(BaseLLMClient):
@@ -1077,16 +1106,7 @@ class GeminiCliLLMClient(BaseLLMClient):
                 provider_used=provider_used,
             )
         except Exception as e:
-            unwrapped = _unwrap_retries_exhausted(e)
-            if isinstance(unwrapped, CliProcessError):
-                category = _classify_gemini_cli_error(unwrapped)
-                reason = _gemini_cli_error_message(unwrapped, category)
-            elif isinstance(unwrapped, CliNotInstalledError):
-                category = "auth_or_config"
-                reason = str(unwrapped)
-            else:
-                category = classify_fallback_category(e)
-                reason = _format_fallback_reason("Gemini CLI", e)
+            category, reason = _gemini_cli_fallback(e)
             logger.error(f"Gemini CLI error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.parse_thesis(thesis)
@@ -1122,16 +1142,7 @@ class GeminiCliLLMClient(BaseLLMClient):
                 provider_used=data.get("_provider_used", "gemini-cli"),
             )
         except Exception as e:
-            unwrapped = _unwrap_retries_exhausted(e)
-            if isinstance(unwrapped, CliProcessError):
-                category = _classify_gemini_cli_error(unwrapped)
-                reason = _gemini_cli_error_message(unwrapped, category)
-            elif isinstance(unwrapped, CliNotInstalledError):
-                category = "auth_or_config"
-                reason = str(unwrapped)
-            else:
-                category = classify_fallback_category(e)
-                reason = _format_fallback_reason("Gemini CLI", e)
+            category, reason = _gemini_cli_fallback(e)
             logger.error(f"Gemini CLI interpretation error: {e}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.interpret_situation(ctx)

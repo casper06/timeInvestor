@@ -38,6 +38,23 @@ def _fake_completed_process(returncode=0, stdout="", stderr=""):
     return subprocess.CompletedProcess(args=["fake"], returncode=returncode, stdout=stdout, stderr=stderr)
 
 
+# Real stderr (trimmed) from Gemini CLI 0.61.0 on 2026-09-24 when Google rejects
+# the account itself (IneligibleTierError / UNSUPPORTED_CLIENT), exit code 1.
+INELIGIBLE_ACCOUNT_STDERR = (
+    "  ineligibleTiers: [\n"
+    "    {\n"
+    "      reasonCode: 'UNSUPPORTED_CLIENT',\n"
+    "      tierId: 'free-tier',\n"
+    "    }\n"
+    "  ]\n"
+    "[STARTUP] Recording metric for phase: authenticate duration: 918.8\n"
+    "An unexpected critical error occurred:IneligibleTierError: This client is no longer "
+    "supported for Gemini Code Assist for individuals. To continue using Gemini, please "
+    "migrate to the Antigravity suite of products: https://antigravity.google\n"
+    "    at throwIneligibleOrProjectIdError (file:///.../chunk-JDPZ4CE3.js:311090:11)\n"
+)
+
+
 # ---------------------------------------------------------------------------
 # GeminiCliLLMClient
 # ---------------------------------------------------------------------------
@@ -134,21 +151,7 @@ def test_gemini_cli_ineligible_account_message(monkeypatch):
     monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
     monkeypatch.setattr("asyncio.sleep", AsyncNoopSleep())
 
-    real_stderr = (
-        "  ineligibleTiers: [\n"
-        "    {\n"
-        "      reasonCode: 'UNSUPPORTED_CLIENT',\n"
-        "      tierId: 'free-tier',\n"
-        "    }\n"
-        "  ]\n"
-        "[STARTUP] Recording metric for phase: authenticate duration: 918.8\n"
-        "An unexpected critical error occurred:IneligibleTierError: This client is no longer "
-        "supported for Gemini Code Assist for individuals. To continue using Gemini, please "
-        "migrate to the Antigravity suite of products: https://antigravity.google\n"
-        "    at throwIneligibleOrProjectIdError (file:///.../chunk-JDPZ4CE3.js:311090:11)\n"
-    )
-
-    with patch("subprocess.run", return_value=_fake_completed_process(1, "", real_stderr)):
+    with patch("subprocess.run", return_value=_fake_completed_process(1, "", INELIGIBLE_ACCOUNT_STDERR)):
         client = GeminiCliLLMClient()
         resp = asyncio.run(client.parse_thesis("Demanda eléctrica por IA"))
 
@@ -156,6 +159,53 @@ def test_gemini_cli_ineligible_account_message(monkeypatch):
     assert "This client is no longer supported for Gemini Code Assist for individuals" in resp.fallback_reason
     assert "volver a loguearte no lo arregla" in resp.fallback_reason
     assert "salió con código 1" not in resp.fallback_reason
+
+
+def test_gemini_cli_marked_unavailable_after_account_rejection(monkeypatch, tmp_path):
+    """The credentials file exists (so the cheap check says available), but a
+    real call gets IneligibleTierError. From then on the selector must list
+    gemini_cli as unavailable with Google's reason — without waiting out the
+    regular 60 s cache, and without anyone touching the credentials file."""
+    from fastapi.testclient import TestClient
+    import backend.services.llm_availability as availability
+    from backend.config import settings
+    from backend.main import app
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("asyncio.sleep", AsyncNoopSleep())
+    monkeypatch.setattr(availability.Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "mock")
+    (tmp_path / ".gemini").mkdir()
+    (tmp_path / ".gemini" / "oauth_creds.json").write_text("{}")
+
+    # Primes the regular 60 s cache with "available".
+    assert availability.check_provider("gemini_cli") == (True, None)
+
+    with patch("subprocess.run", return_value=_fake_completed_process(1, "", INELIGIBLE_ACCOUNT_STDERR)):
+        asyncio.run(GeminiCliLLMClient().parse_thesis("Demanda eléctrica por IA"))
+
+    api = TestClient(app)
+    for refresh in ("false", "true"):
+        providers = api.get(f"/api/config/llm-providers?refresh={refresh}").json()["providers"]
+        gemini_cli = next(p for p in providers if p["id"] == "gemini_cli")
+        assert gemini_cli["available"] is False
+        assert gemini_cli["reason"].startswith("Google rechazó esta cuenta para Gemini CLI")
+        assert "This client is no longer supported for Gemini Code Assist" in gemini_cli["reason"]
+        assert "no autenticado" not in gemini_cli["reason"]
+
+    # Forcing it anyway hits the existing availability validation.
+    switch = api.post("/api/config/llm-provider", json={"provider": "gemini_cli"})
+    assert switch.status_code == 400
+    assert "Google rechazó esta cuenta" in switch.json()["detail"]
+    assert settings.LLM_PROVIDER == "mock"
+
+    # Past the rejection TTL, the regular check runs again.
+    real_monotonic = availability.time.monotonic
+    monkeypatch.setattr(
+        availability.time, "monotonic",
+        lambda: real_monotonic() + availability.ACCOUNT_REJECTION_TTL_SECONDS + 1,
+    )
+    assert availability.check_provider("gemini_cli") == (True, None)
 
 
 def test_gemini_cli_unknown_failure_includes_stderr_cause(monkeypatch):
