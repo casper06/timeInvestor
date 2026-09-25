@@ -25,6 +25,12 @@ dropdown):
 The CLI and Ollama checks spawn a process / hit the network, so their results
 are cached for AVAILABILITY_CACHE_TTL_SECONDS instead of re-running on every
 render of the dropdown.
+
+What these checks can NOT see: an account Google refuses outright
+(IneligibleTierError / UNSUPPORTED_CLIENT) still has a valid credentials file.
+That is only learned from a real call, so the CLI client reports it back via
+mark_account_rejected(), which pins the provider as unavailable for
+ACCOUNT_REJECTION_TTL_SECONDS — or until the process restarts.
 """
 import json
 import logging
@@ -66,6 +72,9 @@ PROVIDER_NOTES: Dict[str, str] = {
 }
 
 AVAILABILITY_CACHE_TTL_SECONDS = 60
+# An account-level rejection doesn't fix itself in 60 s, and re-checking it
+# would mean offering again an option we already saw fail for good.
+ACCOUNT_REJECTION_TTL_SECONDS = 24 * 60 * 60
 CLAUDE_AUTH_STATUS_TIMEOUT_SECONDS = 10
 OLLAMA_PROBE_TIMEOUT_SECONDS = 1.5
 
@@ -81,7 +90,10 @@ class ProviderAvailability:
     note: Optional[str] = None
 
 
-_cache: Dict[str, Tuple[float, Availability]] = {}
+# provider -> (expires_at monotonic, result, survives_refresh). survives_refresh
+# is set only for account rejections: ?refresh=true re-runs the cheap check,
+# which would just find the credentials file again and wrongly say available.
+_cache: Dict[str, Tuple[float, Availability, bool]] = {}
 _cache_lock = threading.Lock()
 
 
@@ -90,15 +102,24 @@ def clear_availability_cache() -> None:
         _cache.clear()
 
 
+def mark_account_rejected(provider: str, reason: str) -> None:
+    """Record that a real call proved `provider` unusable at the account level.
+    Stored in the same cache as the regular checks, with a longer TTL."""
+    expires_at = time.monotonic() + ACCOUNT_REJECTION_TTL_SECONDS
+    with _cache_lock:
+        _cache[provider] = (expires_at, (False, reason), True)
+    logger.warning(f"{provider} marked unavailable for {ACCOUNT_REJECTION_TTL_SECONDS}s: {reason}")
+
+
 def _cached(provider: str, check: Callable[[], Availability], force_refresh: bool) -> Availability:
     now = time.monotonic()
     with _cache_lock:
         hit = _cache.get(provider)
-        if hit and not force_refresh and now - hit[0] < AVAILABILITY_CACHE_TTL_SECONDS:
+        if hit and now < hit[0] and (not force_refresh or hit[2]):
             return hit[1]
     result = check()
     with _cache_lock:
-        _cache[provider] = (now, result)
+        _cache[provider] = (now + AVAILABILITY_CACHE_TTL_SECONDS, result, False)
     return result
 
 
