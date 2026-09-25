@@ -35,6 +35,10 @@ class Settings:
     # see README.md's "Proveedores LLM por suscripción" section for setup,
     # quota differences, and why neither is the default here.
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "gemini")
+    # LLM_PROVIDER can be switched at runtime from the UI (POST
+    # /api/config/llm-provider) — IN MEMORY ONLY, never written back to .env.
+    # This keeps the startup value so the UI can show what a restart returns to.
+    LLM_PROVIDER_FROM_ENV: str = LLM_PROVIDER
 
     # Model alias used for `claude -p ... --model <this>` when LLM_PROVIDER=claude_cli.
     # Defaults to the cheapest model to minimize consumption of the user's
