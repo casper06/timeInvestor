@@ -18,12 +18,12 @@ sin verificar) va en `.bitacora/RONDAS.md`, que es local y no se versiona.
 
 Rama: `chore/fase-0-higiene`
 
-- [ ] **0.1 Test de Claude CLI independiente del binario.**
+- [x] **0.1 Test de Claude CLI independiente del binario.** (PR #14, sin mergear)
   `test_claude_cli_no_tool_use_attempted` hoy llama a `shutil.which` real a
   través de `ClaudeCliLLMClient.__init__`.
   Hecho cuando: el test pasa con `shutil.which` devolviendo `None` para
   `claude`, y el arreglo está en el test (no en el código de producción).
-- [ ] **0.2 Fijar la versión de `timesfm`.** Hoy
+- [x] **0.2 Fijar la versión de `timesfm`.** (PR #14, sin mergear; fijado en `==3.0.2`) Hoy
   `requirements-timesfm.txt` acepta `>=2.0.0,<4.0.0`.
   Hecho cuando: la versión instalada y la última de PyPI están verificadas
   (ambas exportan `TimesFM_2p5_200M_torch`), el pin elegido está justificado
@@ -33,12 +33,14 @@ Rama: `chore/fase-0-higiene`
   2026-09-25; TimesFM-3 existe y no fue evaluado).
   Hecho cuando: el archivo existe, tiene esas dos notas y quedó decidido si se
   versiona.
+  Estado: bloqueado. `CONTEXT.md` no existe en el repo (2026-09-25); falta
+  decidir si se crea y se versiona.
 
 ## Fase 1 — Auto-discovery: "no evaluado" ≠ "Holt ganó"
 
 Rama: `fix/autodiscovery-not-evaluated`
 
-- [ ] **1.1 Distinguir la decisión tomada sin TimesFM.** Hoy una serie evaluada
+- [x] **1.1 Distinguir la decisión tomada sin TimesFM.** (PR #15, sin mergear) Hoy una serie evaluada
   con TimesFM no disponible queda como `engine_choice="holt"` por 30 días.
   Hecho cuando:
   - una decisión no evaluada se re-evalúa en cuanto TimesFM está disponible,
