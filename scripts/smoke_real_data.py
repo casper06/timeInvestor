@@ -24,6 +24,16 @@ dates by one cent. --compare reports those one-cent flips separately and
 doesn't count them as differences; anything above a cent, and any difference
 in dates, forecast or backtest metrics, does count.
 
+That noise can also reach the metrics: on 2026-09-26, two runs with identical
+versions gave JNJ MASE 10.859 vs 10.858, because a one-cent flip in a training
+close shifts MASE's scale (mean |diff|). So to tell "the versions change the
+math" apart from "Yahoo returned different data", use --replay: it reruns the
+forecast and backtest on the real series saved in a previous JSON, without
+downloading anything, and --compare against that JSON must then match exactly.
+
+    python scripts/smoke_real_data.py --replay old.json --out replay.json   # venv B
+    python scripts/smoke_real_data.py --compare old.json replay.json
+
 Exit codes: 0 ok (or no differences on --compare), 1 differences found, 2 setup
 or data error.
 """
@@ -92,12 +102,28 @@ def _window(data):
     return data.model_copy(update={"points": points})
 
 
-def _run_one(series_id: str, kind: str, cutoff: str, bt_horizon: int, fc_horizon: int) -> dict:
+def _from_saved(series_id: str, kind: str, saved: dict):
+    """The real series recorded in a previous run's JSON (replay mode)."""
+    from backend.schemas.models import TimeSeriesData, TimeSeriesPoint
+
+    values = saved.get("values")
+    if not values:
+        _fail(f"{series_id}: el JSON de --replay no tiene los valores de la serie")
+    points = [TimeSeriesPoint(timestamp=d, value=v) for d, v in sorted(values.items())]
+    return TimeSeriesData(
+        id=series_id, name=series_id, type="macro" if kind == "macro" else "equity",
+        unit="", points=points, source="live",
+        source_detail="Datos reales grabados en una corrida anterior (--replay)",
+    )
+
+
+def _run_one(series_id: str, kind: str, cutoff: str, bt_horizon: int, fc_horizon: int, saved=None) -> dict:
     from backend.services import backtest_engine
     from backend.services.backtest_engine import BacktestEngine
     from backend.services.forecast_engine import DampedHoltForecastEngine
 
-    windowed = _window(_fetch(series_id, kind))
+    data = _from_saved(series_id, kind, saved) if saved is not None else _fetch(series_id, kind)
+    windowed = _window(data)
     points = windowed.points
     by_date = {p.timestamp: p.value for p in points}
     serialized = "\n".join(f"{p.timestamp}:{p.value!r}" for p in points)
@@ -157,17 +183,26 @@ def _run_one(series_id: str, kind: str, cutoff: str, bt_horizon: int, fc_horizon
     }
 
 
-def run(out_path: str) -> None:
+def run(out_path: str, replay_path: str = None) -> None:
     from backend.config import settings
 
-    if not (settings.FRED_API_KEY and settings.FRED_API_KEY.strip()):
+    replay = None
+    if replay_path:
+        replay = json.loads(Path(replay_path).read_text(encoding="utf-8"))
+    elif not (settings.FRED_API_KEY and settings.FRED_API_KEY.strip()):
         _fail("falta FRED_API_KEY (en .env o en el entorno). Sin ella no hay serie FRED real que comparar.")
     settings.ALLOW_SYNTHETIC_DATA = False  # never fall back to generated data
 
-    result = {"versions": _versions(), "window": [WINDOW_START, WINDOW_END], "series": {}}
+    result = {"versions": _versions(), "window": [WINDOW_START, WINDOW_END], "series": {},
+              "replayed_from": replay_path}
     for series_id, kind, cutoff, bt_h, fc_h in SERIES:
+        saved = None
+        if replay is not None:
+            saved = replay["series"].get(series_id)
+            if saved is None:
+                _fail(f"{series_id}: no está en {replay_path}")
         try:
-            result["series"][series_id] = _run_one(series_id, kind, cutoff, bt_h, fc_h)
+            result["series"][series_id] = _run_one(series_id, kind, cutoff, bt_h, fc_h, saved)
         except SystemExit:
             raise
         except Exception as e:
@@ -237,9 +272,13 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--out", help="corre el smoke test y escribe el JSON acá")
     group.add_argument("--compare", nargs=2, metavar=("A", "B"), help="compara dos JSON")
+    parser.add_argument("--replay", metavar="JSON",
+                        help="con --out: usa los datos reales grabados en ese JSON en vez de bajarlos")
     args = parser.parse_args()
+    if args.replay and not args.out:
+        parser.error("--replay va con --out")
     if args.out:
-        run(args.out)
+        run(args.out, args.replay)
     else:
         compare(*args.compare)
 
