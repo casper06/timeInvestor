@@ -205,7 +205,7 @@ verificada.
     Después, re-evaluar las decisiones de auto-discovery que TimesFM perdió
     "por calibración" (CEG y NVDA en la DB local).
   - [x] **3.0f Aplicar el veredicto al selector** (`SEASONAL_FRED_CATALOG` y
-    Holt-Winters como plan B) (rama `feat/seasonal-selector`, PR abierto).
+    Holt-Winters como plan B) (PR #30, mergeado).
     - Catálogo con entradas por serie (motor, solidez, evidencia y
       referencia): IPG2211A2N TimesFM (firme), HOUSTNSA TimesFM (probable),
       RSAFSNA TimesFM (probable, frágil), MRTSSM4451USN Holt-Winters.
@@ -227,6 +227,53 @@ verificada.
 - [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
   pasado. Comparar con los regresores externos de Prophet (ver 3.0).
 - [ ] **3.3 Latencia en CPU.**
+- [ ] **3.4 Revisiones de datos (vintages de ALFRED).** Los backtests sobre FRED
+  usan la serie *revisada de hoy*: en cada cutoff el modelo ve valores que en
+  esa fecha todavía no existían. Eso puede inflar la capacidad de pronóstico
+  medida (auto-discovery, benchmarks de 2.5 y 3.0d). Las revisiones de las
+  series del catálogo existen y no son chicas (consultado el 2026-09-26 con la
+  API):
+  - HOUSTNSA, enero 2019: primera publicación 82,6 → hoy 87,0 (+5,3%, 3
+    versiones);
+  - IPG2211A2N, enero 2019: 121,43 → 120,05 (−1,1%, 11 versiones en 6 años);
+    enero 2016 tiene 15 versiones.
+
+  Acceso verificado (documentación de `fred/series/observations` y
+  `fred/series/vintagedates`, más llamadas reales):
+  - `fred/series/vintagedates?series_id=…` devuelve las fechas en que la serie
+    se revisó o publicó (hasta 10.000 por llamada);
+  - `fred/series/observations` con `vintage_dates=AAAA-MM-DD` devuelve la serie
+    tal como se veía ese día (hasta 2000 vintages por pedido en json);
+  - `output_type=4` devuelve solo la primera publicación y `output_type=1`
+    todas las versiones por período. **Hace falta pasar
+    `realtime_start=1776-07-04&realtime_end=9999-12-31`**: con los valores
+    por defecto (hoy) la API responde 400, "No vintage dates exist for the
+    specified real-time period".
+
+  Limitación: el historial de vintages empieza tarde.
+  - IPG2211A2N: 2015-02; RSAFSNA: 2001-06; HOUSTNSA: 2011-03;
+    MRTSSM4451USN: 2017-11.
+  - Los cutoffs de 3.0d arrancan en 1995, así que un backtest
+    point-in-time solo cubre los posteriores (en IPG2211A2N, ~10 años).
+
+  Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
+  donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
+  cambia algún veredicto del catálogo.
+- [ ] **3.5 Capacidad de pronóstico por categoría de FRED.** Benchmark de los
+  motores contra el naive que corresponda a cada serie (random walk, o
+  estacional si el detector de 3.0a la marca así), en estas categorías:
+  - economía real mensual NSA;
+  - economía real mensual SA;
+  - trimestral;
+  - semanal;
+  - financiera diaria (tasas, spreads).
+
+  Hipótesis a testear, no a asumir: las financieras diarias se comportan
+  como un random walk (ningún motor le gana al naive).
+  Hecho cuando: por categoría, varias series representativas, cutoffs
+  pareados y test de signo contra el naive (mismo arnés que 3.0d), con el
+  resultado en `docs/results/`, incluido "ningún motor le gana al naive"
+  donde pase.
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
 incluso si la hipótesis no se sostiene.
@@ -236,7 +283,12 @@ incluso si la hipótesis no se sostiene.
 Rama: una por ítem, a definir.
 
 - [ ] **4.1 Validar los FRED IDs en `CorrelationEngine`** antes de enrutar a
-  yfinance.
+  yfinance. **Absorbido por 4.11.** Diagnóstico corregido (2026-09-26):
+  `CorrelationEngine` manda a FRED solo los IDs de un `SERIES_CATALOG` fijo de
+  5 series (`correlation_engine.py:35`); cualquier otro ID de FRED, **válido o
+  no**, va a yfinance y falla. El ejemplo de antes (`IPG2211N` como "ID mal
+  escrito") era incorrecto: `IPG2211N` existe en FRED (mensual NSA,
+  1972–2026). El problema es el ruteo por catálogo, no la ortografía.
 - [ ] **4.2 Invalidar el caché de rechazo de Gemini CLI cuando cambia la
   cuenta.** Hoy dura 24 h o hasta reiniciar el server.
 - [ ] **4.3 SA vs NSA en series FRED.** Leer `seasonal_adjustment` de la
@@ -287,3 +339,144 @@ Rama: una por ítem, a definir.
   `ETSModel` no incluyen la incertidumbre de los parámetros (Holt-Winters
   sub-cubre: 91,3% al 95% en 3.0b). Evaluar intervalos por simulación o
   bootstrap.
+- [ ] **4.10 Sesgos del prompt que traduce la tesis** (`SYSTEM_PROMPT` en
+  `backend/services/llm_router.py`, ~línea 283, y su variante
+  `CLAUDE_CLI_SYSTEM_PROMPT` + `--json-schema` de `ClaudeCliLLMClient`, que
+  tienen que cambiar juntas).
+  - Hoy exige 3–6 tickers con pesos que suman 1,0 y un racional de "por qué
+    este activo se beneficia de la tesis", y deja FRED en segundo plano (1–4
+    series). No pide mecanismo ni qué la falsaría, así que empuja a
+    confirmarla con acciones individuales.
+  - Orden propuesto:
+    1. mecanismo causal;
+    2. drivers medibles (series FRED);
+    3. qué dato falsaría la tesis;
+    4. recién ahí, instrumentos, prefiriendo ETFs sectoriales, commodities y
+       tasas antes que acciones individuales.
+  - Agregar un benchmark amplio obligatorio (SPY) contra el que comparar.
+  - Los 4 ejemplos de la UI (`PRESET_THESES` en `ThesisBar.tsx`) giran todos
+    alrededor de tecnología, IA y electricidad: centros de datos de IA,
+    semiconductores, red eléctrica con baterías, y tasas sobre múltiplos
+    **tecnológicos**. Diversificar sectores (consumo, financieras, agro,
+    vivienda, commodities).
+  - Evaluar prompt viejo contra nuevo con las mismas tesis, en conjunto con
+    4.6 (Haiku vs Sonnet): tabla tesis × prompt × modelo con instrumentos,
+    series, mecanismo y falsador. Evaluación manual.
+  Hecho cuando: esa tabla existe y se decidió qué prompt queda.
+- [ ] **4.11 IDs de FRED anclados en datos reales.** El LLM propone
+  *conceptos*; `fred/series/search` devuelve candidatas reales con metadata, y
+  se elige entre esas. Nunca un ID generado por el LLM sin verificar contra
+  FRED.
+  - Verificado el 2026-09-26: `fred/series/search?search_text=…` responde con
+    `id`, `frequency_short`, `seasonal_adjustment_short`, `observation_start`,
+    `observation_end` y `title` (ejemplo: "electric power generation
+    industrial production" → 84 resultados, entre ellos IPG2211S, IPG2211N y
+    CAPUTLG2211S).
+  - El ruteo FRED/yfinance pasa a depender de que el ID exista en FRED
+    (`fred/series`), no de un catálogo fijo. Absorbe 4.1.
+  Hecho cuando: ninguna serie macro llega a la app sin haber sido validada
+  contra FRED, y `CorrelationEngine` acepta cualquier ID válido de FRED.
+- [ ] **4.12 Fuentes fuera de FRED (solo investigación).** SEC EDGAR (datos
+  contables de empresas, por ejemplo capex) y la API de la EIA (consumo
+  eléctrico por sector).
+  Verificado el 2026-09-26 leyendo las páginas oficiales (sin llamadas reales):
+  - **SEC EDGAR** (`data.sec.gov`):
+    - sin API key ("These APIs do not require any authentication or API
+      keys to access");
+    - APIs JSON: `submissions`, `companyconcept`
+      (`/api/xbrl/companyconcept/CIK##########/us-gaap/<tag>.json`),
+      `companyfacts` y `frames`. Solo taxonomías estándar (us-gaap,
+      ifrs-full, dei, srt), no los tags propios de cada empresa;
+    - límite: **10 pedidos por segundo** en total (si se supera, bloqueo
+      temporal de la IP);
+    - hay que **declarar un User-Agent con nombre y email de contacto**;
+    - sin CORS (solo desde el backend), y bulk ZIP nocturno;
+    - uso: "public information and may be copied or further distributed",
+      con cita a la SEC. No usar el sello ni los logos.
+    - **No verificado:** que el tag de capex
+      (`PaymentsToAcquirePropertyPlantAndEquipment`) esté disponible para las
+      empresas que importan. La SEC no lo documenta por tag.
+    - **Sin llamada real:** la política exige un email de contacto real en el
+      User-Agent, y eso es decisión del dueño del repo.
+  - **EIA API v2** (`https://api.eia.gov/v2/`):
+    - **API key gratuita**, registrada por email, siempre en la URL
+      (`api_key=`, no en headers);
+    - máximo 5.000 filas por respuesta en JSON (300 en XML); se pagina con
+      `offset`/`length`;
+    - throttling no publicado: la FAQ sugiere menos de ~9.000 pedidos por
+      hora y menos de 5 por segundo;
+    - ruta `electricity/retail-sales` ("Electricity Sales to Ultimate
+      Customers"): facetas `stateid` y `sectorid` (RES, COM, IND, TRA, OTH,
+      ALL), datos `sales` (millones de kWh), `price`, `revenue` y
+      `customers`; frecuencia mensual, trimestral y anual; desde 2001;
+    - uso: dominio público ("You may use and/or distribute any of our
+      data…"), con atribución pedida ("Source: U.S. Energy Information
+      Administration (fecha)"); no usar el logo;
+    - **No verificado:** los términos de servicio de la API
+      (`/opendata/terms-of-service.php`, no leídos), y ninguna llamada real
+      (no hay key).
+  Hecho cuando: hay una recomendación de cuál integrar primero para el caso
+  "consumo eléctrico por IA" de la Fase 5, con una llamada real a cada una.
+- [ ] **4.13 Capacidad de pronóstico visible en la UI.** Para cada serie,
+  mostrar si el motor le gana al naive en su backtest (random walk o
+  estacional, según corresponda) y, cuando no le gana, decirlo
+  explícitamente ("para esta serie, el pronóstico no supera a repetir el
+  último valor").
+  Hecho cuando: la proyección de cada serie muestra ese veredicto, con el
+  número y su fuente.
+
+## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
+
+**Reencuadre (2026-09-26):** el objetivo principal pasa de "construir
+carteras" a **examinar tesis**. Dada una afirmación, el sistema:
+- reúne la evidencia a favor y en contra;
+- muestra el estado actual y el pronóstico de esos indicadores;
+- dice qué dato cambiaría la conclusión.
+
+**Los criterios de confirmación y de refutación se definen ANTES de mirar los
+datos** (si se definen después, se ajustan a lo que salió). La construcción
+de cartera queda como opcional, al final.
+
+Casos de prueba de diseño:
+- "el consumo eléctrico va a aumentar debido a la IA" (un driver medible,
+  con series FRED y EIA);
+- "la IA es una burbuja" (una afirmación sobre valuaciones y expectativas,
+  más difícil de operacionalizar: qué indicador y qué umbral la confirmarían o
+  la refutarían).
+
+Hoy el sistema pronostica precios directamente, serie por serie. La propuesta
+invierte el orden:
+1. **Pronosticar las variables macro de la tesis** (los drivers: las series
+   FRED), que es donde los modelos de series de tiempo mostraron ventaja
+   (estacionalidad, 3.0d).
+2. **Medir la sensibilidad histórica de cada instrumento a esos drivers**
+   (betas o elasticidades) y su **estabilidad en el tiempo** (ventanas
+   móviles, quiebres).
+3. **Generar escenarios condicionados a la trayectoria del driver** ("si el
+   driver sigue su pronóstico / su p10 / su p90, el instrumento se mueve…"),
+   en vez de pronosticar el precio del instrumento directamente.
+
+Preguntas abiertas antes de planificar ítems:
+- **Estabilidad de las sensibilidades.** ¿Cuánto varían las betas entre
+  ventanas? Si cambian de signo o de magnitud seguido, los escenarios
+  condicionados heredan esa inestabilidad y dan una falsa precisión.
+- **Causalidad vs. correlación.** Una sensibilidad histórica no prueba que el
+  driver mueva al instrumento (confusores, causalidad inversa, factores
+  comunes como el mercado o las tasas). ¿Alcanza con controlar por un
+  benchmark amplio (SPY, 4.10) o hace falta algo más estricto?
+- **Integración con los paneles existentes.** Proyección, Backtest,
+  Correlaciones, Asignación y Riesgo hoy trabajan sobre precios. ¿Los
+  escenarios reemplazan la proyección de precio, la complementan, o alimentan
+  a Riesgo (Monte Carlo condicionado)? ¿Cómo se backtestea un escenario
+  condicionado?
+- **Dependencias con otros ítems:** 3.4 (los drivers pronosticados con datos
+  revisados sobrestiman la precisión) y 4.10 (el prompt tendría que devolver
+  drivers y mecanismo, no solo tickers).
+
+## Orden de trabajo acordado (2026-09-26)
+
+2.2 → 2.3 → 3.5 → 4.13 → 4.11 → 3.4. Primero la confiabilidad del
+pronóstico de FRED (cuánto oscilan y qué tan robustas son las decisiones, en
+qué categorías se le gana al naive, y mostrarlo); después, anclar los IDs y
+los vintages. El prompt (4.10) y la Fase 5 van después.
+
