@@ -93,12 +93,17 @@ class AutoDiscoveryEngine:
             growth = (current_n_points - decision.n_points_at_evaluation) / decision.n_points_at_evaluation
             if growth >= STALE_GROWTH_FRACTION:
                 return True
-        # mase_timesfm IS NULL means TimesFM was unavailable when this was
-        # evaluated (_run_mini_backtest's only path to it): Holt was never
-        # compared against anything. Stale as soon as TimesFM can run; while it
-        # still can't, a re-run would be Holt-only again, so the regular TTL
-        # applies. Checked last: it's the only condition that may load TimesFM.
-        return decision.mase_timesfm is None and _available_timesfm_engine() is not None
+        # mase_timesfm IS NULL with no failed cutoffs means TimesFM was
+        # unavailable when this was evaluated: Holt was never compared against
+        # anything. Stale as soon as TimesFM can run; while it still can't, a
+        # re-run would be Holt-only again, so the regular TTL applies.
+        # NULL *with* failed cutoffs means TimesFM was loaded but fell back to
+        # Holt on every cutoff of this series: re-running right away would
+        # most likely fail the same way, so that also waits for the TTL.
+        # Checked last: it's the only condition that may load TimesFM.
+        if decision.mase_timesfm is not None or (decision.timesfm_failed_cutoffs or 0) > 0:
+            return False
+        return _available_timesfm_engine() is not None
 
     @staticmethod
     def decide(
@@ -142,6 +147,7 @@ class AutoDiscoveryEngine:
             cached.mase_holt = decision.mase_holt
             cached.mase_timesfm = decision.mase_timesfm
             cached.n_points_at_evaluation = decision.n_points_at_evaluation
+            cached.timesfm_failed_cutoffs = decision.timesfm_failed_cutoffs
             db.commit()
             db.refresh(cached)
             return cached
@@ -161,11 +167,11 @@ class AutoDiscoveryEngine:
         """
         holt_engine = DampedHoltForecastEngine()
 
-        # BacktestResponse (unlike ForecastResponse) has no is_fallback field to
-        # detect per-call whether TimesFM actually ran or silently fell back to
-        # Holt internally — so availability is checked ONCE up front instead:
-        # if the real model never loaded, there's no point running the mini-
-        # backtest against it at all (every cutoff would just be Holt vs Holt).
+        # Availability is checked ONCE up front: if the real model never
+        # loaded, there's no point running the mini-backtest against it at all
+        # (every cutoff would just be Holt vs Holt). A loaded model can still
+        # fail on a given cutoff and answer with Holt internally; that shows up
+        # per cutoff as BacktestResponse.is_fallback, handled in the loop.
         timesfm_engine = _available_timesfm_engine()
 
         cutoffs = AutoDiscoveryEngine._pick_cutoffs(series_id, is_macro)
@@ -176,7 +182,12 @@ class AutoDiscoveryEngine:
             raise ValueError(f"No hay historia suficiente para ningún cutoff del mini-backtest de {series_id}")
 
         holt_mases, holt_coverages = [], []
+        # Paired results, only for cutoffs where TimesFM really ran: comparing
+        # TimesFM's mean over some cutoffs against Holt's over all of them
+        # would not be the same test.
+        paired_holt_mases, paired_holt_coverages = [], []
         tfm_mases, tfm_coverages = [], []
+        tfm_failed_cutoffs = 0
 
         for cutoff_date in cutoffs:
             holt_res = BacktestEngine.run_backtest(
@@ -191,18 +202,27 @@ class AutoDiscoveryEngine:
                     series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
                     is_macro=is_macro, engine_override=timesfm_engine,
                 )
+                if tfm_res.is_fallback:
+                    # TimesFM failed here and Holt answered in its place: this
+                    # MASE is Holt's. Recording it as TimesFM's would be a
+                    # fabricated metric, so the cutoff is dropped for both.
+                    tfm_failed_cutoffs += 1
+                    logger.warning(
+                        f"Auto-discovery {series_id} @ {cutoff_date}: TimesFM cayó a Holt "
+                        f"({tfm_res.model_name}); cutoff descartado de la comparación."
+                    )
+                    continue
                 tfm_mases.append(tfm_res.metrics.mase)
                 tfm_coverages.append(tfm_res.interval_coverage)
-
-        tfm_available = timesfm_engine is not None and bool(tfm_mases)
-
-        mean_mase_holt = float(np.mean(holt_mases))
-        mean_coverage_holt = float(np.mean(holt_coverages))
+                paired_holt_mases.append(holt_res.metrics.mase)
+                paired_holt_coverages.append(holt_res.interval_coverage)
 
         engine_choice = "holt"
         mean_mase_tfm = None
 
-        if tfm_available and tfm_mases:
+        if tfm_mases:
+            mean_mase_holt = float(np.mean(paired_holt_mases))
+            mean_coverage_holt = float(np.mean(paired_holt_coverages))
             mean_mase_tfm = float(np.mean(tfm_mases))
             mean_coverage_tfm = float(np.mean(tfm_coverages))
             coverage_gap = mean_coverage_holt - mean_coverage_tfm
@@ -210,6 +230,9 @@ class AutoDiscoveryEngine:
             timesfm_calibration_acceptable = coverage_gap <= MAX_ACCEPTABLE_COVERAGE_GAP_PP
             if timesfm_wins_mase and timesfm_calibration_acceptable:
                 engine_choice = "timesfm"
+        else:
+            # TimesFM unavailable, or it fell back on every cutoff: Holt alone.
+            mean_mase_holt = float(np.mean(holt_mases))
 
         return EngineDecisionModel(
             series_id=series_id,
@@ -218,6 +241,7 @@ class AutoDiscoveryEngine:
             mase_holt=mean_mase_holt,
             mase_timesfm=mean_mase_tfm,
             n_points_at_evaluation=n_points,
+            timesfm_failed_cutoffs=tfm_failed_cutoffs if timesfm_engine is not None else None,
         )
 
     @staticmethod

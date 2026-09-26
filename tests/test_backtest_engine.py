@@ -45,3 +45,73 @@ def test_backtest_engine_execution(monkeypatch):
     assert res.naive_metrics is not None
     assert res.naive_metrics.mae >= 0.0
     assert len(res.verdict) > 0
+
+
+# ---------------------------------------------------------------------------
+# TimesFM falling back to Holt inside run_backtest must be visible.
+# ---------------------------------------------------------------------------
+
+def _nvda_fixture(monkeypatch):
+    fixture_path = Path(__file__).parent / "fixtures" / "nvda_daily.json"
+    points = [TimeSeriesPoint(**p) for p in json.loads(fixture_path.read_text())]
+    series = TimeSeriesData(id="NVDA", name="NVIDIA Corp", type="equity", unit="USD", points=points, source="live")
+    monkeypatch.setattr(MarketDataFetcher, "get_history", lambda *args, **kwargs: series)
+    return points
+
+
+@pytest.fixture
+def timesfm_with_failing_inference():
+    """The real TimesFMForecastEngine code path with "loaded" weights whose
+    inference raises: forecast() catches it and answers with Holt, exactly as
+    it does in production when TimesFM fails on a given input."""
+    from backend.services.forecast_engine import DampedHoltForecastEngine, TimesFMForecastEngine
+
+    class _FailingModel:
+        def forecast(self, *args, **kwargs):
+            raise RuntimeError("simulated TimesFM inference failure")
+
+    previous = TimesFMForecastEngine._instance
+    engine = object.__new__(TimesFMForecastEngine)
+    engine._initialized = True
+    engine._fallback_engine = DampedHoltForecastEngine()
+    engine.device = "cpu"
+    engine._model = _FailingModel()
+    TimesFMForecastEngine._instance = engine
+    yield engine
+    TimesFMForecastEngine._instance = previous
+
+
+def test_backtest_reports_timesfm_fallback(monkeypatch, timesfm_with_failing_inference):
+    from backend.services.forecast_engine import DampedHoltForecastEngine
+
+    points = _nvda_fixture(monkeypatch)
+    cutoff = points[180].timestamp
+
+    res = BacktestEngine.run_backtest(
+        series_id="NVDA", cutoff_date=cutoff, horizon=30, engine_override=timesfm_with_failing_inference,
+    )
+
+    assert res.is_fallback is True
+    assert "fallback" in res.model_name
+    assert any("no de TimesFM" in w for w in res.warnings)
+
+    # Proof that the metrics really are Holt's: same numbers as a Holt run.
+    holt = BacktestEngine.run_backtest(
+        series_id="NVDA", cutoff_date=cutoff, horizon=30, engine_override=DampedHoltForecastEngine(),
+    )
+    assert res.metrics.mase == holt.metrics.mase
+    assert res.future_predicted_values == holt.future_predicted_values
+
+
+def test_backtest_without_fallback_reports_engine(monkeypatch):
+    from backend.services.forecast_engine import DampedHoltForecastEngine
+
+    points = _nvda_fixture(monkeypatch)
+    res = BacktestEngine.run_backtest(
+        series_id="NVDA", cutoff_date=points[180].timestamp, horizon=30,
+        engine_override=DampedHoltForecastEngine(),
+    )
+
+    assert res.is_fallback is False
+    assert res.model_name == "damped-holt-mle"
+    assert not any("no de TimesFM" in w for w in res.warnings)

@@ -209,10 +209,13 @@ _FAKE_TIMESFM = object()
 _FAKE_CUTOFFS = ["2024-01-31", "2024-06-30", "2024-11-30"]
 
 
-def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0.5):
+def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0.5,
+                        tfm_fallback_cutoffs=(), fallback_mase=99.0, holt_mase_by_cutoff=None):
     """Mocks TimesFM availability, the cutoffs and BacktestEngine.run_backtest.
     Returns (state, calls): flip state["tfm_available"] to simulate TimesFM
-    becoming available; calls counts run_backtest calls per engine."""
+    becoming available; calls counts run_backtest calls per engine.
+    On tfm_fallback_cutoffs the TimesFM run comes back the way the real engine
+    does when it falls back: is_fallback=True and a (Holt) MASE of fallback_mase."""
     from backend.services.backtest_engine import BacktestEngine
     from types import SimpleNamespace
 
@@ -225,11 +228,22 @@ def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0
     )
     monkeypatch.setattr(AutoDiscoveryEngine, "_pick_cutoffs", staticmethod(lambda series_id, is_macro: _FAKE_CUTOFFS))
 
-    def fake_run_backtest(*, engine_override, **kwargs):
+    def fake_run_backtest(*, engine_override, cutoff_date, **kwargs):
         engine = "timesfm" if engine_override is _FAKE_TIMESFM else "holt"
         calls[engine] += 1
-        mase = mase_tfm if engine == "timesfm" else mase_holt
-        return SimpleNamespace(metrics=SimpleNamespace(mase=mase), interval_coverage=90.0)
+        if engine == "timesfm" and cutoff_date in tfm_fallback_cutoffs:
+            return SimpleNamespace(
+                metrics=SimpleNamespace(mase=fallback_mase), interval_coverage=90.0,
+                is_fallback=True, model_name="damped-holt-mle (fallback: TimesFM no disponible)",
+            )
+        if engine == "timesfm":
+            mase = mase_tfm
+        else:
+            mase = (holt_mase_by_cutoff or {}).get(cutoff_date, mase_holt)
+        return SimpleNamespace(
+            metrics=SimpleNamespace(mase=mase), interval_coverage=90.0,
+            is_fallback=False, model_name=engine,
+        )
 
     monkeypatch.setattr(BacktestEngine, "run_backtest", staticmethod(fake_run_backtest))
     return state, calls
@@ -345,3 +359,118 @@ def test_engine_selector_reason_for_unevaluated_decision(db_session, monkeypatch
     assert "Holt ganó" not in res.engine_selection_reason
     assert "TimesFM no evaluado" in res.engine_selection_reason
     assert "re-evalúa" in res.engine_selection_reason
+
+
+# ---------------------------------------------------------------------------
+# TimesFM loaded but falling back to Holt on some or all cutoffs (Fase 2.1).
+# ---------------------------------------------------------------------------
+
+def test_fallback_cutoff_not_counted_as_timesfm(db_session, monkeypatch):
+    """A cutoff where TimesFM fell back reports a Holt MASE (99 here). It must
+    not end up in mase_timesfm, and Holt's mean is taken over the SAME cutoffs
+    where TimesFM really ran (the 5.0 of the dropped cutoff is left out)."""
+    _, calls = _mock_mini_backtest(
+        monkeypatch, tfm_available=True, mase_tfm=0.5,
+        tfm_fallback_cutoffs={_FAKE_CUTOFFS[1]}, fallback_mase=99.0,
+        holt_mase_by_cutoff={_FAKE_CUTOFFS[0]: 1.0, _FAKE_CUTOFFS[1]: 5.0, _FAKE_CUTOFFS[2]: 1.0},
+    )
+
+    decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
+
+    assert calls == {"holt": 3, "timesfm": 3}
+    assert decision.mase_timesfm == 0.5, "the fallback cutoff's (Holt) MASE must not be averaged in"
+    assert decision.mase_holt == 1.0, "Holt is compared on the same cutoffs TimesFM ran on"
+    assert decision.timesfm_failed_cutoffs == 1
+    assert decision.engine_choice == "timesfm"
+
+
+def test_all_cutoffs_fallback_stored_as_failed_not_unevaluated(db_session, monkeypatch):
+    """TimesFM loaded but fell back on every cutoff: no real TimesFM MASE, so
+    mase_timesfm stays NULL. Unlike "TimesFM unavailable", this must NOT be
+    re-evaluated on the next request just because TimesFM is available: it
+    would re-run 6 backtests per request and most likely fail the same way."""
+    _, calls = _mock_mini_backtest(
+        monkeypatch, tfm_available=True, mase_holt=1.0, tfm_fallback_cutoffs=set(_FAKE_CUTOFFS),
+    )
+
+    decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
+    assert decision.mase_timesfm is None
+    assert decision.timesfm_failed_cutoffs == 3
+    assert decision.engine_choice == "holt"
+    assert decision.mase_holt == 1.0
+
+    for _ in range(3):
+        AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
+    assert calls == {"holt": 3, "timesfm": 3}, "must wait for the regular TTL"
+
+
+def test_unavailable_timesfm_stores_no_failed_count(db_session, monkeypatch):
+    """TimesFM unavailable is still "no evaluado" (failed count NULL), so the
+    Fase 1 early re-evaluation keeps working."""
+    _mock_mini_backtest(monkeypatch, tfm_available=False)
+    decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
+    assert decision.mase_timesfm is None
+    assert decision.timesfm_failed_cutoffs is None
+
+
+def _reason_for(db_session, monkeypatch, **decision_fields):
+    from backend.services.engine_selector import EngineSelector
+
+    monkeypatch.setattr(auto_discovery, "_available_timesfm_engine", lambda: None)
+    monkeypatch.setattr(auto_discovery.settings, "USE_REAL_TIMESFM", False)
+    db_session.add(EngineDecisionModel(series_id="SER", n_points_at_evaluation=200, **decision_fields))
+    db_session.commit()
+    points = [TimeSeriesPoint(timestamp=f"2020-{(i // 28) % 12 + 1:02d}-{i % 28 + 1:02d}", value=100.0 + i * 0.3) for i in range(200)]
+    res = EngineSelector._try_auto_discovery(
+        db_session, "SER", "equity", points, len(points), horizon=10, confidence=0.95, freq="D",
+    )
+    return res.engine_selection_reason
+
+
+def test_reason_when_timesfm_failed_on_every_cutoff(db_session, monkeypatch):
+    reason = _reason_for(db_session, monkeypatch, engine_choice="holt", mase_holt=0.9,
+                         mase_timesfm=None, timesfm_failed_cutoffs=3)
+    assert "TimesFM falló en los 3 cutoff(s)" in reason
+    assert "no hay MASE real de TimesFM" in reason
+    assert "Holt ganó" not in reason
+    assert "apenas TimesFM esté disponible" not in reason
+
+
+def test_reason_mentions_dropped_cutoffs(db_session, monkeypatch):
+    reason = _reason_for(db_session, monkeypatch, engine_choice="holt", mase_holt=0.8,
+                         mase_timesfm=1.2, timesfm_failed_cutoffs=1)
+    assert "Holt ganó MASE 0.800 vs TimesFM 1.200" in reason
+    assert "TimesFM falló en 1 cutoff(s)" in reason
+
+
+def test_migration_adds_column_to_existing_database(tmp_path):
+    """create_all() never adds columns to an existing table. A database created
+    before timesfm_failed_cutoffs existed must get it from init_db's migration,
+    keep its rows, and read them back as NULL (= legacy "no evaluado" meaning)."""
+    from sqlalchemy import inspect, text
+    from backend.database.connection import migrate_added_columns
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    with engine.begin() as conn:
+        # engine_decisions exactly as it was before this column existed.
+        conn.execute(text(
+            "CREATE TABLE engine_decisions ("
+            " series_id VARCHAR(50) PRIMARY KEY, engine_choice VARCHAR(20) NOT NULL,"
+            " evaluated_at DATETIME NOT NULL, mase_holt FLOAT NOT NULL, mase_timesfm FLOAT,"
+            " n_points_at_evaluation INTEGER NOT NULL)"
+        ))
+        conn.execute(text(
+            "INSERT INTO engine_decisions VALUES ('OLD', 'holt', '2026-09-01 00:00:00', 0.9, 1.1, 300)"
+        ))
+
+    Base.metadata.create_all(bind=engine)  # what init_db already did: no-op here
+    assert "timesfm_failed_cutoffs" not in {c["name"] for c in inspect(engine).get_columns("engine_decisions")}
+
+    assert migrate_added_columns(engine) == ["engine_decisions.timesfm_failed_cutoffs"]
+    assert migrate_added_columns(engine) == [], "must be idempotent"
+
+    session = sessionmaker(bind=engine)()
+    row = AutoDiscoveryEngine.get_cached_decision(session, "OLD")
+    assert row.mase_holt == 0.9 and row.mase_timesfm == 1.1
+    assert row.timesfm_failed_cutoffs is None
+    session.close()
