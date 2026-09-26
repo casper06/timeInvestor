@@ -37,6 +37,20 @@ Rama: `chore/fase-0-higiene`
   `docs/context-md`), pero falta el documento base: no está en el repo y no se
   reconstruye de memoria.
 
+- [x] **0.4 Test de fechas independiente del día de la semana.** (PR #17, sin
+  mergear)
+  `test_cached_live_series_keeps_live_source` fallaba sábados y domingos: con
+  pandas 3, `date_range(end=<fin de semana>, periods=100, freq="B")` devuelve
+  99 fechas.
+  Hecho cuando: los valores salen de `len(dates)` y el test cubre un sábado y
+  un domingo fijos, además de "now".
+- [ ] **0.5 Decidir el rango de pandas.** `requirements.txt` declara
+  `pandas>=2.2.0,<3.0.0`, pero el entorno local tiene 3.0.1 (entró el
+  2026-03-29 como dependencia de un `pip install yfinance` sin restricciones).
+  Opciones: volver el entorno a <3, o subir el techo a <4. La suite da 114
+  passed con las dos (venv limpio, 2026-09-26). La decide el dueño del repo.
+  Hecho cuando: `requirements.txt` y el entorno local coinciden.
+
 ## Fase 1 — Auto-discovery: "no evaluado" ≠ "Holt ganó"
 
 Rama: `fix/autodiscovery-not-evaluated`
