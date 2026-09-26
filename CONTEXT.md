@@ -78,7 +78,7 @@ Elegir el proveedor activo desde el dropdown del Header (cambio en caliente) o f
 
 - **Fallback silencioso de TimesFM→Holt dentro del backtest** (Fase 2.1 de `docs/PLAN.md`). Si TimesFM falla en una llamada, `forecast()` cae a Holt, pero `BacktestResponse` no lo expone. En el mini-backtest de auto-discovery, `mase_timesfm` podría ser entonces un MASE de Holt: una métrica fabricada. Va antes que cualquier ajuste del margen o de los cutoffs del selector.
 - **Mini-backtest sin cutoffs no se cachea.** Si `_pick_cutoffs` devuelve `[]`, el mini-backtest falla a propósito (antes cacheaba un MASE NaN como "holt"), así que se reintenta en cada request de esa serie, con un `logger.warning` cada vez. Los datos no se re-descargan en cada request, porque el fetcher los cachea en memoria 1 hora (`CACHE_TTL_SECONDS`). Caso raro: requiere < 60 puntos en el re-fetch cuando el selector ya vio >= 90. Si molesta, la opción es un caché negativo corto.
-- **Dependencias declaradas vs. instaladas (ítem 0.5 de `docs/PLAN.md`, en curso).** En la máquina local, pandas (3.0.1), yfinance, fastapi y uvicorn están fuera de los rangos de `requirements.txt`, y Docker instala desde esos rangos, así que corre otras versiones. Se decidió actualizar los rangos a lo que realmente corre (rama `chore/deps-align`), no volver atrás el entorno.
+- **Dependencias declaradas vs. instaladas (ítem 0.5 de `docs/PLAN.md`, en curso).** En la máquina local, pandas (3.0.1), yfinance, fastapi y uvicorn están fuera de los rangos de `requirements.txt`, y Docker instala desde esos rangos, así que corre otras versiones. Se decidió actualizar los rangos a lo que realmente corre (#19, `chore/deps-align`), no volver atrás el entorno.
 - El caché de 24h de "cuenta de Gemini CLI rechazada" no se invalida si el usuario cambia de cuenta de Google (solo por tiempo o reinicio del server) — mejora menor pendiente, no crítica porque el peor caso es esperar hasta 24h para que un cambio de cuenta se refleje.
 - `CorrelationEngine` tiene el mismo problema de catálogo rígido que motivó el auto-discovery de forecast: un FRED ID mal escrito por el LLM (ej. `IPG2211N` en vez de `IPG2211A2N`) se enruta a yfinance y falla — anotado, fuera de alcance por ahora.
 - La cuenta de Gemini CLI del usuario está permanentemente rechazada por Google (`IneligibleTierError`, ver sección 3) — el sistema ya lo detecta y lo comunica bien, no es un bug a resolver, es un hecho externo a vivir con él. Usar Claude CLI o la API key de Gemini.
@@ -94,8 +94,8 @@ Mergeado en esta tanda:
 - #17: `test_cached_live_series_keeps_live_source` fallaba los fines de semana con pandas 3 (`date_range(end=<fin de semana>, freq="B")` devuelve una fecha menos). Ahora cubre sábado y domingo fijos.
 
 En curso:
-- Rama `docs/context-md`: este archivo (0.3).
-- Rama `chore/deps-align`: ítem 0.5, alinear los rangos de `requirements*.txt` con lo que realmente corre.
+- #18 (`docs/context-md`): este archivo (0.3).
+- #19 (`chore/deps-align`): ítem 0.5, alinear los rangos de `requirements*.txt` con lo que realmente corre.
 
 Organización del trabajo:
 - `docs/PLAN.md` (versionado) tiene las fases 0 a 4 como checklist, cada ítem con su rama y su criterio de "hecho". Fase 2 arranca por el fallback silencioso de TimesFM (sección 6).
