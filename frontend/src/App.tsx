@@ -304,6 +304,10 @@ export const App: React.FC = () => {
   };
 
   // Export executive report
+  // The level the engine actually delivered (TimesFM only has an 80% band),
+  // which is what gets displayed and recorded; `confidence` stays the request.
+  const intervalLevel = forecast?.interval_level ?? confidence;
+
   const handleExport = () => {
     exportMarkdownReport({
       thesis: thesisData,
@@ -312,7 +316,7 @@ export const App: React.FC = () => {
       fundamentals,
       interpretation: lastInterpretation,
       horizon,
-      confidence,
+      confidence: intervalLevel,
       lastBacktest,
       lastCorrelation,
       lastPortfolioOptimization,
@@ -406,7 +410,7 @@ export const App: React.FC = () => {
               forecast={forecast}
               seriesData={seriesData}
               horizon={horizon}
-              confidence={confidence}
+              confidence={intervalLevel}
             />
 
             {/* Main Line & Forecast Chart */}
@@ -421,6 +425,7 @@ export const App: React.FC = () => {
               horizon={horizon}
               onChangeHorizon={handleChangeHorizon}
               confidence={confidence}
+              intervalLevel={intervalLevel}
               onChangeConfidence={handleChangeConfidence}
               period={period}
               onChangePeriod={handleChangePeriod}
@@ -434,7 +439,7 @@ export const App: React.FC = () => {
               seriesData={seriesData}
               forecast={forecast}
               horizon={horizon}
-              confidence={confidence}
+              confidence={intervalLevel}
             />
 
             {/* 2. Componente Copiloto / Intérprete de Tesis (Asistente LLM) */}
@@ -444,7 +449,7 @@ export const App: React.FC = () => {
               seriesData={seriesData}
               forecast={forecast}
               horizon={horizon}
-              confidence={confidence}
+              confidence={intervalLevel}
               activeTickers={activeTickers}
               activeMacro={activeMacro}
               fundamentals={fundamentals}
@@ -522,7 +527,7 @@ export const App: React.FC = () => {
         seriesData={seriesData}
         forecast={forecast}
         horizon={horizon}
-        confidence={confidence}
+        confidence={intervalLevel}
         onLoadThesis={handleLoadThesisFromDrawer}
       />
 

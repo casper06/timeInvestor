@@ -195,3 +195,15 @@ describe('ForecastChart — "Serie Activa" selector', () => {
     expect(ipgTab.title).toBe('');
   });
 });
+
+describe('ForecastChart interval level', () => {
+  it('says so when the engine delivered a different level than requested', () => {
+    render(<ForecastChart {...baseProps} confidence={0.95} intervalLevel={0.8} allSeriesList={allSeriesList} selectedSeriesId="CEG" seriesData={cegSeriesData} />);
+    expect(screen.getByTestId('interval-level-note')).toHaveTextContent('este motor da 80%');
+  });
+
+  it('shows no note when the levels match', () => {
+    render(<ForecastChart {...baseProps} confidence={0.95} intervalLevel={0.95} allSeriesList={allSeriesList} selectedSeriesId="CEG" seriesData={cegSeriesData} />);
+    expect(screen.queryByTestId('interval-level-note')).not.toBeInTheDocument();
+  });
+});

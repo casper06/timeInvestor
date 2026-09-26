@@ -191,14 +191,14 @@ verificada.
     Disponible con `engine: "holt_winters"` en /forecast y /backtest; no está en
     el selector. Cobertura sobre las FRED estacionales:
     `docs/results/hw_vs_holt_coverage_2026-09-26.json`.
-  - [x] **3.0c + 3.0d (una sola ronda, rama `feat/seasonal-benchmark`, PR
-    abierto):** veredicto en `docs/results/seasonal_benchmark_2026-09-26.md`.
+  - [x] **3.0c + 3.0d (una sola ronda, PR #28, mergeado):** veredicto en `docs/results/seasonal_benchmark_2026-09-26.md`.
     - TimesFM tiene el menor error en las 4 series y le gana a HW de forma
       significativa en 3 (IPG2211A2N, RSAFSNA frágil, HOUSTNSA); en
       MRTSSM4451USN, HW.
     - Holt (el plan B actual) pierde incluso contra el naive estacional.
     - Prophet no entra al selector.
-  - [ ] **3.0e Arreglar la banda de TimesFM (prerrequisito del selector).**
+  - [x] **3.0e Arreglar la banda de TimesFM (prerrequisito del selector).**
+    (rama `fix/timesfm-quantile-band`, PR abierto)
     `TimesFMForecastEngine` usa la columna 0 de los cuantiles (la media) como
     límite inferior. La banda real es columnas 1 (p10) y 9 (p90). La app
     muestra [media, p90]: cubre 36–62%, contra 84–92% de la p10–p90 real.
@@ -207,6 +207,15 @@ verificada.
   - [ ] **3.0f Aplicar el veredicto al selector** (`SEASONAL_FRED_CATALOG` y
     Holt-Winters como plan B), una vez que el dueño del repo decida sobre la
     propuesta del documento de resultados.
+    - Con corrección de Bonferroni (4 series, α = 0,05/4 = 0,0125), la única
+      victoria firme de TimesFM sobre Holt-Winters es IPG2211A2N (p=0,002).
+      HOUSTNSA y RSAFSNA (p=0,023) son probables, no firmes.
+    - El cambio de plan B (Holt → Holt-Winters) se justifica aparte e
+      independientemente de lo anterior: Holt pierde incluso contra el naive
+      estacional en las 4 series.
+    - Limitación: posible contaminación por pre-entrenamiento. Las series FRED
+      son públicas y sus ventanas de evaluación (1995–2025) podrían estar en
+      el corpus de TimesFM, lo que lo favorecería. No verificado.
 
 - [ ] **3.1 Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
   walk-forward.

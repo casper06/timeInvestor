@@ -50,6 +50,9 @@ export interface ForecastResponse {
   upper_bound: number[];
   model_name: string;
   is_fallback?: boolean;
+  /** Nominal level the engine ACTUALLY delivered (TimesFM: 0.8 even if 0.95
+   * was requested). null = approximate interval without a nominal level. */
+  interval_level?: number | null;
   fitted_params?: Record<string, number>;
   engine_selection_reason?: string;
 }
@@ -356,6 +359,8 @@ export interface BacktestResponse {
   warnings?: string[];
   /** Engine that actually produced the evaluated prediction. */
   model_name?: string;
+  /** Nominal level of the evaluated interval; interval_coverage is judged against it. */
+  interval_level?: number | null;
   /** True when TimesFM failed and Holt answered instead: the metrics are Holt's. */
   is_fallback?: boolean;
   fallback_kind?: 'not_loaded' | 'horizon_exceeded' | 'inference_error' | null;

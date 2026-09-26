@@ -36,6 +36,8 @@ interface ForecastChartProps {
   horizon: number;
   onChangeHorizon: (h: number) => void;
   confidence: number;
+  /** Level the engine actually delivered; defaults to `confidence`. */
+  intervalLevel?: number;
   onChangeConfidence: (c: number) => void;
   period: string;
   onChangePeriod: (p: string) => void;
@@ -77,6 +79,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
   horizon,
   onChangeHorizon,
   confidence,
+  intervalLevel,
   onChangeConfidence,
   period,
   onChangePeriod,
@@ -162,7 +165,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
         tension: 0.15,
       },
       {
-        label: `Banda Superior (${Math.round(confidence * 100)}%)`,
+        label: `Banda Superior (${Math.round((intervalLevel ?? confidence) * 100)}%)`,
         data: upperBoundData,
         borderColor: 'rgba(245, 158, 11, 0.4)',
         borderWidth: 1,
@@ -172,7 +175,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
         tension: 0.15,
       },
       {
-        label: `Banda Inferior (${Math.round(confidence * 100)}%)`,
+        label: `Banda Inferior (${Math.round((intervalLevel ?? confidence) * 100)}%)`,
         data: lowerBoundData,
         borderColor: 'rgba(245, 158, 11, 0.4)',
         borderWidth: 1,
@@ -326,6 +329,15 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
                 {Math.round(c * 100)}%
               </button>
             ))}
+            {intervalLevel !== undefined && Math.abs(intervalLevel - confidence) > 1e-9 && (
+              <span
+                data-testid="interval-level-note"
+                className="text-[10px] text-amber-300 ml-1"
+                title="El motor que respondió no tiene un intervalo a ese nivel: se muestra el que sí tiene, con su nivel real."
+              >
+                este motor da {Math.round(intervalLevel * 100)}%
+              </span>
+            )}
           </div>
 
           {/* Base 100 Normalization Toggle */}

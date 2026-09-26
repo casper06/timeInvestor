@@ -158,6 +158,7 @@ def test_engine_selector_reason_reflects_calibration_disqualification(db_session
         mase_holt=5.477,
         mase_timesfm=4.237,  # BETTER than Holt's — this is the bug trigger
         n_points_at_evaluation=170,
+        criteria_version=auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION,
     )
     db_session.add(decision)
     db_session.commit()
@@ -220,7 +221,7 @@ def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0
     from types import SimpleNamespace
 
     state = {"tfm_available": tfm_available}
-    calls = {"holt": 0, "timesfm": 0}
+    calls = {"holt": 0, "timesfm": 0, "confidences": []}
 
     monkeypatch.setattr(
         auto_discovery, "_available_timesfm_engine",
@@ -228,13 +229,15 @@ def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0
     )
     monkeypatch.setattr(AutoDiscoveryEngine, "_pick_cutoffs", staticmethod(lambda series_id, is_macro: _FAKE_CUTOFFS))
 
-    def fake_run_backtest(*, engine_override, cutoff_date, **kwargs):
+    def fake_run_backtest(*, engine_override, cutoff_date, confidence=0.95, **kwargs):
         engine = "timesfm" if engine_override is _FAKE_TIMESFM else "holt"
         calls[engine] += 1
+        calls["confidences"].append((engine, confidence))
         if engine == "timesfm" and cutoff_date in tfm_fallback_cutoffs:
             return SimpleNamespace(
                 metrics=SimpleNamespace(mase=fallback_mase), interval_coverage=90.0,
                 is_fallback=True, model_name="damped-holt-mle (fallback: TimesFM no disponible)",
+                interval_level=confidence,
             )
         if engine == "timesfm":
             mase = mase_tfm
@@ -243,6 +246,8 @@ def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0
         return SimpleNamespace(
             metrics=SimpleNamespace(mase=mase), interval_coverage=90.0,
             is_fallback=False, model_name=engine,
+            # Each engine declares the level it delivered (TimesFM: always 80%).
+            interval_level=0.80 if engine == "timesfm" else confidence,
         )
 
     monkeypatch.setattr(BacktestEngine, "run_backtest", staticmethod(fake_run_backtest))
@@ -258,12 +263,12 @@ def test_unevaluated_decision_reevaluated_once_timesfm_available(db_session, mon
     first = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
     assert first.engine_choice == "holt"
     assert first.mase_timesfm is None
-    assert calls == {"holt": 3, "timesfm": 0}
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 3, "timesfm": 0}
 
     state["tfm_available"] = True
     second = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
 
-    assert calls == {"holt": 6, "timesfm": 3}, "must re-run the mini-backtest, now with TimesFM"
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 6, "timesfm": 3}, "must re-run the mini-backtest, now with TimesFM"
     assert second.mase_timesfm == 0.5
     assert second.engine_choice == "timesfm"
     stored = AutoDiscoveryEngine.get_cached_decision(db_session, "NEWTICKER")
@@ -279,7 +284,7 @@ def test_unevaluated_decision_not_rerun_while_timesfm_unavailable(db_session, mo
         decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
         assert decision.mase_timesfm is None
 
-    assert calls == {"holt": 3, "timesfm": 0}, "only the first request may run the mini-backtest"
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 3, "timesfm": 0}, "only the first request may run the mini-backtest"
 
 
 def test_real_holt_win_respects_regular_ttl(db_session, monkeypatch):
@@ -290,18 +295,18 @@ def test_real_holt_win_respects_regular_ttl(db_session, monkeypatch):
     first = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
     assert first.engine_choice == "holt"
     assert first.mase_timesfm == 1.2
-    assert calls == {"holt": 3, "timesfm": 3}
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 3, "timesfm": 3}
 
     for _ in range(3):
         AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert calls == {"holt": 3, "timesfm": 3}, "within the TTL a real Holt win must stay cached"
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 3, "timesfm": 3}, "within the TTL a real Holt win must stay cached"
 
     cached = AutoDiscoveryEngine.get_cached_decision(db_session, "NEWTICKER")
     cached.evaluated_at = (datetime.now(timezone.utc) - timedelta(days=auto_discovery.DECISION_TTL_DAYS + 1)).replace(tzinfo=None)
     db_session.commit()
 
     AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert calls == {"holt": 6, "timesfm": 6}, "past the TTL it is re-evaluated as before"
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 6, "timesfm": 6}, "past the TTL it is re-evaluated as before"
 
 
 def test_no_cutoffs_is_a_failure_not_an_unevaluated_decision(db_session, monkeypatch):
@@ -348,6 +353,7 @@ def test_engine_selector_reason_for_unevaluated_decision(db_session, monkeypatch
 
     db_session.add(EngineDecisionModel(
         series_id="NOTFM", engine_choice="holt", mase_holt=0.9, mase_timesfm=None, n_points_at_evaluation=200,
+        criteria_version=auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION,
     ))
     db_session.commit()
 
@@ -377,7 +383,7 @@ def test_fallback_cutoff_not_counted_as_timesfm(db_session, monkeypatch):
 
     decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
 
-    assert calls == {"holt": 3, "timesfm": 3}
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 3, "timesfm": 3}
     assert decision.mase_timesfm == 0.5, "the fallback cutoff's (Holt) MASE must not be averaged in"
     assert decision.mase_holt == 1.0, "Holt is compared on the same cutoffs TimesFM ran on"
     assert decision.timesfm_failed_cutoffs == 1
@@ -401,7 +407,7 @@ def test_all_cutoffs_fallback_stored_as_failed_not_unevaluated(db_session, monke
 
     for _ in range(3):
         AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert calls == {"holt": 3, "timesfm": 3}, "must wait for the regular TTL"
+    assert {k: v for k, v in calls.items() if k != "confidences"} == {"holt": 3, "timesfm": 3}, "must wait for the regular TTL"
 
 
 def test_unavailable_timesfm_stores_no_failed_count(db_session, monkeypatch):
@@ -418,7 +424,9 @@ def _reason_for(db_session, monkeypatch, **decision_fields):
 
     monkeypatch.setattr(auto_discovery, "_available_timesfm_engine", lambda: None)
     monkeypatch.setattr(auto_discovery.settings, "USE_REAL_TIMESFM", False)
-    db_session.add(EngineDecisionModel(series_id="SER", n_points_at_evaluation=200, **decision_fields))
+    db_session.add(EngineDecisionModel(series_id="SER", n_points_at_evaluation=200,
+                                       criteria_version=auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION,
+                                       **decision_fields))
     db_session.commit()
     points = [TimeSeriesPoint(timestamp=f"2020-{(i // 28) % 12 + 1:02d}-{i % 28 + 1:02d}", value=100.0 + i * 0.3) for i in range(200)]
     res = EngineSelector._try_auto_discovery(
@@ -466,7 +474,9 @@ def test_migration_adds_column_to_existing_database(tmp_path):
     Base.metadata.create_all(bind=engine)  # what init_db already did: no-op here
     assert "timesfm_failed_cutoffs" not in {c["name"] for c in inspect(engine).get_columns("engine_decisions")}
 
-    assert migrate_added_columns(engine) == ["engine_decisions.timesfm_failed_cutoffs"]
+    assert migrate_added_columns(engine) == [
+        "engine_decisions.timesfm_failed_cutoffs", "engine_decisions.criteria_version",
+    ]
     assert migrate_added_columns(engine) == [], "must be idempotent"
 
     session = sessionmaker(bind=engine)()
@@ -474,3 +484,63 @@ def test_migration_adds_column_to_existing_database(tmp_path):
     assert row.mase_holt == 0.9 and row.mase_timesfm == 1.1
     assert row.timesfm_failed_cutoffs is None
     session.close()
+
+
+# ---------------------------------------------------------------------------
+# 3.0e: coverage guard at the same nominal level, and criteria versioning.
+# ---------------------------------------------------------------------------
+
+def test_guard_compares_both_engines_at_80_percent(db_session, monkeypatch):
+    _, calls = _mock_mini_backtest(monkeypatch, tfm_available=True)
+    AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
+
+    assert calls["confidences"], "the mini-backtest must have run"
+    assert {conf for _, conf in calls["confidences"]} == {auto_discovery.GUARD_INTERVAL_LEVEL}
+    assert auto_discovery.GUARD_INTERVAL_LEVEL == pytest.approx(0.80)
+
+
+def test_guard_refuses_to_compare_different_levels(db_session, monkeypatch):
+    """If an engine declared a different level than the guard's, comparing
+    coverages would be meaningless: the mini-backtest fails, nothing cached."""
+    from backend.services.backtest_engine import BacktestEngine
+    from types import SimpleNamespace
+
+    _mock_mini_backtest(monkeypatch, tfm_available=True)
+
+    def mismatched(*, engine_override, cutoff_date, confidence=0.95, **kwargs):
+        return SimpleNamespace(metrics=SimpleNamespace(mase=1.0), interval_coverage=90.0,
+                               is_fallback=False, model_name="x", interval_level=0.95)
+
+    monkeypatch.setattr(BacktestEngine, "run_backtest", staticmethod(mismatched))
+    assert AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500) is None
+    assert AutoDiscoveryEngine.get_cached_decision(db_session, "NEWTICKER") is None
+
+
+@pytest.mark.parametrize("old_version", [None, 1])
+def test_decision_with_old_criteria_version_is_reevaluated(db_session, monkeypatch, old_version):
+    """A decision made with an older criterion (NULL = before the column
+    existed) is stale even if it's fresh and TimesFM was evaluated."""
+    _, calls = _mock_mini_backtest(monkeypatch, tfm_available=True, mase_holt=1.0, mase_tfm=0.5)
+    db_session.add(EngineDecisionModel(
+        series_id="OLD", engine_choice="holt", mase_holt=1.0, mase_timesfm=0.9,
+        n_points_at_evaluation=500, criteria_version=old_version,
+    ))
+    db_session.commit()
+
+    decision = AutoDiscoveryEngine.decide(db_session, "OLD", n_points=500)
+
+    assert calls["holt"] == 3 and calls["timesfm"] == 3, "must re-run the mini-backtest"
+    assert decision.criteria_version == auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION
+    assert decision.engine_choice == "timesfm"
+
+
+def test_decision_with_current_criteria_version_is_kept(db_session, monkeypatch):
+    _, calls = _mock_mini_backtest(monkeypatch, tfm_available=True)
+    db_session.add(EngineDecisionModel(
+        series_id="CUR", engine_choice="holt", mase_holt=1.0, mase_timesfm=1.2,
+        n_points_at_evaluation=500, criteria_version=auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION,
+    ))
+    db_session.commit()
+
+    AutoDiscoveryEngine.decide(db_session, "CUR", n_points=500)
+    assert calls["holt"] == 0 and calls["timesfm"] == 0
