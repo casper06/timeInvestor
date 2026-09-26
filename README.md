@@ -11,11 +11,23 @@ natural a una selección de activos.
 
 ```bash
 cp .env.example .env   # completar FRED_API_KEY / GEMINI_API_KEY según necesidad
+python -m venv .venv
+.venv\Scripts\activate          # Windows; en Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 python run.py           # compila el frontend si hace falta y sirve todo en :8000
 ```
 
 Ver `.env.example` para el detalle de cada variable de entorno.
+
+Instalá siempre dentro de `.venv` (está en `.gitignore`), no en el Python
+global: un `pip install` suelto en el global puede actualizar pandas, yfinance,
+etc. por fuera de los rangos de `requirements.txt`, y entonces lo que corre
+localmente deja de ser lo que instala Docker.
+
+Para comparar dos entornos contra datos reales (la suite de tests mockea
+yfinance y FRED): `python scripts/smoke_real_data.py --out a.json` en cada uno,
+y después `python scripts/smoke_real_data.py --compare a.json b.json`. Necesita
+`FRED_API_KEY`.
 
 ### Desarrollo (backend y frontend por separado)
 

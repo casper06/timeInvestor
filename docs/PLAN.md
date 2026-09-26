@@ -44,12 +44,21 @@ Rama: `chore/fase-0-higiene`
   99 fechas.
   Hecho cuando: los valores salen de `len(dates)` y el test cubre un sábado y
   un domingo fijos, además de "now".
-- [ ] **0.5 Decidir el rango de pandas.** `requirements.txt` declara
-  `pandas>=2.2.0,<3.0.0`, pero el entorno local tiene 3.0.1 (entró el
-  2026-03-29 como dependencia de un `pip install yfinance` sin restricciones).
-  Opciones: volver el entorno a <3, o subir el techo a <4. La suite da 114
-  passed con las dos (venv limpio, 2026-09-26). La decide el dueño del repo.
-  Hecho cuando: `requirements.txt` y el entorno local coinciden.
+- [x] **0.5 Alinear dependencias con lo que realmente corre.** (rama
+  `chore/deps-align`, PR abierto)
+  Decisión del dueño del repo: no volver atrás el entorno; se actualizan los
+  rangos. `requirements.txt` sube fastapi (`>=0.136,<1`), uvicorn
+  (`>=0.49,<1`), yfinance (`>=1.2,<2`) y pandas (`>=3.0,<4`), y el proyecto
+  pasa a instalarse en `.venv/`.
+  Resultado (2026-09-26):
+  - suite en un `.venv` limpio: 120 passed;
+  - smoke test con datos reales (`scripts/smoke_real_data.py`), rangos viejos
+    vs. nuevos: mismas fechas, forecast y backtest (MASE y cobertura
+    idénticos). Solo 4 cierres de SPY difieren en 1 centavo, y es ruido de
+    Yahoo entre requests, no de las versiones;
+  - `docker compose build` OK; en la imagen, `/api/health` responde.
+  Hecho cuando: `requirements.txt` incluye lo que corre localmente y Docker
+  instala las mismas versiones.
 
 ## Fase 1 — Auto-discovery: "no evaluado" ≠ "Holt ganó"
 
