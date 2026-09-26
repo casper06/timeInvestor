@@ -26,6 +26,7 @@ client_secret*.json
 *.db-journal
 *.db-wal
 *.db-shm
+*.db.bak-*
 *.sqlite
 *.sqlite3
 time_investor.db
