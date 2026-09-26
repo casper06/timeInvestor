@@ -18,27 +18,24 @@ sin verificar) va en `.bitacora/RONDAS.md`, que es local y no se versiona.
 
 Rama: `chore/fase-0-higiene`
 
-- [x] **0.1 Test de Claude CLI independiente del binario.** (PR #14, sin mergear)
+- [x] **0.1 Test de Claude CLI independiente del binario.** (PR #14, mergeado)
   `test_claude_cli_no_tool_use_attempted` hoy llama a `shutil.which` real a
   través de `ClaudeCliLLMClient.__init__`.
   Hecho cuando: el test pasa con `shutil.which` devolviendo `None` para
   `claude`, y el arreglo está en el test (no en el código de producción).
-- [x] **0.2 Fijar la versión de `timesfm`.** (PR #14, sin mergear; fijado en `==3.0.2`) Hoy
-  `requirements-timesfm.txt` acepta `>=2.0.0,<4.0.0`.
+- [x] **0.2 Fijar la versión de `timesfm`.** (PR #14, mergeado; fijado en `==3.0.2`) Antes
+  `requirements-timesfm.txt` aceptaba `>=2.0.0,<4.0.0`.
   Hecho cuando: la versión instalada y la última de PyPI están verificadas
   (ambas exportan `TimesFM_2p5_200M_torch`), el pin elegido está justificado
   con fecha y método en un comentario, y los tests reales de TimesFM pasan con
   los pesos en caché.
-- [ ] **0.3 `CONTEXT.md` actualizado** (cuota de Claude CLI verificada el
-  2026-09-25; TimesFM-3 existe y no fue evaluado).
-  Hecho cuando: el archivo existe, tiene esas dos notas y quedó decidido si se
-  versiona.
-  Estado: bloqueado. Se decidió crearlo en la raíz y versionarlo (rama
-  `docs/context-md`), pero falta el documento base: no está en el repo y no se
-  reconstruye de memoria.
-
-- [x] **0.4 Test de fechas independiente del día de la semana.** (PR #17, sin
-  mergear)
+- [x] **0.3 `CONTEXT.md` actualizado** (rama `docs/context-md`, PR abierto)
+  Notas: cuota de Claude CLI verificada el 2026-09-25 (re-leída el
+  2026-09-26), TimesFM-3 existe y no fue evaluado, `timesfm` fijado en
+  3.0.2, auto-discovery "no evaluado" y estado del repo.
+  Hecho cuando: el archivo existe en la raíz, versionado, con esas notas.
+- [x] **0.4 Test de fechas independiente del día de la semana.** (PR #17,
+  mergeado)
   `test_cached_live_series_keeps_live_source` fallaba sábados y domingos: con
   pandas 3, `date_range(end=<fin de semana>, periods=100, freq="B")` devuelve
   99 fechas.
@@ -55,7 +52,7 @@ Rama: `chore/fase-0-higiene`
 
 Rama: `fix/autodiscovery-not-evaluated`
 
-- [x] **1.1 Distinguir la decisión tomada sin TimesFM.** (PR #15, sin mergear) Hoy una serie evaluada
+- [x] **1.1 Distinguir la decisión tomada sin TimesFM.** (PR #15, mergeado) Hoy una serie evaluada
   con TimesFM no disponible queda como `engine_choice="holt"` por 30 días.
   Hecho cuando:
   - una decisión no evaluada se re-evalúa en cuanto TimesFM está disponible,
