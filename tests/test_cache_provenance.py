@@ -26,14 +26,18 @@ def clear_cache_before_and_after():
     cache.clear()
 
 
-def test_cached_live_series_keeps_live_source(monkeypatch):
+# pandas 3.0.1 returns 99 dates, not 100, for date_range(end=<weekend>,
+# periods=100, freq="B"); a fixed 100-value column then fails on weekends.
+# Saturday and Sunday are pinned so that stays covered on any weekday.
+@pytest.mark.parametrize("end", [None, "2026-09-26 15:00", "2026-09-27 15:00"], ids=["now", "saturday", "sunday"])
+def test_cached_live_series_keeps_live_source(monkeypatch, end):
     """
     Request the same series twice with mocked yfinance returning valid data.
     The second response must retain source == 'live' and have from_cache == True.
     """
-    dates = pd.date_range(end=datetime.now(), periods=100, freq="B")
+    dates = pd.date_range(end=end or datetime.now(), periods=100, freq="B")
     mock_df = pd.DataFrame({
-        "Close": [100.0 + i * 0.5 for i in range(100)]
+        "Close": [100.0 + i * 0.5 for i in range(len(dates))]
     }, index=dates)
 
     class MockTicker:
