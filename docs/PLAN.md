@@ -103,15 +103,20 @@ Rama: a definir.
   `MASE_tfm ≤ 0.95·MASE_holt` o Diebold-Mariano) y que un empate lo gane Holt.
   Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
   y hay tests del margen y del empate.
+  Además: el guard de calibración por cobertura (`MAX_ACCEPTABLE_COVERAGE_GAP_PP`)
+  sobre 3 cutoffs no es confiable. 2.5 mostró que la cobertura por ventana va
+  de 0% a 100%, con mediana 100%, así que 3 ventanas pueden dar cualquier
+  cosa. La decisión tiene que usar muchos cutoffs o sacar la cobertura del
+  criterio.
 
-- [x] **2.4 Lockfile de dependencias.** (rama `chore/lockfile`, PR abierto: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
+- [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
   `pip-compile` (o equivalente), o un `requirements.lock` con las versiones
   verificadas.
   Hecho cuando: hay un archivo de versiones exactas que Docker y `.venv` usan,
   y cada actualización del lock pasa por la suite y `scripts/smoke_real_data.py`.
-- [x] **2.5 Cobertura del cono de Holt sobre datos reales.** (rama `feat/holt-coverage-real`, PR abierto; resultado en `docs/results/holt_coverage_2026-09-26.json`) El smoke test dio
+- [x] **2.5 Cobertura del cono de Holt sobre datos reales.** (PR #25, mergeado; resultado en `docs/results/holt_coverage_2026-09-26.json`) El smoke test dio
   SPY 43,3% en una sola ventana, contra ~96% validado sobre datos simulados.
   Una ventana sola no prueba nada.
   Hecho cuando: hay una medición de cobertura empírica con muchos cutoffs sobre
@@ -127,6 +132,9 @@ Rama: a definir.
   - el 43,3% de SPY del smoke test fue una de esas ventanas malas;
   - pendiente la decisión del dueño del repo antes de proponer cambios al
     intervalo.
+  Decisión explícita: el sesgo positivo (el precio real terminó por encima del
+  centro, cada vez más con el horizonte) **NO se corrige**. Sale de una muestra
+  de ~5 años mayormente alcista, y agregar drift sería ajustarse a ese régimen.
 
 ## Fase 3 — Experimento TimesFM-3
 
@@ -137,7 +145,7 @@ de pasado y pasado-futuro; pesos con licencia **no comercial** (verificado el
 2026-09-26, ver `CONTEXT.md`). La fecha de lanzamiento del 31/08/2026 no está
 verificada.
 
-- [ ] **3.0 Prerrequisito: comparación justa en series estacionales.** Hoy
+**3.0 Prerrequisito: comparación justa en series estacionales.** Hoy
   nada en el sistema es estacional: Holt no tiene componente estacional, el
   único benchmark es el random walk (`run_naive_rw_at_cutoff`), y el MASE se
   escala contra el naive de 1 paso (`mean(|diff(y_train)|)`, en
@@ -174,6 +182,15 @@ verificada.
   Hecho cuando: el benchmark reporta, por serie, MASE estacional de TimesFM,
   Holt, Holt-Winters, Prophet, naive estacional y random walk, y el catálogo
   quedó confirmado o corregido según esos números.
+  Se parte en cuatro sub-ítems, un PR cada uno:
+  - [x] **3.0a Naive estacional + MASE estacional** en el backtest (rama
+    `feat/seasonal-naive-mase`, PR abierto). El MASE de 1 paso se mantiene; el estacional
+    va en un campo aparte.
+  - [ ] **3.0b Holt-Winters** como motor (implementación a justificar).
+  - [ ] **3.0c Prophet**, solo en el benchmark, con dependencia opcional.
+  - [ ] **3.0d Re-benchmark** de las series estacionales contra todos los
+    rivales, y decisión sobre `SEASONAL_FRED_CATALOG`.
+
 - [ ] **3.1 Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
   walk-forward.
 - [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
@@ -221,3 +238,10 @@ Rama: una por ítem, a definir.
   benchmark automático.
   Hecho cuando: hay una tabla tesis × modelo con tickers y series elegidos, y
   una conclusión sobre qué modelo usar por defecto.
+- [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
+  95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
+  necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
+  cola, remitir a la pestaña de Riesgo.
+- [ ] **4.8 (baja prioridad, solo investigar)** Intervalo con volatilidad
+  adaptativa (EWMA/GARCH) para mejorar la cobertura condicional. Investigar,
+  no implementar.

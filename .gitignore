@@ -86,3 +86,6 @@ desktop.ini
 
 # --- Bitácora local de rondas de trabajo (no se versiona) ---
 .bitacora/
+
+# --- Snapshots de datos reales para mediciones reproducibles (no se versionan) ---
+data/snapshots/

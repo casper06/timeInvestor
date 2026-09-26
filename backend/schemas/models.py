@@ -241,8 +241,19 @@ class BacktestMetrics(BaseModel):
     mape: float
     smape: float = Field(default=0.0, description="Symmetric Mean Absolute Percentage Error (%)")
     mase: float = Field(default=0.0, description="Mean Absolute Scaled Error relative to in-sample naive")
+    mase_seasonal: Optional[float] = Field(default=None, description="MASE escalado con el naive estacional in-sample, mean |y_t - y_{t-m}|. Solo para series con estacionalidad detectada; None en el resto. No reemplaza a `mase` (escala de 1 paso)")
     directional_accuracy: float = Field(..., description="Step-by-step directional accuracy (%)")
     observations_evaluated: int
+
+class SeasonalityInfo(BaseModel):
+    """Cómo se decidió si la serie es estacional (ver backend/services/seasonality.py)."""
+    frequency: str = Field(..., description="daily | weekly | monthly | quarterly | annual | irregular, inferida de las fechas")
+    period: Optional[int] = Field(default=None, description="m: 12 mensual, 4 trimestral; None si la frecuencia no se evalúa")
+    is_seasonal: bool
+    acf_at_period: Optional[float] = Field(default=None, description="ACF de las primeras diferencias en el lag m")
+    threshold: Optional[float] = Field(default=None, description="Umbral del test (Bartlett, 90% unilateral)")
+    n_obs: int
+    reason: str
 
 class BacktestResponse(BaseModel):
     series_id: str
@@ -257,6 +268,8 @@ class BacktestResponse(BaseModel):
     future_upper_bound: List[float]
     metrics: BacktestMetrics
     naive_metrics: Optional[BacktestMetrics] = None
+    seasonal_naive_metrics: Optional[BacktestMetrics] = Field(default=None, description="Benchmark naive estacional (mismo período del ciclo anterior). Solo si la serie es estacional; se suma al random walk (`naive_metrics`), no lo reemplaza")
+    seasonality: Optional[SeasonalityInfo] = Field(default=None, description="Test de estacionalidad sobre los datos de entrenamiento")
     interval_coverage: float = Field(default=0.0, description="Percentage of actuals inside prediction interval (%)")
     aggregate_direction_correct: bool = Field(default=False, description="True if aggregate horizon direction matched")
     verdict: str
