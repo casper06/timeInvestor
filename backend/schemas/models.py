@@ -62,6 +62,8 @@ class ForecastResponse(BaseModel):
     upper_bound: List[float] = Field(..., description="Upper prediction interval bound")
     model_name: str = Field(default="damped-holt-mle", description="Name of the forecasting model")
     is_fallback: bool = Field(default=False, description="True if model fell back from primary engine")
+    fallback_kind: Optional[Literal["not_loaded", "horizon_exceeded", "inference_error"]] = Field(default=None, description="Por qué TimesFM no corrió: not_loaded (modelo sin cargar; esperar no sirve), horizon_exceeded (horizonte > máximo compilado; bajar el horizonte), inference_error (falló la inferencia; reintentar puede servir si fue puntual)")
+    fallback_reason: Optional[str] = Field(default=None, description="Detalle legible de la causa del fallback")
     fitted_params: Optional[Dict[str, float]] = Field(default=None, description="Fitted smoothing and damping parameters")
     engine_selection_reason: str = Field(default="", description="Human-readable explanation of why this specific engine was chosen for this series (category, history length, or fallback)")
 
@@ -261,6 +263,8 @@ class BacktestResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     model_name: Optional[str] = Field(default=None, description="Motor que produjo realmente la predicción evaluada (ForecastResponse.model_name)")
     is_fallback: bool = Field(default=False, description="True si el motor pedido (TimesFM) falló y cayó a Holt internamente: las métricas son de Holt, no de TimesFM")
+    fallback_kind: Optional[Literal["not_loaded", "horizon_exceeded", "inference_error"]] = Field(default=None, description="Causa del fallback (ver ForecastResponse.fallback_kind)")
+    fallback_reason: Optional[str] = Field(default=None, description="Detalle legible de la causa del fallback")
 
 # Correlation Schemas
 class CorrelationRequest(BaseModel):

@@ -339,6 +339,12 @@ export interface BacktestResponse {
   aggregate_direction_correct?: boolean;
   verdict: string;
   warnings?: string[];
+  /** Engine that actually produced the evaluated prediction. */
+  model_name?: string;
+  /** True when TimesFM failed and Holt answered instead: the metrics are Holt's. */
+  is_fallback?: boolean;
+  fallback_kind?: 'not_loaded' | 'horizon_exceeded' | 'inference_error' | null;
+  fallback_reason?: string | null;
 }
 
 export interface CorrelationMatrixResponse {

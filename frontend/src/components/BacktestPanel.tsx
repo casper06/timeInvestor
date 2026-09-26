@@ -12,7 +12,7 @@ import {
 } from 'chart.js';
 import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { Play, RotateCcw, Award, CheckCircle, Sliders } from 'lucide-react';
+import { Play, RotateCcw, Award, CheckCircle, Sliders, AlertTriangle, Info } from 'lucide-react';
 import { runBacktest } from '../services/api';
 import type { BacktestResponse, TimeSeriesData } from '../services/api';
 import { ExplainerPanel } from './ExplainerPanel';
@@ -26,6 +26,20 @@ interface BacktestPanelProps {
    * include a one-line verdict summary of what the user actually reviewed here. */
   onResult?: (result: BacktestResponse) => void;
 }
+
+// What to do about each fallback cause: whether waiting helps or someone has
+// to intervene (see fallback_kind in backend/schemas/models.py).
+const FALLBACK_ACTION: Record<string, string> = {
+  not_loaded:
+    'Esperar no lo arregla: para evaluar TimesFM hay que instalarlo en el servidor ' +
+    '(requirements-timesfm.txt y sus pesos) con USE_REAL_TIMESFM=true.',
+  horizon_exceeded: 'Esperar no lo arregla: elegí un horizonte de 128 días o menos.',
+  inference_error:
+    'Puede haber sido puntual (por ejemplo, falta de memoria): reintentá. Si se repite con esta ' +
+    'misma serie, hay que intervenir; el error completo está en el log del servidor.',
+};
+const FALLBACK_ACTION_UNKNOWN =
+  'El servidor no informó la causa. Reintentá; si se repite, revisá el log del servidor.';
 
 export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, activeSeriesId, onResult }) => {
   const [cutoffIndex, setCutoffIndex] = useState<number>(0);
@@ -301,6 +315,23 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
         </div>
       )}
 
+      {/* TimesFM fell back to Holt: say so before showing any number */}
+      {result?.is_fallback && (
+        <div
+          role="alert"
+          className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/40 text-xs text-red-200 flex items-start gap-2.5"
+        >
+          <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <strong className="text-red-300 font-semibold block">
+              Estas métricas son de Holt, no de TimesFM: TimesFM falló y el backtest usó Holt en su lugar.
+            </strong>
+            {result.fallback_reason && <p>Causa: {result.fallback_reason}</p>}
+            <p>{FALLBACK_ACTION[result.fallback_kind ?? ''] ?? FALLBACK_ACTION_UNKNOWN}</p>
+          </div>
+        </div>
+      )}
+
       {/* Metrics Row */}
       {result && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -363,6 +394,21 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
             {result.verdict}
           </div>
         </div>
+      )}
+
+      {/* Backend warnings (e.g. interval under-coverage) */}
+      {result?.warnings && result.warnings.length > 0 && (
+        <ul aria-label="Advertencias del backtest" className="space-y-1.5">
+          {result.warnings.map((w) => (
+            <li
+              key={w}
+              className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-700 text-[11px] text-slate-300 flex items-start gap-2"
+            >
+              <Info className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+              <span>{w}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

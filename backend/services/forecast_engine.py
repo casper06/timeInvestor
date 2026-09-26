@@ -330,14 +330,24 @@ class TimesFMForecastEngine(BaseForecastEngine):
         confidence: float = 0.95,
         freq: str = "D"
     ) -> ForecastResponse:
-        if self._model is not None:
+        # Why TimesFM didn't run, when it doesn't: the caller needs the cause to
+        # tell the user whether waiting helps (see fallback_kind in the schema).
+        fallback_kind, fallback_reason = None, None
+        if self._model is None:
+            fallback_kind = "not_loaded"
+            fallback_reason = (
+                "TimesFM no está cargado en el servidor (paquete o pesos sin instalar, "
+                "o USE_REAL_TIMESFM=false)."
+            )
+        elif horizon > self.MAX_HORIZON:
+            fallback_kind = "horizon_exceeded"
+            fallback_reason = (
+                f"El horizonte pedido ({horizon}) supera el máximo compilado de TimesFM "
+                f"({self.MAX_HORIZON})."
+            )
+            logger.warning(f"TimesFM: {fallback_reason} Usando Holt.")
+        else:
             try:
-                if horizon > self.MAX_HORIZON:
-                    raise ValueError(
-                        f"Requested horizon {horizon} exceeds the compiled max_horizon "
-                        f"({self.MAX_HORIZON}) for this TimesFM engine instance."
-                    )
-
                 context_vals = np.array([p.value for p in points[-self.MAX_CONTEXT:]], dtype=np.float64)
 
                 point_forecast, quantile_forecast = self._model.forecast(
@@ -391,11 +401,15 @@ class TimesFMForecastEngine(BaseForecastEngine):
 
             except Exception as e:
                 logger.error(f"Error during real TimesFM inference: {e}. Reverting to fallback.", exc_info=True)
+                fallback_kind = "inference_error"
+                fallback_reason = f"La inferencia de TimesFM falló: {type(e).__name__}: {e}"
 
         # Transparent fallback to Damped Holt
         res = self._fallback_engine.forecast(points, horizon, confidence, freq)
         res.model_name = "damped-holt-mle (fallback: TimesFM no disponible)"
         res.is_fallback = True
+        res.fallback_kind = fallback_kind
+        res.fallback_reason = fallback_reason
         return res
 
 
