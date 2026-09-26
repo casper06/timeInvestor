@@ -107,6 +107,16 @@ How it works:
   No schema change: `mase_timesfm` was already nullable and `NULL` already
   meant exactly this, so existing databases keep working as they are.
 
+**TimesFM falling back inside the mini-backtest.** A loaded TimesFM can still
+fail on a given cutoff; `TimesFMForecastEngine.forecast()` then answers with
+Holt, and `BacktestResponse.is_fallback` says so. That cutoff is dropped for
+both engines (the comparison stays paired over the same cutoffs) and counted
+in `engine_decisions.timesfm_failed_cutoffs`. If it fails on every cutoff,
+`mase_timesfm` stays `NULL` but `timesfm_failed_cutoffs > 0`: that is not
+"no evaluado", so it waits for the regular TTL instead of re-running on every
+request. The column was added later; `init_db()` adds it to existing databases
+(`migrate_added_columns`), and old rows read as `NULL` with the old meaning.
+
 A failed mini-backtest (e.g. a data-provider hiccup) is caught and logged, and
 `decide()` returns `None` (or a stale cached decision if one exists) rather
 than raising — the actual `/forecast` request that triggered it must not break
