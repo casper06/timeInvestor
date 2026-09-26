@@ -93,7 +93,8 @@ def test_backtest_reports_timesfm_fallback(monkeypatch, timesfm_with_failing_inf
 
     assert res.is_fallback is True
     assert "fallback" in res.model_name
-    assert any("no de TimesFM" in w for w in res.warnings)
+    assert res.fallback_kind == "inference_error"
+    assert "simulated TimesFM inference failure" in res.fallback_reason
 
     # Proof that the metrics really are Holt's: same numbers as a Holt run.
     holt = BacktestEngine.run_backtest(
@@ -114,4 +115,20 @@ def test_backtest_without_fallback_reports_engine(monkeypatch):
 
     assert res.is_fallback is False
     assert res.model_name == "damped-holt-mle"
-    assert not any("no de TimesFM" in w for w in res.warnings)
+    assert res.fallback_kind is None and res.fallback_reason is None
+
+
+def test_backtest_fallback_kinds(monkeypatch, timesfm_with_failing_inference):
+    """The two causes where waiting does NOT help are told apart from a
+    one-off inference error, so the UI can say "intervene" vs "retry"."""
+    points = _nvda_fixture(monkeypatch)
+    cutoff = points[100].timestamp
+    engine = timesfm_with_failing_inference
+
+    too_long = BacktestEngine.run_backtest(series_id="NVDA", cutoff_date=cutoff, horizon=140, engine_override=engine)
+    assert too_long.is_fallback and too_long.fallback_kind == "horizon_exceeded"
+    assert "140" in too_long.fallback_reason
+
+    engine._model = None
+    not_loaded = BacktestEngine.run_backtest(series_id="NVDA", cutoff_date=cutoff, horizon=30, engine_override=engine)
+    assert not_loaded.is_fallback and not_loaded.fallback_kind == "not_loaded"

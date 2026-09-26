@@ -140,15 +140,12 @@ class BacktestEngine:
 
         # 6. Verdict and Warnings
         warnings: List[str] = []
-        # TimesFMForecastEngine.forecast() catches its own inference errors and
-        # answers with Holt (is_fallback=True). Without surfacing that here,
-        # these metrics would be reported as the requested engine's.
+        # TimesFMForecastEngine.forecast() catches its own failures and answers
+        # with Holt (is_fallback=True). Without surfacing that here, these
+        # metrics would be reported as the requested engine's. It goes in the
+        # structured is_fallback/fallback_kind/fallback_reason fields (the UI
+        # builds its notice from them), not duplicated into `warnings`.
         is_fallback = bool(forecast_res.is_fallback)
-        if is_fallback:
-            warnings.append(
-                f"El motor pedido no corrió: la predicción la hizo {forecast_res.model_name}. "
-                f"Estas métricas son de Holt, no de TimesFM."
-            )
         nominal_coverage = confidence * 100.0
         if interval_coverage < (nominal_coverage - 15.0):
             warnings.append(
@@ -198,4 +195,6 @@ class BacktestEngine:
             warnings=warnings,
             model_name=forecast_res.model_name,
             is_fallback=is_fallback,
+            fallback_kind=forecast_res.fallback_kind,
+            fallback_reason=forecast_res.fallback_reason,
         )
