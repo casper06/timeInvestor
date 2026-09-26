@@ -157,6 +157,7 @@ class DampedHoltForecastEngine(BaseForecastEngine):
             values=future_vals,
             lower_bound=lower_bounds,
             upper_bound=upper_bounds,
+            interval_level=confidence,
             model_name="damped-holt-mle",
             is_fallback=False,
             fitted_params={
@@ -301,6 +302,7 @@ class HoltWintersForecastEngine(BaseForecastEngine):
             lower_bound=[round(float(v), 2) for v in lower],
             upper_bound=[round(float(v), 2) for v in upper],
             model_name=f"holt-winters-ets(A,Ad,A) m={m}",
+            interval_level=confidence,
             fitted_params=fitted,
         )
 
@@ -329,6 +331,9 @@ class TimesFMForecastEngine(BaseForecastEngine):
     # to a multiple of the model's output patch size (see compile()'s own rounding logic).
     MAX_CONTEXT = 512
     MAX_HORIZON = 128
+    # The band: the widest the quantile head offers (p10-p90 -> 80% nominal).
+    BAND_LOW_Q = 0.1
+    BAND_HIGH_Q = 0.9
 
     _instance = None
     _model = None
@@ -366,6 +371,26 @@ class TimesFMForecastEngine(BaseForecastEngine):
         if not settings.USE_REAL_TIMESFM:
             return False
         return cls()._model is not None
+
+    def _quantile_columns(self, n_columns: int) -> tuple:
+        """(p10 column, p90 column) in quantile_forecast, looked up BY VALUE in
+        the loaded model's config.quantiles (column 0 is the mean). Raises if
+        the output doesn't have the expected [mean, *quantiles] layout, which
+        forecast() turns into an explicit fallback, never a mislabeled band."""
+        quantiles = list(getattr(getattr(self._model, "model", None), "config", None).quantiles)
+        if n_columns != len(quantiles) + 1:
+            raise ValueError(
+                f"Formato de cuantiles inesperado: {n_columns} columnas para {len(quantiles)} cuantiles "
+                f"(se esperaba [media, *cuantiles])"
+            )
+
+        def column(q: float) -> int:
+            for i, value in enumerate(quantiles):
+                if abs(value - q) < 1e-9:
+                    return 1 + i
+            raise ValueError(f"El modelo no tiene el cuantil {q} (tiene {quantiles})")
+
+        return column(self.BAND_LOW_Q), column(self.BAND_HIGH_Q)
 
     @property
     def model_name(self) -> str:
@@ -454,19 +479,19 @@ class TimesFMForecastEngine(BaseForecastEngine):
 
                 pred_values = [round(float(v), 2) for v in point_forecast[0][:horizon]]
 
-                # The model's quantile head only exposes deciles (p10..p90 — see
-                # TimesFM_2p5_200M_Definition.quantiles), not a genuine 95% interval.
-                # Reporting the p10/p90 band AS 95% would fabricate a coverage level
-                # the model never actually produced — this project's own diagnostic
-                # script explicitly forbids that. So: use the widest band the model
-                # gives (p10-p90, an 80% empirical interval) as-is, and record the
-                # real coverage level in fitted_params for transparency instead of
-                # silently mislabeling it.
-                num_quantiles = quantile_forecast.shape[-1] if quantile_forecast is not None else 0
-                if num_quantiles >= 2:
-                    lower_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, 0]]
-                    upper_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, -1]]
-                    reported_interval_pct = 80.0  # p10-p90
+                # The model's quantile head only exposes deciles (p10..p90), not a
+                # genuine 95% interval. Reporting p10/p90 AS 95% would fabricate a
+                # coverage level the model never produced, so the band is p10-p90
+                # and it's declared as 80% (interval_level), whatever was requested.
+                # Columns are found BY VALUE in the model's config: TimesFM 2.5
+                # returns [mean, q_1, ..., q_n] with q = config.quantiles, so
+                # column 0 is the mean, not p10 (reading it as p10 made the band
+                # [mean, p90] until 2026-09-26).
+                if quantile_forecast is not None and quantile_forecast.shape[-1] >= 2:
+                    lo_col, hi_col = self._quantile_columns(quantile_forecast.shape[-1])
+                    lower_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, lo_col]]
+                    upper_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, hi_col]]
+                    reported_interval_pct = round((self.BAND_HIGH_Q - self.BAND_LOW_Q) * 100.0, 1)
                 else:
                     # No quantile head available at all — approximate from recent
                     # realized volatility, same spirit as the historical fallback
@@ -493,6 +518,7 @@ class TimesFMForecastEngine(BaseForecastEngine):
                     upper_bound=upper_b,
                     model_name=f"timesfm-2.5-200m ({self.device})",
                     is_fallback=False,
+                    interval_level=(reported_interval_pct / 100.0) if reported_interval_pct is not None else None,
                     fitted_params=fitted_params,
                 )
 

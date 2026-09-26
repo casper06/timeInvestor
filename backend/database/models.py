@@ -86,6 +86,9 @@ class EngineDecisionModel(Base):
     # "MASE" there would really be Holt's and is discarded). NULL on rows from
     # before this column existed, or when TimesFM wasn't available at all.
     timesfm_failed_cutoffs = Column(Integer, nullable=True)
+    # Version of the evaluation criterion (auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION).
+    # Older version -> stale. NULL on rows from before this column (= v1).
+    criteria_version = Column(Integer, nullable=True)
 
 
 class ClaudeCliUsageModel(Base):

@@ -70,6 +70,20 @@ MINI_BACKTEST_N_CUTOFFS = 3
 # ordinary noise.
 MAX_ACCEPTABLE_COVERAGE_GAP_PP = 30.0
 
+# Coverage is compared at the SAME nominal level for both engines. TimesFM only
+# has a p10-p90 band (80%), so Holt is evaluated at 80% too (its analytic
+# interval allows any level); TimesFM is never stretched to 95%.
+GUARD_INTERVAL_LEVEL = 0.80
+
+# Version of the evaluation criterion stored with each decision. A decision
+# made with an older version is stale (re-evaluated on the next request),
+# instead of deleting rows by hand. NULL = rows from before this column (v1).
+#   v1: TimesFM band read as [mean, p90] (column 0 taken as p10), and Holt's
+#       95% coverage compared against TimesFM's "80%" band.
+#   v2 (2026-09-26, 3.0e): TimesFM band = real p10-p90 (by quantile value);
+#       both engines compared at GUARD_INTERVAL_LEVEL (80%).
+AUTO_DISCOVERY_CRITERIA_VERSION = 2
+
 
 def _available_timesfm_engine() -> Optional[TimesFMForecastEngine]:
     """The loaded TimesFM singleton, or None if it can't run in this process.
@@ -86,6 +100,8 @@ class AutoDiscoveryEngine:
 
     @staticmethod
     def _is_stale(decision: EngineDecisionModel, current_n_points: int) -> bool:
+        if (decision.criteria_version or 1) < AUTO_DISCOVERY_CRITERIA_VERSION:
+            return True
         age = datetime.now(timezone.utc) - decision.evaluated_at.replace(tzinfo=timezone.utc)
         if age > timedelta(days=DECISION_TTL_DAYS):
             return True
@@ -148,6 +164,7 @@ class AutoDiscoveryEngine:
             cached.mase_timesfm = decision.mase_timesfm
             cached.n_points_at_evaluation = decision.n_points_at_evaluation
             cached.timesfm_failed_cutoffs = decision.timesfm_failed_cutoffs
+            cached.criteria_version = decision.criteria_version
             db.commit()
             db.refresh(cached)
             return cached
@@ -192,7 +209,7 @@ class AutoDiscoveryEngine:
         for cutoff_date in cutoffs:
             holt_res = BacktestEngine.run_backtest(
                 series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
-                is_macro=is_macro, engine_override=holt_engine,
+                confidence=GUARD_INTERVAL_LEVEL, is_macro=is_macro, engine_override=holt_engine,
             )
             holt_mases.append(holt_res.metrics.mase)
             holt_coverages.append(holt_res.interval_coverage)
@@ -200,7 +217,7 @@ class AutoDiscoveryEngine:
             if timesfm_engine is not None:
                 tfm_res = BacktestEngine.run_backtest(
                     series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
-                    is_macro=is_macro, engine_override=timesfm_engine,
+                    confidence=GUARD_INTERVAL_LEVEL, is_macro=is_macro, engine_override=timesfm_engine,
                 )
                 if tfm_res.is_fallback:
                     # TimesFM failed here and Holt answered in its place: this
@@ -212,6 +229,14 @@ class AutoDiscoveryEngine:
                         f"({tfm_res.model_name}); cutoff descartado de la comparación."
                     )
                     continue
+                levels = (holt_res.interval_level, tfm_res.interval_level)
+                if any(lv is None or abs(lv - GUARD_INTERVAL_LEVEL) > 1e-9 for lv in levels):
+                    # Comparing coverages of intervals at different nominal
+                    # levels is meaningless; fail the mini-backtest instead.
+                    raise ValueError(
+                        f"Niveles de intervalo distintos al del guard ({GUARD_INTERVAL_LEVEL}): "
+                        f"Holt {levels[0]}, TimesFM {levels[1]}"
+                    )
                 tfm_mases.append(tfm_res.metrics.mase)
                 tfm_coverages.append(tfm_res.interval_coverage)
                 paired_holt_mases.append(holt_res.metrics.mase)
@@ -242,6 +267,7 @@ class AutoDiscoveryEngine:
             mase_timesfm=mean_mase_tfm,
             n_points_at_evaluation=n_points,
             timesfm_failed_cutoffs=tfm_failed_cutoffs if timesfm_engine is not None else None,
+            criteria_version=AUTO_DISCOVERY_CRITERIA_VERSION,
         )
 
     @staticmethod

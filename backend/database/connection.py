@@ -37,6 +37,7 @@ def get_db():
 # needs these added by hand. (table, column, SQL type), all nullable.
 _ADDED_COLUMNS = [
     ("engine_decisions", "timesfm_failed_cutoffs", "INTEGER"),
+    ("engine_decisions", "criteria_version", "INTEGER"),
 ]
 
 

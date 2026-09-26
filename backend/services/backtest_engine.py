@@ -175,11 +175,14 @@ class BacktestEngine:
         # structured is_fallback/fallback_kind/fallback_reason fields (the UI
         # builds its notice from them), not duplicated into `warnings`.
         is_fallback = bool(forecast_res.is_fallback)
-        nominal_coverage = confidence * 100.0
+        # Coverage is judged against the level the engine ACTUALLY delivered
+        # (TimesFM only has an 80% band even if 95% was requested).
+        interval_level = forecast_res.interval_level if forecast_res.interval_level is not None else confidence
+        nominal_coverage = interval_level * 100.0
         if interval_coverage < (nominal_coverage - 15.0):
             warnings.append(
                 f"Subcobertura del intervalo: La cobertura empírica observada ({interval_coverage:.1f}%) "
-                f"está sustancialmente por debajo del nivel nominal solicitado ({nominal_coverage:.0f}%)."
+                f"está sustancialmente por debajo del nivel nominal del intervalo ({nominal_coverage:.0f}%)."
             )
 
         if mae < naive_mae:
@@ -242,6 +245,7 @@ class BacktestEngine:
             verdict=verdict,
             warnings=warnings,
             model_name=forecast_res.model_name,
+            interval_level=forecast_res.interval_level,
             is_fallback=is_fallback,
             fallback_kind=forecast_res.fallback_kind,
             fallback_reason=forecast_res.fallback_reason,

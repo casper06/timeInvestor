@@ -63,6 +63,7 @@ class ForecastResponse(BaseModel):
     upper_bound: List[float] = Field(..., description="Upper prediction interval bound")
     model_name: str = Field(default="damped-holt-mle", description="Name of the forecasting model")
     is_fallback: bool = Field(default=False, description="True if model fell back from primary engine")
+    interval_level: Optional[float] = Field(default=None, description="Nivel nominal REAL del intervalo devuelto (0.95, 0.80, ...), declarado por el motor. Puede diferir del `confidence` pedido: TimesFM solo tiene p10–p90 (0.80). None = intervalo aproximado sin nivel nominal")
     fallback_kind: Optional[Literal["not_loaded", "horizon_exceeded", "inference_error"]] = Field(default=None, description="Por qué TimesFM no corrió: not_loaded (modelo sin cargar; esperar no sirve), horizon_exceeded (horizonte > máximo compilado; bajar el horizonte), inference_error (falló la inferencia; reintentar puede servir si fue puntual)")
     fallback_reason: Optional[str] = Field(default=None, description="Detalle legible de la causa del fallback")
     fitted_params: Optional[Dict[str, float]] = Field(default=None, description="Fitted smoothing and damping parameters")
@@ -277,6 +278,7 @@ class BacktestResponse(BaseModel):
     verdict: str
     warnings: List[str] = Field(default_factory=list)
     model_name: Optional[str] = Field(default=None, description="Motor que produjo realmente la predicción evaluada (ForecastResponse.model_name)")
+    interval_level: Optional[float] = Field(default=None, description="Nivel nominal real del intervalo evaluado (ver ForecastResponse.interval_level); `interval_coverage` se compara contra este nivel, no contra el `confidence` pedido")
     is_fallback: bool = Field(default=False, description="True si el motor pedido (TimesFM) falló y cayó a Holt internamente: las métricas son de Holt, no de TimesFM")
     fallback_kind: Optional[Literal["not_loaded", "horizon_exceeded", "inference_error"]] = Field(default=None, description="Causa del fallback (ver ForecastResponse.fallback_kind)")
     fallback_reason: Optional[str] = Field(default=None, description="Detalle legible de la causa del fallback")
