@@ -111,12 +111,22 @@ Rama: a definir.
   verificadas.
   Hecho cuando: hay un archivo de versiones exactas que Docker y `.venv` usan,
   y cada actualización del lock pasa por la suite y `scripts/smoke_real_data.py`.
-- [ ] **2.5 Cobertura del cono de Holt sobre datos reales.** El smoke test dio
+- [x] **2.5 Cobertura del cono de Holt sobre datos reales.** (rama `feat/holt-coverage-real`, PR abierto; resultado en `docs/results/holt_coverage_2026-09-26.json`) El smoke test dio
   SPY 43,3% en una sola ventana, contra ~96% validado sobre datos simulados.
   Una ventana sola no prueba nada.
   Hecho cuando: hay una medición de cobertura empírica con muchos cutoffs sobre
   acciones, ETFs y series FRED, reproducible (script + resultado), antes de
   sacar conclusiones sobre la calibración.
+  Resultado (2026-09-26, 24 cutoffs × 14 series, `scripts/holt_coverage_real.py`):
+  - la cobertura agregada NO está por debajo de la nominal en acciones y ETFs
+    (97,3% y 97,6% contra 95%): el intervalo es más ancho de lo que debería
+    (std del error estandarizado 0,72–0,81);
+  - la ventana mediana cubre 100%, y los fallos se concentran en pocos
+    episodios (SPY/QQQ/XLK en el cutoff 2026-04-02; UNRATE e INDPRO en 2009 y
+    2020, con 0%);
+  - el 43,3% de SPY del smoke test fue una de esas ventanas malas;
+  - pendiente la decisión del dueño del repo antes de proponer cambios al
+    intervalo.
 
 ## Fase 3 — Experimento TimesFM-3
 
@@ -196,3 +206,18 @@ Rama: una por ítem, a definir.
     renderiza.
   Hecho cuando: los tres paneles los muestran (con tests de componente), como
   ya hacen Backtest (#22) y Rebalanceo.
+- [ ] **4.5 Torch en la imagen CUDA.** `Dockerfile.timesfm` termina con torch
+  2.5.1+cu121, porque el índice `whl/cu121` llega solo hasta ahí; en local es
+  2.14.0+cpu. Decidir entre un índice CUDA más nuevo o fijar torch. Hoy la
+  inferencia en esa imagen no está verificada (sin pesos ni GPU en la
+  verificación de #24).
+  Hecho cuando: la versión de torch de la imagen es una decisión explícita y
+  hay al menos una inferencia real de TimesFM verificada en esa imagen.
+- [ ] **4.6 Calidad del LLM al traducir la tesis.** Con
+  `CLAUDE_CLI_MODEL=haiku`, la tesis "Demanda eléctrica por centros de datos
+  de IA" dio como series FRED TOTALSA, GPDI, INDPRO y DFEDTARU, ninguna
+  eléctrica. Comparar Haiku contra Sonnet con las mismas 3–4 tesis y
+  registrar qué tickers y series elige cada uno. Evaluación manual, no un
+  benchmark automático.
+  Hecho cuando: hay una tabla tesis × modelo con tickers y series elegidos, y
+  una conclusión sobre qué modelo usar por defecto.
