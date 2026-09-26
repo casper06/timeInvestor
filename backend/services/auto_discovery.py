@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from backend.database.models import EngineDecisionModel
 from backend.services.backtest_engine import BacktestEngine
-from backend.services.forecast_engine import DampedHoltForecastEngine, TimesFMForecastEngine
+from backend.services.forecast_engine import DampedHoltForecastEngine, NotSeasonalError, TimesFMForecastEngine
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,10 @@ GUARD_INTERVAL_LEVEL = 0.80
 #       95% coverage compared against TimesFM's "80%" band.
 #   v2 (2026-09-26, 3.0e): TimesFM band = real p10-p90 (by quantile value);
 #       both engines compared at GUARD_INTERVAL_LEVEL (80%).
-AUTO_DISCOVERY_CRITERIA_VERSION = 2
+#   v3 (2026-09-26, 3.0f): for series the 3.0a detector marks seasonal, the
+#       baseline is Holt-Winters (not Holt) and the metric is the seasonally
+#       scaled MASE; non-seasonal series keep Holt and the 1-step MASE.
+AUTO_DISCOVERY_CRITERIA_VERSION = 3
 
 
 def _available_timesfm_engine() -> Optional[TimesFMForecastEngine]:
@@ -165,6 +168,9 @@ class AutoDiscoveryEngine:
             cached.n_points_at_evaluation = decision.n_points_at_evaluation
             cached.timesfm_failed_cutoffs = decision.timesfm_failed_cutoffs
             cached.criteria_version = decision.criteria_version
+            cached.baseline_engine = decision.baseline_engine
+            cached.metric = decision.metric
+            cached.baseline_skipped_cutoffs = decision.baseline_skipped_cutoffs
             db.commit()
             db.refresh(cached)
             return cached
@@ -182,7 +188,16 @@ class AutoDiscoveryEngine:
         MINI_BACKTEST_N_CUTOFFS cutoffs, and picks the winner by mean MASE —
         subject to the coverage-calibration guard below.
         """
-        holt_engine = DampedHoltForecastEngine()
+        # Seasonal series (3.0a detector, on the full fetched history) are
+        # compared against Holt-Winters with the seasonal MASE: against plain
+        # Holt, TimesFM would be beating a baseline that loses even to the
+        # seasonal naive (3.0d).
+        seasonal = AutoDiscoveryEngine._series_is_seasonal(series_id, is_macro)
+        if seasonal:
+            from backend.services.forecast_engine import HoltWintersForecastEngine
+            baseline_engine, baseline_name, metric = HoltWintersForecastEngine(), "holt_winters", "mase_seasonal"
+        else:
+            baseline_engine, baseline_name, metric = DampedHoltForecastEngine(), "holt", "mase"
 
         # Availability is checked ONCE up front: if the real model never
         # loaded, there's no point running the mini-backtest against it at all
@@ -205,13 +220,24 @@ class AutoDiscoveryEngine:
         paired_holt_mases, paired_holt_coverages = [], []
         tfm_mases, tfm_coverages = [], []
         tfm_failed_cutoffs = 0
+        baseline_skipped = 0
 
         for cutoff_date in cutoffs:
-            holt_res = BacktestEngine.run_backtest(
-                series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
-                confidence=GUARD_INTERVAL_LEVEL, is_macro=is_macro, engine_override=holt_engine,
-            )
-            holt_mases.append(holt_res.metrics.mase)
+            try:
+                holt_res = BacktestEngine.run_backtest(
+                    series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
+                    confidence=GUARD_INTERVAL_LEVEL, is_macro=is_macro, engine_override=baseline_engine,
+                )
+            except NotSeasonalError:
+                # Holt-Winters refuses a training window the detector doesn't
+                # find seasonal (e.g. an early cutoff): skip it for both engines.
+                baseline_skipped += 1
+                continue
+            base_metric = getattr(holt_res.metrics, metric)
+            if base_metric is None:
+                baseline_skipped += 1
+                continue
+            holt_mases.append(base_metric)
             holt_coverages.append(holt_res.interval_coverage)
 
             if timesfm_engine is not None:
@@ -237,12 +263,21 @@ class AutoDiscoveryEngine:
                         f"Niveles de intervalo distintos al del guard ({GUARD_INTERVAL_LEVEL}): "
                         f"Holt {levels[0]}, TimesFM {levels[1]}"
                     )
-                tfm_mases.append(tfm_res.metrics.mase)
+                tfm_metric = getattr(tfm_res.metrics, metric)
+                if tfm_metric is None:
+                    continue
+                tfm_mases.append(tfm_metric)
                 tfm_coverages.append(tfm_res.interval_coverage)
-                paired_holt_mases.append(holt_res.metrics.mase)
+                paired_holt_mases.append(base_metric)
                 paired_holt_coverages.append(holt_res.interval_coverage)
 
-        engine_choice = "holt"
+        if not holt_mases:
+            raise ValueError(
+                f"Ningún cutoff utilizable para {baseline_name} en el mini-backtest de {series_id} "
+                f"({baseline_skipped} descartados)"
+            )
+
+        engine_choice = baseline_name
         mean_mase_tfm = None
 
         if tfm_mases:
@@ -268,7 +303,27 @@ class AutoDiscoveryEngine:
             n_points_at_evaluation=n_points,
             timesfm_failed_cutoffs=tfm_failed_cutoffs if timesfm_engine is not None else None,
             criteria_version=AUTO_DISCOVERY_CRITERIA_VERSION,
+            baseline_engine=baseline_name,
+            metric=metric,
+            baseline_skipped_cutoffs=baseline_skipped,
         )
+
+    @staticmethod
+    def _load_points(series_id: str, is_macro: bool) -> list:
+        """The series' history, via the same fetchers the backtest uses (their
+        in-memory cache makes the second call free)."""
+        if is_macro:
+            from backend.services.data_fetcher import FREDDataFetcher
+            data = FREDDataFetcher().get_series(series_id)
+        else:
+            from backend.services.data_fetcher import MarketDataFetcher
+            data = MarketDataFetcher.get_history(series_id, period="5y")
+        return sorted(data.points, key=lambda p: p.timestamp)
+
+    @staticmethod
+    def _series_is_seasonal(series_id: str, is_macro: bool) -> bool:
+        from backend.services.seasonality import detect_seasonality
+        return detect_seasonality(AutoDiscoveryEngine._load_points(series_id, is_macro)).is_seasonal
 
     @staticmethod
     def _pick_cutoffs(series_id: str, is_macro: bool) -> list:
@@ -276,14 +331,7 @@ class AutoDiscoveryEngine:
         history of the series, each leaving MINI_BACKTEST_HORIZON points for
         evaluation — mirrors scripts/benchmark_real_data.py's walk-forward
         spacing logic, at a smaller scale for the per-request cost this incurs."""
-        if is_macro:
-            from backend.services.data_fetcher import FREDDataFetcher
-            data = FREDDataFetcher().get_series(series_id)
-        else:
-            from backend.services.data_fetcher import MarketDataFetcher
-            data = MarketDataFetcher.get_history(series_id, period="5y")
-
-        sorted_points = sorted(data.points, key=lambda p: p.timestamp)
+        sorted_points = AutoDiscoveryEngine._load_points(series_id, is_macro)
         n = len(sorted_points)
         min_train = max(30, MINI_BACKTEST_HORIZON * 2)
         last_possible = n - MINI_BACKTEST_HORIZON

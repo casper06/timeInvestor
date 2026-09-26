@@ -9,8 +9,8 @@ request, given a series' identity, type, and available history:
 flowchart TD
     A["Forecast request:\nseries_id, series_type, points, db session"] --> B{"series_id in\nSEASONAL_FRED_CATALOG?"}
     B -- yes --> C{"USE_REAL_TIMESFM\nand weights loaded?"}
-    C -- yes --> D["TimesFM\nreason: 'Serie FRED estacional — TimesFM\nganó 4/4 en el benchmark real'"]
-    C -- no --> E["Holt (fallback)\nreason: 'Categoría favorece TimesFM,\npero TimesFM no disponible'"]
+    C -- yes --> D["TimesFM (o Holt-Winters, según la entrada)\nreason: motor + solidez de la evidencia\n(firme / probable, con su p)"]
+    C -- no --> E["Plan B: Holt-Winters si el detector\nla marca estacional (si HW falla, Holt con motivo);\nHolt si no es estacional"]
 
     B -- no --> F{"series_id in\nDIVERSIFIED_ETF_CATALOG?"}
     F -- yes --> G["Holt\nreason: 'Índice/ETF — TimesFM no le ganó\na Holt en el benchmark (0/4)'"]

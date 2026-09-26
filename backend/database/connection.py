@@ -38,6 +38,9 @@ def get_db():
 _ADDED_COLUMNS = [
     ("engine_decisions", "timesfm_failed_cutoffs", "INTEGER"),
     ("engine_decisions", "criteria_version", "INTEGER"),
+    ("engine_decisions", "baseline_engine", "VARCHAR(20)"),
+    ("engine_decisions", "metric", "VARCHAR(20)"),
+    ("engine_decisions", "baseline_skipped_cutoffs", "INTEGER"),
 ]
 
 

@@ -93,9 +93,13 @@ def test_selector_falls_back_gracefully_when_timesfm_unavailable(monkeypatch, is
     points = _make_points(300)
     res = EngineSelector.select(points, series_id="IPG2211A2N", series_type="macro", horizon=6, freq="M")
 
+    # Plan B (3.0f): these synthetic points are daily, so the detector doesn't
+    # mark them seasonal and the plan B is Holt. is_fallback is True: the
+    # preferred engine (TimesFM) didn't run.
     assert res.model_name == "damped-holt-mle"
-    assert res.is_fallback is False  # Holt itself succeeded; EngineSelector chose it deliberately
+    assert res.is_fallback is True
     assert "USE_REAL_TIMESFM=false" in res.engine_selection_reason
+    assert "Plan B: Holt, serie no estacional" in res.engine_selection_reason
 
 
 @pytest.mark.skipif(
@@ -118,4 +122,4 @@ def test_selector_uses_timesfm_for_seasonal_fred_series(monkeypatch, isolated_ti
 
     assert "timesfm" in res.model_name.lower()
     assert res.is_fallback is False
-    assert "TimesFM seleccionado" in res.engine_selection_reason
+    assert "TimesFM por catálogo, evidencia firme" in res.engine_selection_reason

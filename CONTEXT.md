@@ -50,6 +50,7 @@ Esto es lo que hizo que el proyecto no se llenara de deuda técnica invisible. C
 4. **Verificar afirmaciones sobre productos externos (límites de API, comportamiento de CLIs, políticas de Google/Anthropic) con búsqueda antes de asumir** — cambian seguido y a veces el propio agente (u otra IA externa) puede traer información desactualizada o parcialmente incorrecta.
 5. **Rama por feature, PR antes de mergear a `main`, tests corridos después de cualquier rebase** (nunca asumir que lo que pasaba antes del rebase sigue pasando después).
 6. **Todo mensaje de fallback/error al usuario tiene que explicar la causa real y si conviene esperar o si hace falta intervenir** — nunca un genérico "algo falló".
+7. **Las verificaciones con datos reales se hacen sobre una COPIA de la DB** (en `data/` o en un directorio temporal, ignorada por git, apuntada con `DATABASE_URL`), nunca sobre `backend/database/time_investor.db` antes del merge. La DB real solo cambia por el uso normal de la app con el código de `main`.
 
 ## 5. Cómo correr el proyecto
 
