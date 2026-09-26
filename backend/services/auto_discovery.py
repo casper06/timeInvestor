@@ -85,7 +85,35 @@ GUARD_INTERVAL_LEVEL = 0.80
 #   v3 (2026-09-26, 3.0f): for series the 3.0a detector marks seasonal, the
 #       baseline is Holt-Winters (not Holt) and the metric is the seasonally
 #       scaled MASE; non-seasonal series keep Holt and the 1-step MASE.
-AUTO_DISCOVERY_CRITERIA_VERSION = 3
+#   v4 (2026-09-26, 2.3): robust rule (decide_robust): 8 cutoffs over a
+#       recent window by frequency, majority of paired cutoffs + 10% margin,
+#       >= 7 pairs, tie -> baseline, hysteresis on re-evaluation, no
+#       coverage guard. Measured in docs/results/decision_variants_2026-09-26.md.
+AUTO_DISCOVERY_CRITERIA_VERSION = 4
+
+# --- v4 decision parameters (2.3), chosen from the variant measurement ---
+# 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),
+# and with fewer cutoffs a decision is close to a coin flip in equities/ETFs.
+DECISION_N_CUTOFFS = 8
+# Recent evaluation window by frequency (points): daily 2 years, weekly 2
+# years, monthly 10 years, quarterly 10 years. Spreading cutoffs over ALL the
+# history put FRED cutoffs in 1989 (60 months of training, a remote regime),
+# which is what biased IPG2211A2N toward Holt-Winters with 3 cutoffs.
+RECENT_WINDOW = {"daily": 504, "weekly": 104, "monthly": 120, "quarterly": 40}
+RECENT_WINDOW_DEFAULT = 504
+# TimesFM must beat the baseline on a MAJORITY of paired cutoffs AND by at
+# least this margin on the mean error. A one-sided sign test (alpha 0.05)
+# was measured too: with 8 cutoffs it needs 7/8 and discarded clear wins
+# (UNRATE, HOUSTNSA), so a plain majority + margin is used (alpha=None).
+DECISION_MARGIN = 0.10
+DECISION_ALPHA = None
+MIN_PAIRED_CUTOFFS = 7          # of 8: tolerates one TimesFM fallback
+# Switching away from the current engine on re-evaluation requires beating it
+# with margin * HYSTERESIS_FACTOR (20%).
+HYSTERESIS_FACTOR = 2.0
+# The coverage guard changed 0-7% of decisions (2.2) and ~0 pp in 2.3 once
+# the TimesFM band was fixed (#29): removed from the rule.
+USE_COVERAGE_GUARD = False
 
 
 def choose_engine(baseline_name: str, paired_base: list, paired_base_cov: list,
@@ -102,6 +130,73 @@ def choose_engine(baseline_name: str, paired_base: list, paired_base_cov: list,
     if wins_metric and coverage_gap <= MAX_ACCEPTABLE_COVERAGE_GAP_PP:
         return "timesfm"
     return baseline_name
+
+
+def decide_robust(baseline_name: str, base_errors: list, tfm_errors: list,
+                  base_cov: list = None, tfm_cov: list = None, *,
+                  margin: float, alpha, min_paired: int, guard: bool,
+                  incumbent: str = None, hysteresis_factor: float = 1.0) -> tuple:
+    """Robust decision on PAIRED per-cutoff errors (same cutoffs, same order).
+    Returns (choice, info).
+
+    X "beats" Y when, on the paired cutoffs, X has the lower error on a
+    majority (one-sided sign test at `alpha`; alpha=None means a plain
+    majority, wins > losses) AND mean(X) <= (1 - margin) * mean(Y).
+    - Fewer than `min_paired` pairs -> baseline (not enough evidence).
+    - No incumbent: TimesFM only if it beats the baseline (and, with
+      `guard`, its coverage is at most MAX_ACCEPTABLE_COVERAGE_GAP_PP below);
+      otherwise the baseline (a tie goes to the baseline).
+    - Incumbent (hysteresis): switching away from it requires the other
+      engine to beat it with margin * hysteresis_factor; otherwise it stays.
+    """
+    from scipy import stats as _stats
+
+    n = len(tfm_errors)
+    info = {"paired": n}
+    if n < min_paired:
+        info["why"] = f"solo {n} cutoffs en par (< {min_paired})"
+        return baseline_name, info
+
+    def beats(a, b, m):
+        wins = sum(x < y for x, y in zip(a, b))
+        losses = sum(x > y for x, y in zip(a, b))
+        if alpha is None:
+            consistent = wins > losses
+            p = None
+        else:
+            p = float(_stats.binomtest(wins, wins + losses, 0.5, alternative="greater").pvalue) if wins + losses else 1.0
+            consistent = p < alpha
+        return consistent and float(np.mean(a)) <= (1.0 - m) * float(np.mean(b)), wins, losses, p
+
+    guard_ok = True
+    if guard and base_cov and tfm_cov:
+        guard_ok = float(np.mean(base_cov)) - float(np.mean(tfm_cov)) <= MAX_ACCEPTABLE_COVERAGE_GAP_PP
+
+    switch_margin = margin * hysteresis_factor
+    if incumbent == "timesfm":
+        base_wins, w, l, p = beats(base_errors, tfm_errors, switch_margin)
+        choice = baseline_name if (base_wins or not guard_ok) else "timesfm"
+    else:
+        m = switch_margin if incumbent == baseline_name else margin
+        tfm_wins, w, l, p = beats(tfm_errors, base_errors, m)
+        choice = "timesfm" if (tfm_wins and guard_ok) else baseline_name
+    info.update({"wins": w, "losses": l, "p": p, "guard_ok": guard_ok,
+                 "rel_gap": float(np.mean(tfm_errors)) / float(np.mean(base_errors)) - 1.0})
+    return choice, info
+
+
+def recent_cutoff_indices(n: int, n_cutoffs: int, window: int) -> list:
+    """0-based indices of `n_cutoffs` cutoffs evenly spaced over the most
+    recent `window` points (never before MIN training), each leaving
+    MINI_BACKTEST_HORIZON points after it."""
+    min_train = max(30, MINI_BACKTEST_HORIZON * 2)
+    last = n - 1 - MINI_BACKTEST_HORIZON
+    first = max(min_train - 1, n - window)
+    if last < first:
+        return []
+    if n_cutoffs == 1 or last == first:
+        return [last]
+    return sorted({int(round(x)) for x in np.linspace(first, last, n_cutoffs)})
 
 
 def pick_cutoff_indices(n: int) -> list:
@@ -180,8 +275,15 @@ class AutoDiscoveryEngine:
         if cached is not None and not AutoDiscoveryEngine._is_stale(cached, n_points):
             return cached
 
+        # Hysteresis: a stale decision made with the CURRENT criterion is the
+        # incumbent; switching away from it needs more evidence. A decision
+        # from an older criterion is re-decided from scratch.
+        incumbent = None
+        if cached is not None and (cached.criteria_version or 1) == AUTO_DISCOVERY_CRITERIA_VERSION:
+            incumbent = cached.engine_choice
         try:
-            decision = AutoDiscoveryEngine._run_mini_backtest(clean_id, is_macro=is_macro, n_points=n_points)
+            decision = AutoDiscoveryEngine._run_mini_backtest(
+                clean_id, is_macro=is_macro, n_points=n_points, incumbent=incumbent)
         except Exception as e:
             # A failed mini-backtest (e.g. data provider hiccup) must not break
             # the actual forecast request it was triggered by — fall through to
@@ -210,7 +312,8 @@ class AutoDiscoveryEngine:
             return decision
 
     @staticmethod
-    def _run_mini_backtest(series_id: str, is_macro: bool, n_points: int) -> EngineDecisionModel:
+    def _run_mini_backtest(series_id: str, is_macro: bool, n_points: int,
+                           incumbent: Optional[str] = None) -> EngineDecisionModel:
         """
         Runs BacktestEngine.run_backtest (reused, not reimplemented) with an
         explicit engine_override for both Holt and TimesFM across
@@ -308,8 +411,10 @@ class AutoDiscoveryEngine:
 
         mean_mase_tfm = None
         if tfm_mases:
-            engine_choice = choose_engine(
-                baseline_name, paired_holt_mases, paired_holt_coverages, tfm_mases, tfm_coverages,
+            engine_choice, _ = decide_robust(
+                baseline_name, paired_holt_mases, tfm_mases, paired_holt_coverages, tfm_coverages,
+                margin=DECISION_MARGIN, alpha=DECISION_ALPHA, min_paired=MIN_PAIRED_CUTOFFS,
+                guard=USE_COVERAGE_GUARD, incumbent=incumbent, hysteresis_factor=HYSTERESIS_FACTOR,
             )
             mean_mase_holt = float(np.mean(paired_holt_mases))
             mean_mase_tfm = float(np.mean(tfm_mases))
@@ -351,9 +456,11 @@ class AutoDiscoveryEngine:
 
     @staticmethod
     def _pick_cutoffs(series_id: str, is_macro: bool) -> list:
-        """Picks MINI_BACKTEST_N_CUTOFFS cutoff dates spaced over the recent
-        history of the series, each leaving MINI_BACKTEST_HORIZON points for
-        evaluation — mirrors scripts/benchmark_real_data.py's walk-forward
-        spacing logic, at a smaller scale for the per-request cost this incurs."""
+        """DECISION_N_CUTOFFS cutoff dates evenly spaced over the series' recent
+        window (RECENT_WINDOW by frequency), each leaving MINI_BACKTEST_HORIZON
+        points for evaluation (criterion v4)."""
+        from backend.services.seasonality import infer_frequency
         sorted_points = AutoDiscoveryEngine._load_points(series_id, is_macro)
-        return [sorted_points[i].timestamp for i in pick_cutoff_indices(len(sorted_points))]
+        window = RECENT_WINDOW.get(infer_frequency([p.timestamp for p in sorted_points]), RECENT_WINDOW_DEFAULT)
+        idx = recent_cutoff_indices(len(sorted_points), DECISION_N_CUTOFFS, window)
+        return [sorted_points[i].timestamp for i in idx]
