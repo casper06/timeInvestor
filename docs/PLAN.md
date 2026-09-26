@@ -205,7 +205,7 @@ verificada.
     Después, re-evaluar las decisiones de auto-discovery que TimesFM perdió
     "por calibración" (CEG y NVDA en la DB local).
   - [x] **3.0f Aplicar el veredicto al selector** (`SEASONAL_FRED_CATALOG` y
-    Holt-Winters como plan B) (rama `feat/seasonal-selector`, PR abierto).
+    Holt-Winters como plan B) (PR #30, mergeado).
     - Catálogo con entradas por serie (motor, solidez, evidencia y
       referencia): IPG2211A2N TimesFM (firme), HOUSTNSA TimesFM (probable),
       RSAFSNA TimesFM (probable, frágil), MRTSSM4451USN Holt-Winters.
@@ -227,6 +227,38 @@ verificada.
 - [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
   pasado. Comparar con los regresores externos de Prophet (ver 3.0).
 - [ ] **3.3 Latencia en CPU.**
+- [ ] **3.4 Revisiones de datos (vintages de ALFRED).** Los backtests sobre FRED
+  usan la serie *revisada de hoy*: en cada cutoff el modelo ve valores que en
+  esa fecha todavía no existían. Eso puede inflar la capacidad de pronóstico
+  medida (auto-discovery, benchmarks de 2.5 y 3.0d). Las revisiones de las
+  series del catálogo existen y no son chicas (consultado el 2026-09-26 con la
+  API):
+  - HOUSTNSA, enero 2019: primera publicación 82,6 → hoy 87,0 (+5,3%, 3
+    versiones);
+  - IPG2211A2N, enero 2019: 121,43 → 120,05 (−1,1%, 11 versiones en 6 años);
+    enero 2016 tiene 15 versiones.
+
+  Acceso verificado (documentación de `fred/series/observations` y
+  `fred/series/vintagedates`, más llamadas reales):
+  - `fred/series/vintagedates?series_id=…` devuelve las fechas en que la serie
+    se revisó o publicó (hasta 10.000 por llamada);
+  - `fred/series/observations` con `vintage_dates=AAAA-MM-DD` devuelve la serie
+    tal como se veía ese día (hasta 2000 vintages por pedido en json);
+  - `output_type=4` devuelve solo la primera publicación y `output_type=1`
+    todas las versiones por período. **Hace falta pasar
+    `realtime_start=1776-07-04&realtime_end=9999-12-31`**: con los valores
+    por defecto (hoy) la API responde 400, "No vintage dates exist for the
+    specified real-time period".
+
+  Limitación: el historial de vintages empieza tarde.
+  - IPG2211A2N: 2015-02; RSAFSNA: 2001-06; HOUSTNSA: 2011-03;
+    MRTSSM4451USN: 2017-11.
+  - Los cutoffs de 3.0d arrancan en 1995, así que un backtest
+    point-in-time solo cubre los posteriores (en IPG2211A2N, ~10 años).
+
+  Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
+  donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
+  cambia algún veredicto del catálogo.
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
 incluso si la hipótesis no se sostiene.
@@ -287,3 +319,59 @@ Rama: una por ítem, a definir.
   `ETSModel` no incluyen la incertidumbre de los parámetros (Holt-Winters
   sub-cubre: 91,3% al 95% en 3.0b). Evaluar intervalos por simulación o
   bootstrap.
+- [ ] **4.10 Sesgos del prompt que traduce la tesis** (`SYSTEM_PROMPT` en
+  `backend/services/llm_router.py`, ~línea 283, y su variante
+  `CLAUDE_CLI_SYSTEM_PROMPT` + `--json-schema` de `ClaudeCliLLMClient`, que
+  tienen que cambiar juntas).
+  - Hoy exige 3–6 tickers con pesos que suman 1,0 y un racional de "por qué
+    este activo se beneficia de la tesis", y deja FRED en segundo plano (1–4
+    series). No pide mecanismo ni qué la falsaría, así que empuja a
+    confirmarla con acciones individuales.
+  - Orden propuesto:
+    1. mecanismo causal;
+    2. drivers medibles (series FRED);
+    3. qué dato falsaría la tesis;
+    4. recién ahí, instrumentos, prefiriendo ETFs sectoriales, commodities y
+       tasas antes que acciones individuales.
+  - Agregar un benchmark amplio obligatorio (SPY) contra el que comparar.
+  - Los 4 ejemplos de la UI (`PRESET_THESES` en `ThesisBar.tsx`) giran todos
+    alrededor de tecnología, IA y electricidad: centros de datos de IA,
+    semiconductores, red eléctrica con baterías, y tasas sobre múltiplos
+    **tecnológicos**. Diversificar sectores (consumo, financieras, agro,
+    vivienda, commodities).
+  - Evaluar prompt viejo contra nuevo con las mismas tesis, en conjunto con
+    4.6 (Haiku vs Sonnet): tabla tesis × prompt × modelo con instrumentos,
+    series, mecanismo y falsador. Evaluación manual.
+  Hecho cuando: esa tabla existe y se decidió qué prompt queda.
+
+## Fase 5 — Arquitectura centrada en drivers (para discutir, no ejecutar)
+
+Hoy el sistema pronostica precios directamente, serie por serie. La propuesta
+invierte el orden:
+1. **Pronosticar las variables macro de la tesis** (los drivers: las series
+   FRED), que es donde los modelos de series de tiempo mostraron ventaja
+   (estacionalidad, 3.0d).
+2. **Medir la sensibilidad histórica de cada instrumento a esos drivers**
+   (betas o elasticidades) y su **estabilidad en el tiempo** (ventanas
+   móviles, quiebres).
+3. **Generar escenarios condicionados a la trayectoria del driver** ("si el
+   driver sigue su pronóstico / su p10 / su p90, el instrumento se mueve…"),
+   en vez de pronosticar el precio del instrumento directamente.
+
+Preguntas abiertas antes de planificar ítems:
+- **Estabilidad de las sensibilidades.** ¿Cuánto varían las betas entre
+  ventanas? Si cambian de signo o de magnitud seguido, los escenarios
+  condicionados heredan esa inestabilidad y dan una falsa precisión.
+- **Causalidad vs. correlación.** Una sensibilidad histórica no prueba que el
+  driver mueva al instrumento (confusores, causalidad inversa, factores
+  comunes como el mercado o las tasas). ¿Alcanza con controlar por un
+  benchmark amplio (SPY, 4.10) o hace falta algo más estricto?
+- **Integración con los paneles existentes.** Proyección, Backtest,
+  Correlaciones, Asignación y Riesgo hoy trabajan sobre precios. ¿Los
+  escenarios reemplazan la proyección de precio, la complementan, o alimentan
+  a Riesgo (Monte Carlo condicionado)? ¿Cómo se backtestea un escenario
+  condicionado?
+- **Dependencias con otros ítems:** 3.4 (los drivers pronosticados con datos
+  revisados sobrestiman la precisión) y 4.10 (el prompt tendría que devolver
+  drivers y mecanismo, no solo tickers).
+
