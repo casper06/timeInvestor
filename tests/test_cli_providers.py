@@ -271,7 +271,7 @@ def test_claude_cli_parses_json_schema_output(monkeypatch):
     assert mock_log.call_args[0][0] == 0.0314
 
 
-def test_claude_cli_no_tool_use_attempted():
+def test_claude_cli_no_tool_use_attempted(monkeypatch):
     """
     Confirms the constructed subprocess command actually restricts tools —
     the failure mode this guards against is the CLI hanging forever waiting
@@ -289,6 +289,9 @@ def test_claude_cli_no_tool_use_attempted():
     removes or changes that flag fails a fast unit test instead of only
     being caught by manually re-running the real CLI.
     """
+    # Only the argument list is under test: without this, __init__'s
+    # shutil.which check raises CliNotInstalledError on machines without claude.
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
     client = ClaudeCliLLMClient(model="haiku")
     args = client._build_args()
 

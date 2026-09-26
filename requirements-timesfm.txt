@@ -14,7 +14,20 @@
 # `timesfm.TimesFM_2p5_200M_torch` PyTorch class (checkpoint: google/timesfm-2.5-200m-pytorch).
 # `timesfm==1.0.0` is JAX-only (requires jax/paxml/praxis) and is NOT what this project uses,
 # despite the checkpoint naming convention from the original TimesFM 1.0 paper.
-timesfm[torch]>=2.0.0,<4.0.0
+#
+# PINNED to an exact version (verified 2026-09-25). Since 3.0.0 the package also
+# ships TimesFM 3 (TimesFM3Torch), so a loose range lets `pip install -U` pull a
+# release that might drop or change TimesFM_2p5_200M_torch. How 3.0.2 was
+# verified, not assumed:
+#   - installed version (`pip show timesfm`): 3.0.2, the latest on PyPI that day
+#     (`pip index versions timesfm`: 3.0.2, 3.0.1, 3.0.0, 2.0.2, 2.0.1, 2.0.0, 1.0.0);
+#   - `hasattr(timesfm, "TimesFM_2p5_200M_torch")` is True with it installed;
+#   - the PyPI wheel itself (`pip download timesfm==3.0.2 --no-deps`) exports
+#     that class in timesfm/__init__.py;
+#   - the real-weights tests pass with it (test_timesfm_real_loads_when_weights_present,
+#     test_selector_uses_timesfm_for_seasonal_fred_series).
+# Before bumping: repeat those checks against the new version.
+timesfm[torch]==3.0.2
 torch>=2.0.0,<3.0.0
 transformers>=4.40.0,<6.0.0
 huggingface_hub>=0.23.0,<2.0.0
