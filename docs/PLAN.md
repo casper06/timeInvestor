@@ -92,7 +92,7 @@ Rama: a definir.
   puede no ser de TimesFM no tiene sentido.
   Hecho cuando: el mini-backtest descarta o marca los cutoffs donde TimesFM no
   corrió de verdad, con un test que lo demuestre.
-- [ ] **2.2 Medir cuánto oscilan hoy las decisiones** (3 cutoffs, gana TimesFM
+- [x] **2.2 Medir cuánto oscilan hoy las decisiones** (rama `feat/decision-stability`, PR abierto; resultado en `docs/results/decision_stability_2026-09-26.md`: en acciones y ETFs, una decisión de 3 cutoffs contradice a la de 24 en 34–41% de los casos y cambia 3–4 veces en 12 semanas) (3 cutoffs, gana TimesFM
   con MASE estrictamente menor, sin margen).
   Hecho cuando: hay una medición reproducible (script + resultado) de cuántas
   decisiones cambian entre corridas o ventanas cercanas.

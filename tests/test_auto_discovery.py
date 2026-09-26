@@ -551,3 +551,33 @@ def test_decision_with_current_criteria_version_is_kept(db_session, monkeypatch)
 
     AutoDiscoveryEngine.decide(db_session, "CUR", n_points=500)
     assert calls["holt"] == 0 and calls["timesfm"] == 0
+
+
+# ---------------------------------------------------------------------------
+# 2.2: the decision rule and the cutoff picker, extracted as pure functions so
+# scripts/decision_stability.py measures exactly what production does.
+# ---------------------------------------------------------------------------
+
+def _old_pick_cutoff_indices(n):
+    """Verbatim logic of _pick_cutoffs before the extraction (as 0-based indices)."""
+    min_train = max(30, auto_discovery.MINI_BACKTEST_HORIZON * 2)
+    last_possible = n - auto_discovery.MINI_BACKTEST_HORIZON
+    if last_possible <= min_train:
+        return [min_train - 1] if min_train <= n else []
+    step = (last_possible - min_train) / max(1, auto_discovery.MINI_BACKTEST_N_CUTOFFS - 1)
+    indices = sorted(set(int(round(min_train + i * step)) for i in range(auto_discovery.MINI_BACKTEST_N_CUTOFFS)))
+    return [idx - 1 for idx in indices if 0 < idx <= n]
+
+
+@pytest.mark.parametrize("n", [0, 30, 59, 60, 89, 90, 91, 120, 251, 500, 1194])
+def test_pick_cutoff_indices_matches_previous_implementation(n):
+    assert auto_discovery.pick_cutoff_indices(n) == _old_pick_cutoff_indices(n)
+
+
+def test_choose_engine_rule():
+    ce = auto_discovery.choose_engine
+    assert ce("holt", [1.0, 1.0], [80, 80], [0.9, 0.9], [75, 75]) == "timesfm"   # lower metric, small gap
+    assert ce("holt", [1.0], [80], [1.0], [80]) == "holt"                         # tie -> baseline (strictly lower)
+    assert ce("holt", [1.0], [95], [0.5], [60]) == "holt"                         # gap 35 pp > 30: guard
+    assert ce("holt_winters", [1.0], [80], [0.8], [79]) == "timesfm"
+    assert ce("holt_winters", [1.0], [80], [], []) == "holt_winters"              # no TimesFM results

@@ -88,6 +88,35 @@ GUARD_INTERVAL_LEVEL = 0.80
 AUTO_DISCOVERY_CRITERIA_VERSION = 3
 
 
+def choose_engine(baseline_name: str, paired_base: list, paired_base_cov: list,
+                  tfm: list, tfm_cov: list) -> str:
+    """The mini-backtest's decision rule, on paired per-cutoff results (same
+    cutoffs for both engines): TimesFM if its mean metric is strictly lower
+    AND its mean coverage is at most MAX_ACCEPTABLE_COVERAGE_GAP_PP below the
+    baseline's; the baseline otherwise. Pure, so scripts/decision_stability.py
+    can measure exactly this rule."""
+    if not tfm:
+        return baseline_name
+    wins_metric = float(np.mean(tfm)) < float(np.mean(paired_base))
+    coverage_gap = float(np.mean(paired_base_cov)) - float(np.mean(tfm_cov))
+    if wins_metric and coverage_gap <= MAX_ACCEPTABLE_COVERAGE_GAP_PP:
+        return "timesfm"
+    return baseline_name
+
+
+def pick_cutoff_indices(n: int) -> list:
+    """0-based indices of the MINI_BACKTEST_N_CUTOFFS cutoffs for a series of
+    n points: evenly spaced, each leaving MINI_BACKTEST_HORIZON points after
+    it (mirrors scripts/benchmark_real_data.py's walk-forward spacing)."""
+    min_train = max(30, MINI_BACKTEST_HORIZON * 2)
+    last_possible = n - MINI_BACKTEST_HORIZON
+    if last_possible <= min_train:
+        return [min_train - 1] if min_train <= n else []
+    step = (last_possible - min_train) / max(1, MINI_BACKTEST_N_CUTOFFS - 1)
+    indices = sorted(set(int(round(min_train + i * step)) for i in range(MINI_BACKTEST_N_CUTOFFS)))
+    return [idx - 1 for idx in indices if 0 < idx <= n]
+
+
 def _available_timesfm_engine() -> Optional[TimesFMForecastEngine]:
     """The loaded TimesFM singleton, or None if it can't run in this process.
     See TimesFMForecastEngine.is_available for why this is cheap per request."""
@@ -277,21 +306,16 @@ class AutoDiscoveryEngine:
                 f"({baseline_skipped} descartados)"
             )
 
-        engine_choice = baseline_name
         mean_mase_tfm = None
-
         if tfm_mases:
+            engine_choice = choose_engine(
+                baseline_name, paired_holt_mases, paired_holt_coverages, tfm_mases, tfm_coverages,
+            )
             mean_mase_holt = float(np.mean(paired_holt_mases))
-            mean_coverage_holt = float(np.mean(paired_holt_coverages))
             mean_mase_tfm = float(np.mean(tfm_mases))
-            mean_coverage_tfm = float(np.mean(tfm_coverages))
-            coverage_gap = mean_coverage_holt - mean_coverage_tfm
-            timesfm_wins_mase = mean_mase_tfm < mean_mase_holt
-            timesfm_calibration_acceptable = coverage_gap <= MAX_ACCEPTABLE_COVERAGE_GAP_PP
-            if timesfm_wins_mase and timesfm_calibration_acceptable:
-                engine_choice = "timesfm"
         else:
-            # TimesFM unavailable, or it fell back on every cutoff: Holt alone.
+            # TimesFM unavailable, or it fell back on every cutoff: baseline alone.
+            engine_choice = baseline_name
             mean_mase_holt = float(np.mean(holt_mases))
 
         return EngineDecisionModel(
@@ -332,15 +356,4 @@ class AutoDiscoveryEngine:
         evaluation — mirrors scripts/benchmark_real_data.py's walk-forward
         spacing logic, at a smaller scale for the per-request cost this incurs."""
         sorted_points = AutoDiscoveryEngine._load_points(series_id, is_macro)
-        n = len(sorted_points)
-        min_train = max(30, MINI_BACKTEST_HORIZON * 2)
-        last_possible = n - MINI_BACKTEST_HORIZON
-
-        if last_possible <= min_train:
-            return [sorted_points[min_train - 1].timestamp] if min_train <= n else []
-
-        step = (last_possible - min_train) / max(1, MINI_BACKTEST_N_CUTOFFS - 1)
-        indices = sorted(set(
-            int(round(min_train + i * step)) for i in range(MINI_BACKTEST_N_CUTOFFS)
-        ))
-        return [sorted_points[idx - 1].timestamp for idx in indices if 0 < idx <= n]
+        return [sorted_points[i].timestamp for i in pick_cutoff_indices(len(sorted_points))]
