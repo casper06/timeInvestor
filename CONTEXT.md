@@ -55,7 +55,8 @@ Esto es lo que hizo que el proyecto no se llenara de deuda técnica invisible. C
 
 ```bash
 cp .env.example .env   # completar GEMINI_API_KEY, FRED_API_KEY (gratis, fred.stlouisfed.org), etc.
-pip install -r requirements.txt
+python -m venv .venv   # instalar siempre en .venv, nunca en el Python global
+pip install -r requirements.lock   # versiones exactas; requirements.txt tiene los rangos
 python run.py          # sirve el frontend compilado + API en :8000
 ```
 
@@ -63,7 +64,7 @@ Docker: `docker compose up --build` (imagen liviana, sin TimesFM real).
 
 TimesFM real (opcional, pesado — CPU-only anda pero es más lento y en el benchmark real no siempre gana):
 ```bash
-pip install -r requirements-timesfm.txt
+pip install -r requirements-timesfm.txt -c requirements.lock   # fuera del lock: torch depende del hardware
 python scripts/download_and_benchmark_timesfm.py --yes
 ```
 
@@ -78,7 +79,7 @@ Elegir el proveedor activo desde el dropdown del Header (cambio en caliente) o f
 
 - **Fallback silencioso de TimesFM→Holt dentro del backtest** (Fase 2.1 de `docs/PLAN.md`). Si TimesFM falla en una llamada, `forecast()` cae a Holt, pero `BacktestResponse` no lo expone. En el mini-backtest de auto-discovery, `mase_timesfm` podría ser entonces un MASE de Holt: una métrica fabricada. Va antes que cualquier ajuste del margen o de los cutoffs del selector.
 - **Mini-backtest sin cutoffs no se cachea.** Si `_pick_cutoffs` devuelve `[]`, el mini-backtest falla a propósito (antes cacheaba un MASE NaN como "holt"), así que se reintenta en cada request de esa serie, con un `logger.warning` cada vez. Los datos no se re-descargan en cada request, porque el fetcher los cachea en memoria 1 hora (`CACHE_TTL_SECONDS`). Caso raro: requiere < 60 puntos en el re-fetch cuando el selector ya vio >= 90. Si molesta, la opción es un caché negativo corto.
-- **Dependencias declaradas vs. instaladas (ítem 0.5 de `docs/PLAN.md`, en curso).** En la máquina local, pandas (3.0.1), yfinance, fastapi y uvicorn están fuera de los rangos de `requirements.txt`, y Docker instala desde esos rangos, así que corre otras versiones. Se decidió actualizar los rangos a lo que realmente corre (#19, `chore/deps-align`), no volver atrás el entorno.
+- **Dependencias: rangos y lock.** El drift de la máquina local (pandas, yfinance, fastapi y uvicorn fuera de rango) se resolvió subiendo los rangos (#19). Desde 2.4 hay `requirements.lock` (generado con `uv pip compile --universal`), que instalan `.venv` y Docker. `requirements-timesfm.txt` queda fuera del lock y se instala con `-c requirements.lock`. El Python global de la máquina todavía tiene las versiones viejas: usar `.venv\Scripts\python`.
 - El caché de 24h de "cuenta de Gemini CLI rechazada" no se invalida si el usuario cambia de cuenta de Google (solo por tiempo o reinicio del server) — mejora menor pendiente, no crítica porque el peor caso es esperar hasta 24h para que un cambio de cuenta se refleje.
 - `CorrelationEngine` tiene el mismo problema de catálogo rígido que motivó el auto-discovery de forecast: un FRED ID mal escrito por el LLM (ej. `IPG2211N` en vez de `IPG2211A2N`) se enruta a yfinance y falla — anotado, fuera de alcance por ahora.
 - La cuenta de Gemini CLI del usuario está permanentemente rechazada por Google (`IneligibleTierError`, ver sección 3) — el sistema ya lo detecta y lo comunica bien, no es un bug a resolver, es un hecho externo a vivir con él. Usar Claude CLI o la API key de Gemini.

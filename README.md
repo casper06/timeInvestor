@@ -13,7 +13,7 @@ natural a una selección de activos.
 cp .env.example .env   # completar FRED_API_KEY / GEMINI_API_KEY según necesidad
 python -m venv .venv
 .venv\Scripts\activate          # Windows; en Linux/macOS: source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.lock
 python run.py           # compila el frontend si hace falta y sirve todo en :8000
 ```
 
@@ -21,19 +21,50 @@ Ver `.env.example` para el detalle de cada variable de entorno.
 
 Instalá siempre dentro de `.venv` (está en `.gitignore`), no en el Python
 global: un `pip install` suelto en el global puede actualizar pandas, yfinance,
-etc. por fuera de los rangos de `requirements.txt`, y entonces lo que corre
-localmente deja de ser lo que instala Docker.
+etc. por fuera de lo verificado, y entonces lo que corre localmente deja de ser
+lo que instala Docker.
 
-Para comparar dos entornos contra datos reales (la suite de tests mockea
-yfinance y FRED): `python scripts/smoke_real_data.py --out a.json` en cada uno,
-y después `python scripts/smoke_real_data.py --compare a.json b.json`. Necesita
-`FRED_API_KEY`.
+### Dependencias: rangos y lock
+
+- `requirements.txt`: rangos, se editan a mano.
+- `requirements.lock`: versiones exactas, **generado** a partir de
+  `requirements.txt`. Es lo que instalan `.venv` y Docker. Es un solo archivo
+  para Windows y Linux (marcadores de plataforma, por ejemplo `uvloop` solo
+  fuera de Windows).
+- `requirements-timesfm.txt` (opcional) queda fuera del lock, porque el wheel de
+  `torch` depende del hardware (CPU acá, CUDA en `Dockerfile.timesfm`). Se
+  instala restringido por el lock, para que no mueva numpy, pandas, etc.:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu -c requirements.lock
+pip install -r requirements-timesfm.txt -c requirements.lock
+```
+
+Para actualizar el lock después de cambiar un rango (con
+[uv](https://github.com/astral-sh/uv)):
+
+```bash
+uv pip compile requirements.txt --universal --python-version 3.12 -o requirements.lock
+```
+
+Antes de commitear un lock nuevo, instalalo en un venv limpio y corré la suite y
+`scripts/smoke_real_data.py` (ver abajo).
+
+### Smoke test con datos reales
+
+La suite de tests mockea yfinance y FRED. Para comparar dos entornos contra
+datos reales: `python scripts/smoke_real_data.py --out a.json` en cada uno, y
+después `python scripts/smoke_real_data.py --compare a.json b.json`. Necesita
+`FRED_API_KEY`. Yahoo devuelve cierres que varían ~1e-4 USD entre descargas, y
+eso puede mover el tercer decimal del MASE. Para comparar solo el cálculo sobre
+los mismos datos: `python scripts/smoke_real_data.py --replay a.json --out b.json`
+en el otro entorno, y después `--compare a.json b.json`.
 
 ### Desarrollo (backend y frontend por separado)
 
 ```bash
 # Backend
-pip install -r requirements.txt
+pip install -r requirements.lock
 python run.py --no-browser
 
 # Frontend (hot reload)

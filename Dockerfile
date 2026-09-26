@@ -31,8 +31,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin appuser
 
 # Install backend dependencies without caching
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Exact versions from the lock (generated from requirements.txt's ranges with
+# `uv pip compile --universal`, so the same file is valid on Linux and Windows).
+COPY requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Copy application backend, execution scripts, and launcher
 COPY backend/ ./backend/

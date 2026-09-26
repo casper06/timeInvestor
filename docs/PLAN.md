@@ -104,7 +104,7 @@ Rama: a definir.
   Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
   y hay tests del margen y del empate.
 
-- [ ] **2.4 Lockfile de dependencias.** Los rangos de #19 permiten versiones que
+- [x] **2.4 Lockfile de dependencias.** (rama `chore/lockfile`, PR abierto: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
   `pip-compile` (o equivalente), o un `requirements.lock` con las versiones
