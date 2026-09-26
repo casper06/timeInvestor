@@ -259,6 +259,21 @@ verificada.
   Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
   donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
   cambia algún veredicto del catálogo.
+- [ ] **3.5 Capacidad de pronóstico por categoría de FRED.** Benchmark de los
+  motores contra el naive que corresponda a cada serie (random walk, o
+  estacional si el detector de 3.0a la marca así), en estas categorías:
+  - economía real mensual NSA;
+  - economía real mensual SA;
+  - trimestral;
+  - semanal;
+  - financiera diaria (tasas, spreads).
+
+  Hipótesis a testear, no a asumir: las financieras diarias se comportan
+  como un random walk (ningún motor le gana al naive).
+  Hecho cuando: por categoría, varias series representativas, cutoffs
+  pareados y test de signo contra el naive (mismo arnés que 3.0d), con el
+  resultado en `docs/results/`, incluido "ningún motor le gana al naive"
+  donde pase.
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
 incluso si la hipótesis no se sostiene.
@@ -268,7 +283,12 @@ incluso si la hipótesis no se sostiene.
 Rama: una por ítem, a definir.
 
 - [ ] **4.1 Validar los FRED IDs en `CorrelationEngine`** antes de enrutar a
-  yfinance.
+  yfinance. **Absorbido por 4.11.** Diagnóstico corregido (2026-09-26):
+  `CorrelationEngine` manda a FRED solo los IDs de un `SERIES_CATALOG` fijo de
+  5 series (`correlation_engine.py:35`); cualquier otro ID de FRED, **válido o
+  no**, va a yfinance y falla. El ejemplo de antes (`IPG2211N` como "ID mal
+  escrito") era incorrecto: `IPG2211N` existe en FRED (mensual NSA,
+  1972–2026). El problema es el ruteo por catálogo, no la ortografía.
 - [ ] **4.2 Invalidar el caché de rechazo de Gemini CLI cuando cambia la
   cuenta.** Hoy dura 24 h o hasta reiniciar el server.
 - [ ] **4.3 SA vs NSA en series FRED.** Leer `seasonal_adjustment` de la
@@ -343,8 +363,86 @@ Rama: una por ítem, a definir.
     4.6 (Haiku vs Sonnet): tabla tesis × prompt × modelo con instrumentos,
     series, mecanismo y falsador. Evaluación manual.
   Hecho cuando: esa tabla existe y se decidió qué prompt queda.
+- [ ] **4.11 IDs de FRED anclados en datos reales.** El LLM propone
+  *conceptos*; `fred/series/search` devuelve candidatas reales con metadata, y
+  se elige entre esas. Nunca un ID generado por el LLM sin verificar contra
+  FRED.
+  - Verificado el 2026-09-26: `fred/series/search?search_text=…` responde con
+    `id`, `frequency_short`, `seasonal_adjustment_short`, `observation_start`,
+    `observation_end` y `title` (ejemplo: "electric power generation
+    industrial production" → 84 resultados, entre ellos IPG2211S, IPG2211N y
+    CAPUTLG2211S).
+  - El ruteo FRED/yfinance pasa a depender de que el ID exista en FRED
+    (`fred/series`), no de un catálogo fijo. Absorbe 4.1.
+  Hecho cuando: ninguna serie macro llega a la app sin haber sido validada
+  contra FRED, y `CorrelationEngine` acepta cualquier ID válido de FRED.
+- [ ] **4.12 Fuentes fuera de FRED (solo investigación).** SEC EDGAR (datos
+  contables de empresas, por ejemplo capex) y la API de la EIA (consumo
+  eléctrico por sector).
+  Verificado el 2026-09-26 leyendo las páginas oficiales (sin llamadas reales):
+  - **SEC EDGAR** (`data.sec.gov`):
+    - sin API key ("These APIs do not require any authentication or API
+      keys to access");
+    - APIs JSON: `submissions`, `companyconcept`
+      (`/api/xbrl/companyconcept/CIK##########/us-gaap/<tag>.json`),
+      `companyfacts` y `frames`. Solo taxonomías estándar (us-gaap,
+      ifrs-full, dei, srt), no los tags propios de cada empresa;
+    - límite: **10 pedidos por segundo** en total (si se supera, bloqueo
+      temporal de la IP);
+    - hay que **declarar un User-Agent con nombre y email de contacto**;
+    - sin CORS (solo desde el backend), y bulk ZIP nocturno;
+    - uso: "public information and may be copied or further distributed",
+      con cita a la SEC. No usar el sello ni los logos.
+    - **No verificado:** que el tag de capex
+      (`PaymentsToAcquirePropertyPlantAndEquipment`) esté disponible para las
+      empresas que importan. La SEC no lo documenta por tag.
+    - **Sin llamada real:** la política exige un email de contacto real en el
+      User-Agent, y eso es decisión del dueño del repo.
+  - **EIA API v2** (`https://api.eia.gov/v2/`):
+    - **API key gratuita**, registrada por email, siempre en la URL
+      (`api_key=`, no en headers);
+    - máximo 5.000 filas por respuesta en JSON (300 en XML); se pagina con
+      `offset`/`length`;
+    - throttling no publicado: la FAQ sugiere menos de ~9.000 pedidos por
+      hora y menos de 5 por segundo;
+    - ruta `electricity/retail-sales` ("Electricity Sales to Ultimate
+      Customers"): facetas `stateid` y `sectorid` (RES, COM, IND, TRA, OTH,
+      ALL), datos `sales` (millones de kWh), `price`, `revenue` y
+      `customers`; frecuencia mensual, trimestral y anual; desde 2001;
+    - uso: dominio público ("You may use and/or distribute any of our
+      data…"), con atribución pedida ("Source: U.S. Energy Information
+      Administration (fecha)"); no usar el logo;
+    - **No verificado:** los términos de servicio de la API
+      (`/opendata/terms-of-service.php`, no leídos), y ninguna llamada real
+      (no hay key).
+  Hecho cuando: hay una recomendación de cuál integrar primero para el caso
+  "consumo eléctrico por IA" de la Fase 5, con una llamada real a cada una.
+- [ ] **4.13 Capacidad de pronóstico visible en la UI.** Para cada serie,
+  mostrar si el motor le gana al naive en su backtest (random walk o
+  estacional, según corresponda) y, cuando no le gana, decirlo
+  explícitamente ("para esta serie, el pronóstico no supera a repetir el
+  último valor").
+  Hecho cuando: la proyección de cada serie muestra ese veredicto, con el
+  número y su fuente.
 
-## Fase 5 — Arquitectura centrada en drivers (para discutir, no ejecutar)
+## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
+
+**Reencuadre (2026-09-26):** el objetivo principal pasa de "construir
+carteras" a **examinar tesis**. Dada una afirmación, el sistema:
+- reúne la evidencia a favor y en contra;
+- muestra el estado actual y el pronóstico de esos indicadores;
+- dice qué dato cambiaría la conclusión.
+
+**Los criterios de confirmación y de refutación se definen ANTES de mirar los
+datos** (si se definen después, se ajustan a lo que salió). La construcción
+de cartera queda como opcional, al final.
+
+Casos de prueba de diseño:
+- "el consumo eléctrico va a aumentar debido a la IA" (un driver medible,
+  con series FRED y EIA);
+- "la IA es una burbuja" (una afirmación sobre valuaciones y expectativas,
+  más difícil de operacionalizar: qué indicador y qué umbral la confirmarían o
+  la refutarían).
 
 Hoy el sistema pronostica precios directamente, serie por serie. La propuesta
 invierte el orden:
@@ -374,4 +472,11 @@ Preguntas abiertas antes de planificar ítems:
 - **Dependencias con otros ítems:** 3.4 (los drivers pronosticados con datos
   revisados sobrestiman la precisión) y 4.10 (el prompt tendría que devolver
   drivers y mecanismo, no solo tickers).
+
+## Orden de trabajo acordado (2026-09-26)
+
+2.2 → 2.3 → 3.5 → 4.13 → 4.11 → 3.4. Primero la confiabilidad del
+pronóstico de FRED (cuánto oscilan y qué tan robustas son las decisiones, en
+qué categorías se le gana al naive, y mostrarlo); después, anclar los IDs y
+los vintages. El prompt (4.10) y la Fase 5 van después.
 
