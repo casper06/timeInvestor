@@ -29,7 +29,7 @@ Rama: `chore/fase-0-higiene`
   (ambas exportan `TimesFM_2p5_200M_torch`), el pin elegido está justificado
   con fecha y método en un comentario, y los tests reales de TimesFM pasan con
   los pesos en caché.
-- [x] **0.3 `CONTEXT.md` actualizado** (rama `docs/context-md`, PR abierto)
+- [x] **0.3 `CONTEXT.md` actualizado** (PR #18, mergeado)
   Notas: cuota de Claude CLI verificada el 2026-09-25 (re-leída el
   2026-09-26), TimesFM-3 existe y no fue evaluado, `timesfm` fijado en
   3.0.2, auto-discovery "no evaluado" y estado del repo.
@@ -41,8 +41,8 @@ Rama: `chore/fase-0-higiene`
   99 fechas.
   Hecho cuando: los valores salen de `len(dates)` y el test cubre un sábado y
   un domingo fijos, además de "now".
-- [x] **0.5 Alinear dependencias con lo que realmente corre.** (rama
-  `chore/deps-align`, PR abierto)
+- [x] **0.5 Alinear dependencias con lo que realmente corre.** (PR #19,
+  mergeado)
   Decisión del dueño del repo: no volver atrás el entorno; se actualizan los
   rangos. `requirements.txt` sube fastapi (`>=0.136,<1`), uvicorn
   (`>=0.49,<1`), yfinance (`>=1.2,<2`) y pandas (`>=3.0,<4`), y el proyecto
@@ -57,8 +57,7 @@ Rama: `chore/fase-0-higiene`
   Hecho cuando: `requirements.txt` incluye lo que corre localmente y Docker
   instala las mismas versiones.
 
-- [x] **0.6 Suite aislada de la DB real.** (rama `fix/tests-temp-db`, PR
-  abierto)
+- [x] **0.6 Suite aislada de la DB real.** (PR #21, mergeado)
   `tests/test_database.py` corría `init_db()` y un CRUD contra
   `backend/database/time_investor.db`.
   Hecho cuando: la suite usa un SQLite temporal y el hash de la DB real no
@@ -87,7 +86,7 @@ Rama: `fix/autodiscovery-not-evaluated`
 Rama: a definir.
 
 - [x] **2.1 Detectar el fallback interno de TimesFM→Holt dentro de
-  `BacktestEngine.run_backtest`.** (rama `fix/backtest-timesfm-fallback`, PR abierto) Hoy `BacktestResponse` no lo expone, así que
+  `BacktestEngine.run_backtest`.** (PR #20, mergeado; aviso en la UI en #22) Hoy `BacktestResponse` no lo expone, así que
   `mase_timesfm` podría ser en realidad de Holt, y eso es una métrica fabricada.
   Va primero: medir oscilaciones o fijar un margen sobre un `mase_timesfm` que
   puede no ser de TimesFM no tiene sentido.
@@ -123,14 +122,52 @@ Rama: a definir.
 
 Rama: a definir.
 
-Contexto: salió el 31/08/2026 (330M parámetros, checkpoint
-`google/timesfm-3.0-pytorch`, covariables de pasado y pasado-futuro). Los pesos
-tienen licencia **no comercial**.
+Contexto: checkpoint `google/timesfm-3.0-pytorch`, 330M parámetros, covariables
+de pasado y pasado-futuro; pesos con licencia **no comercial** (verificado el
+2026-09-26, ver `CONTEXT.md`). La fecha de lanzamiento del 31/08/2026 no está
+verificada.
 
+- [ ] **3.0 Prerrequisito: comparación justa en series estacionales.** Hoy
+  nada en el sistema es estacional: Holt no tiene componente estacional, el
+  único benchmark es el random walk (`run_naive_rw_at_cutoff`), y el MASE se
+  escala contra el naive de 1 paso (`mean(|diff(y_train)|)`, en
+  `backtest_engine.py` y en `benchmark_real_data.py`). El hallazgo "TimesFM
+  gana en FRED estacionales", que justifica `SEASONAL_FRED_CATALOG`, se midió
+  solo contra rivales que ignoran la estacionalidad.
+  - Naive estacional (m=12 para mensuales) como benchmark obligatorio, al lado
+    del random walk.
+  - MASE escalado estacionalmente (escala = MAE in-sample del naive de lag m)
+    para esas series.
+  - Holt-Winters (ETS con componente estacional) como rival clásico. Evaluar
+    implementación propia vs. librería (por ejemplo, `statsmodels`) y justificar
+    la elección: peso de la dependencia, calidad del ajuste MLE e intervalos.
+  - Re-correr el benchmark de las 4 series del catálogo (IPG2211A2N, RSAFSNA,
+    HOUSTNSA, MRTSSM4451USN). Si TimesFM no le gana al naive estacional o a
+    Holt-Winters, se documenta tal cual y se revisa el catálogo.
+  - Holt-Winters como plan B cuando TimesFM no está disponible, en vez de caer
+    a un Holt que no ve la estacionalidad.
+  - Prophet (Meta) como rival, solo en el benchmark de series estacionales,
+    no en producción.
+    - Estado verificado el 2026-09-26 en `facebook/prophet`: el README dice
+      "Prophet is in maintenance mode as of v1.4.0. Only bug fixes, dependency
+      bumps, and changes to the R package to meet parity with Python will be
+      accepted. No new features are planned." Última release v1.4.0-patched
+      (2026-08-15), repo no archivado, MIT. En PyPI la última es 1.4.0, con
+      wheel `py3-none-win_amd64` (bajado sin instalar). Que funcione en
+      Python 3.14: no verificado.
+    - Si se usa, va en un archivo de dependencias opcional aparte (como
+      `requirements-timesfm.txt`), porque depende de cmdstan y es pesado.
+    - Criterio: entra al selector solo si le gana al naive estacional y a
+      Holt-Winters en alguna categoría. Si no, se documenta tal cual.
+    - Sus regresores externos son una opción para la Fase 3 (covariables
+      FRED), comparable con TimesFM-3 (3.2).
+  Hecho cuando: el benchmark reporta, por serie, MASE estacional de TimesFM,
+  Holt, Holt-Winters, Prophet, naive estacional y random walk, y el catálogo
+  quedó confirmado o corregido según esos números.
 - [ ] **3.1 Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
   walk-forward.
 - [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
-  pasado.
+  pasado. Comparar con los regresores externos de Prophet (ver 3.0).
 - [ ] **3.3 Latencia en CPU.**
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
@@ -144,3 +181,18 @@ Rama: una por ítem, a definir.
   yfinance.
 - [ ] **4.2 Invalidar el caché de rechazo de Gemini CLI cuando cambia la
   cuenta.** Hoy dura 24 h o hasta reiniciar el server.
+- [ ] **4.3 SA vs NSA en series FRED.** Leer `seasonal_adjustment` de la
+  metadata de FRED, mostrarlo en la UI y tenerlo en cuenta al elegir el motor.
+  Una serie SA ya no tiene el ciclo anual, así que "motor estacional" no aplica.
+  Hoy la app no lo lee: solo un comentario de `scripts/benchmark_real_data.py`
+  lo menciona.
+- [ ] **4.4 Warnings no mostrados en otros paneles.** Llegan desde la API pero
+  la UI no los muestra:
+  - Fundamentales: `fetchFundamentals` (`api.ts`) devuelve solo
+    `data.metrics` y descarta `warnings`.
+  - Optimización de cartera: `PortfolioOptimizeResponse.warnings` está tipado,
+    `portfolio_engine.py` los genera, y `PortfolioRiskView` no los renderiza.
+  - Riesgo / Monte Carlo: `PortfolioRiskResponse.warnings` está tipado y no se
+    renderiza.
+  Hecho cuando: los tres paneles los muestran (con tests de componente), como
+  ya hacen Backtest (#22) y Rebalanceo.
