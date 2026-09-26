@@ -57,6 +57,13 @@ Rama: `chore/fase-0-higiene`
   Hecho cuando: `requirements.txt` incluye lo que corre localmente y Docker
   instala las mismas versiones.
 
+- [x] **0.6 Suite aislada de la DB real.** (rama `fix/tests-temp-db`, PR
+  abierto)
+  `tests/test_database.py` corría `init_db()` y un CRUD contra
+  `backend/database/time_investor.db`.
+  Hecho cuando: la suite usa un SQLite temporal y el hash de la DB real no
+  cambia tras correrla.
+
 ## Fase 1 — Auto-discovery: "no evaluado" ≠ "Holt ganó"
 
 Rama: `fix/autodiscovery-not-evaluated`
@@ -90,6 +97,9 @@ Rama: a definir.
   con MASE estrictamente menor, sin margen).
   Hecho cuando: hay una medición reproducible (script + resultado) de cuántas
   decisiones cambian entre corridas o ventanas cercanas.
+  Requisito agregado: un mínimo de cutoffs en par (donde TimesFM realmente
+  corrió, ver 2.1) para poder elegir TimesFM. Hoy, si TimesFM falla en 2 de 3
+  cutoffs, la decisión sale de un solo cutoff.
 - [ ] **2.3 Decisión más robusta:** 5–8 cutoffs, un margen (por ejemplo
   `MASE_tfm ≤ 0.95·MASE_holt` o Diebold-Mariano) y que un empate lo gane Holt.
   Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
