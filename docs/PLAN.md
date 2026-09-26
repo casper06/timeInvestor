@@ -146,13 +146,28 @@ verificada.
     Holt-Winters, se documenta tal cual y se revisa el catálogo.
   - Holt-Winters como plan B cuando TimesFM no está disponible, en vez de caer
     a un Holt que no ve la estacionalidad.
+  - Prophet (Meta) como rival, solo en el benchmark de series estacionales,
+    no en producción.
+    - Estado verificado el 2026-09-26 en `facebook/prophet`: el README dice
+      "Prophet is in maintenance mode as of v1.4.0. Only bug fixes, dependency
+      bumps, and changes to the R package to meet parity with Python will be
+      accepted. No new features are planned." Última release v1.4.0-patched
+      (2026-08-15), repo no archivado, MIT. En PyPI la última es 1.4.0, con
+      wheel `py3-none-win_amd64` (bajado sin instalar). Que funcione en
+      Python 3.14: no verificado.
+    - Si se usa, va en un archivo de dependencias opcional aparte (como
+      `requirements-timesfm.txt`), porque depende de cmdstan y es pesado.
+    - Criterio: entra al selector solo si le gana al naive estacional y a
+      Holt-Winters en alguna categoría. Si no, se documenta tal cual.
+    - Sus regresores externos son una opción para la Fase 3 (covariables
+      FRED), comparable con TimesFM-3 (3.2).
   Hecho cuando: el benchmark reporta, por serie, MASE estacional de TimesFM,
-  Holt, Holt-Winters, naive estacional y random walk, y el catálogo quedó
-  confirmado o corregido según esos números.
+  Holt, Holt-Winters, Prophet, naive estacional y random walk, y el catálogo
+  quedó confirmado o corregido según esos números.
 - [ ] **3.1 Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
   walk-forward.
 - [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
-  pasado.
+  pasado. Comparar con los regresores externos de Prophet (ver 3.0).
 - [ ] **3.3 Latencia en CPU.**
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
