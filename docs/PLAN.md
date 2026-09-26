@@ -183,10 +183,14 @@ verificada.
   Holt, Holt-Winters, Prophet, naive estacional y random walk, y el catálogo
   quedó confirmado o corregido según esos números.
   Se parte en cuatro sub-ítems, un PR cada uno:
-  - [x] **3.0a Naive estacional + MASE estacional** en el backtest (rama
-    `feat/seasonal-naive-mase`, PR abierto). El MASE de 1 paso se mantiene; el estacional
+  - [x] **3.0a Naive estacional + MASE estacional** en el backtest (PR #26,
+    mergeado). El MASE de 1 paso se mantiene; el estacional
     va en un campo aparte.
-  - [ ] **3.0b Holt-Winters** como motor (implementación a justificar).
+  - [x] **3.0b Holt-Winters** como motor (rama `feat/holt-winters`, PR abierto):
+    `ETSModel` de statsmodels, ETS(A,Ad,A) en log, MLE, intervalos analíticos.
+    Disponible con `engine: "holt_winters"` en /forecast y /backtest; no está en
+    el selector. Cobertura sobre las FRED estacionales:
+    `docs/results/hw_vs_holt_coverage_2026-09-26.json`.
   - [ ] **3.0c Prophet**, solo en el benchmark, con dependencia opcional.
   - [ ] **3.0d Re-benchmark** de las series estacionales contra todos los
     rivales, y decisión sobre `SEASONAL_FRED_CATALOG`.
@@ -242,6 +246,9 @@ Rama: una por ítem, a definir.
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
   cola, remitir a la pestaña de Riesgo.
+  Además, el panel de backtest tiene que mostrar `mase_seasonal`,
+  `seasonal_naive_metrics` y el veredicto de estacionalidad con su ACF y su
+  umbral (`seasonality`). Hoy solo los menciona el texto del veredicto.
 - [ ] **4.8 (baja prioridad, solo investigar)** Intervalo con volatilidad
   adaptativa (EWMA/GARCH) para mejorar la cobertura condicional. Investigar,
   no implementar.

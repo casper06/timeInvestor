@@ -103,3 +103,29 @@ describe('BacktestPanel', () => {
     expect(list).toHaveTextContent('Subcobertura del intervalo');
   });
 });
+
+describe('BacktestPanel engine choice', () => {
+  it('sends engine=holt_winters when chosen and shows the engine that actually ran', async () => {
+    const spy = vi.spyOn(api, 'runBacktest').mockResolvedValue(
+      backtestResult({ model_name: 'holt-winters-ets(A,Ad,A) m=12' }),
+    );
+    render(<BacktestPanel seriesData={seriesData} activeSeriesId="IPG2211A2N" />);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Holt-Winters/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Ejecutar Reality Check/ }));
+    await screen.findByText(/El modelo supera al benchmark naive/);
+
+    expect(spy.mock.calls[0][4]).toBe('holt_winters');
+    expect(screen.getByTestId('backtest-engine-badge')).toHaveTextContent('holt-winters-ets(A,Ad,A) m=12');
+  });
+
+  it('does not send an engine by default', async () => {
+    const spy = vi.spyOn(api, 'runBacktest').mockResolvedValue(backtestResult());
+    render(<BacktestPanel seriesData={seriesData} activeSeriesId="NVDA" />);
+    fireEvent.click(screen.getByRole('button', { name: /Ejecutar Reality Check/ }));
+    await screen.findByText(/El modelo supera al benchmark naive/);
+
+    expect(spy.mock.calls[0][4]).toBeUndefined();
+    expect(screen.getByTestId('backtest-engine-badge')).toHaveTextContent('timesfm-2.5-200m (cpu)');
+  });
+});

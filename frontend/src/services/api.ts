@@ -475,7 +475,10 @@ export async function runBacktest(
   seriesId: string,
   cutoffDate: string,
   horizon = 60,
-  confidence = 0.95
+  confidence = 0.95,
+  /** Explicit engine; undefined = the server's default. 'holt_winters' only
+   * works for seasonal series (the server answers 422 otherwise). */
+  engine?: 'holt_winters'
 ): Promise<BacktestResponse> {
   const res = await fetch(`${API_BASE}/backtest`, {
     method: 'POST',
@@ -485,6 +488,7 @@ export async function runBacktest(
       cutoff_date: cutoffDate,
       horizon,
       confidence,
+      ...(engine ? { engine } : {}),
     }),
   });
   if (!res.ok) {

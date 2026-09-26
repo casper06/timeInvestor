@@ -100,22 +100,28 @@ def _cutoff_indices(n: int, min_train: int, horizon: int) -> list:
     return sorted({int(round(x)) for x in np.linspace(min_train - 1, last, N_CUTOFFS)})
 
 
-def _evaluate_series(dates: list, vals: list, setup: dict) -> list:
-    """One record per (cutoff, horizon step) with coverage and standardized error."""
+def _evaluate_series(dates: list, vals: list, setup: dict, engine=None, cutoffs=None) -> list:
+    """One record per (cutoff, horizon step) with coverage and standardized error.
+    `engine` defaults to Damped Holt; `cutoffs` to the standard grid."""
     from backend.schemas.models import TimeSeriesPoint
     from backend.services.forecast_engine import DampedHoltForecastEngine
 
-    engine = DampedHoltForecastEngine()
+    engine = engine or DampedHoltForecastEngine()
     horizon = setup["horizon"]
     records = []
-    for i in _cutoff_indices(len(vals), setup["min_train"], horizon):
+    idx = cutoffs if cutoffs is not None else _cutoff_indices(len(vals), setup["min_train"], horizon)
+    for i in idx:
         train = [TimeSeriesPoint(timestamp=d, value=v) for d, v in zip(dates[: i + 1], vals[: i + 1])]
         res = engine.forecast(train, horizon=horizon, confidence=NOMINAL, freq=setup["freq"])
         for h in range(1, horizon + 1):
             actual = vals[i + h]
             lb, ub = res.lower_bound[h - 1], res.upper_bound[h - 1]
             rec = {"cutoff": dates[i], "h": h, "inside95": lb <= actual <= ub,
-                   "below": actual < lb, "above": actual > ub, "s": None}
+                   "below": actual < lb, "above": actual > ub, "s": None,
+                   # Only used by --compare-engines (not in _summarize), so
+                   # --replay's output stays exactly as it was.
+                   "width_rel": (ub - lb) / actual if actual else None,
+                   "ape": abs(res.values[h - 1] - actual) / abs(actual) if actual else None}
             if lb > 0 and ub > lb and actual > 0:
                 mu = (math.log(lb) + math.log(ub)) / 2.0
                 se = (math.log(ub) - math.log(lb)) / (2.0 * Z95)
@@ -194,6 +200,66 @@ def replay(snapshot_path: str, out_path: str) -> None:
     print(f"\nescrito {out_path}")
 
 
+# Seasonal series of the snapshot for --compare-engines (the detector marks
+# them seasonal; see backend/services/seasonality.py).
+SEASONAL_COMPARE = ["IPG2211A2N", "RSAFSNA", "HOUSTNSA"]
+COMPARE_STEPS = [1, 3, 6, 12]
+
+
+def _engine_summary(records: list) -> dict:
+    out = _summarize(records)
+    out["width_rel_mean_pct"] = 100.0 * float(np.mean([r["width_rel"] for r in records]))
+    out["mape_pct"] = 100.0 * float(np.mean([r["ape"] for r in records]))
+    for h in COMPARE_STEPS:
+        sub = [r for r in records if r["h"] == h]
+        out[f"coverage95_h{h}"] = 100.0 * sum(r["inside95"] for r in sub) / len(sub)
+    return out
+
+
+def compare_engines(snapshot_path: str, out_path: str) -> None:
+    """Holt vs Holt-Winters on the SAME cutoffs of the seasonal FRED series.
+    A cutoff where the detector doesn't find seasonality in that training
+    window is dropped for both engines (Holt-Winters refuses it)."""
+    from backend.schemas.models import TimeSeriesPoint
+    from backend.services.forecast_engine import DampedHoltForecastEngine, HoltWintersForecastEngine
+    from backend.services.seasonality import detect_seasonality
+
+    raw = Path(snapshot_path).read_bytes()
+    snapshot = json.loads(raw)
+    result = {"snapshot_sha256": hashlib.sha256(raw).hexdigest(), "nominal": NOMINAL, "series": {}, "pooled": {}}
+    pooled = {"holt": [], "holt_winters": []}
+    for sid in SEASONAL_COMPARE:
+        entry = snapshot["series"][sid]
+        setup = SETUP[entry["category"]]
+        dates = sorted(entry["values"])
+        vals = [entry["values"][d] for d in dates]
+        grid = _cutoff_indices(len(vals), setup["min_train"], setup["horizon"])
+        usable = [i for i in grid if detect_seasonality(
+            [TimeSeriesPoint(timestamp=d, value=v) for d, v in zip(dates[: i + 1], vals[: i + 1])]).is_seasonal]
+        holt = _evaluate_series(dates, vals, setup, DampedHoltForecastEngine(), usable)
+        hw = _evaluate_series(dates, vals, setup, HoltWintersForecastEngine(), usable)
+        pooled["holt"] += holt
+        pooled["holt_winters"] += hw
+        result["series"][sid] = {"cutoffs_used": len(usable), "cutoffs_dropped_not_seasonal": len(grid) - len(usable),
+                                 "holt": _engine_summary(holt), "holt_winters": _engine_summary(hw)}
+    result["pooled"] = {k: _engine_summary(v) for k, v in pooled.items()}
+    Path(out_path).write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+
+    print(f"snapshot sha256 {result['snapshot_sha256'][:16]}…  nominal {NOMINAL:.0%}")
+    head = "| {:<11} | {:<12} | {:>4} | {:>7} | {:>7} | {:>6} | {:>6} | {:>7} | {:>6} | {:>6} | {:>6} | {:>6} |"
+    print(head.format("serie", "motor", "cut", "cob95%", "cob80%", "s_med", "s_std", "ancho%", "MAPE%",
+                      "h1", "h6", "h12"))
+    rows = [(sid, v) for sid, v in result["series"].items()] + [("TODAS", result["pooled"])]
+    for sid, v in rows:
+        for eng in ("holt", "holt_winters"):
+            e = v[eng]
+            cut = v.get("cutoffs_used", "-") if sid != "TODAS" else "-"
+            print(head.format(sid, eng, cut, _fmt(e["coverage95"]), _fmt(e["coverage80"]), _fmt(e["s_mean"], "{:.2f}"),
+                              _fmt(e["s_std"], "{:.2f}"), _fmt(e["width_rel_mean_pct"]), _fmt(e["mape_pct"], "{:.2f}"),
+                              _fmt(e["coverage95_h1"]), _fmt(e["coverage95_h6"]), _fmt(e["coverage95_h12"])))
+    print(f"\nescrito {out_path}")
+
+
 def _fmt(x, pat="{:.1f}"):
     return "-" if x is None else pat.format(x)
 
@@ -231,14 +297,20 @@ def main() -> None:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--fetch", metavar="SNAPSHOT", help="baja las series reales y las guarda acá")
     group.add_argument("--replay", metavar="SNAPSHOT", help="mide sobre un snapshot ya bajado")
-    parser.add_argument("--out", help="con --replay: JSON de resultados")
+    group.add_argument("--compare-engines", metavar="SNAPSHOT",
+                       help="Holt vs Holt-Winters en las series FRED estacionales, mismos cutoffs")
+    parser.add_argument("--out", help="con --replay o --compare-engines: JSON de resultados")
     args = parser.parse_args()
     if args.fetch:
         fetch(args.fetch)
-    else:
+    elif args.replay:
         if not args.out:
             parser.error("--replay necesita --out")
         replay(args.replay, args.out)
+    else:
+        if not args.out:
+            parser.error("--compare-engines necesita --out")
+        compare_engines(args.compare_engines, args.out)
 
 
 if __name__ == "__main__":
