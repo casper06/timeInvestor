@@ -79,8 +79,8 @@ Rama: `fix/autodiscovery-not-evaluated`
 
 Rama: a definir.
 
-- [ ] **2.1 Detectar el fallback interno de TimesFM→Holt dentro de
-  `BacktestEngine.run_backtest`.** Hoy `BacktestResponse` no lo expone, así que
+- [x] **2.1 Detectar el fallback interno de TimesFM→Holt dentro de
+  `BacktestEngine.run_backtest`.** (rama `fix/backtest-timesfm-fallback`, PR abierto) Hoy `BacktestResponse` no lo expone, así que
   `mase_timesfm` podría ser en realidad de Holt, y eso es una métrica fabricada.
   Va primero: medir oscilaciones o fijar un margen sobre un `mase_timesfm` que
   puede no ser de TimesFM no tiene sentido.
@@ -94,6 +94,20 @@ Rama: a definir.
   `MASE_tfm ≤ 0.95·MASE_holt` o Diebold-Mariano) y que un empate lo gane Holt.
   Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
   y hay tests del margen y del empate.
+
+- [ ] **2.4 Lockfile de dependencias.** Los rangos de #19 permiten versiones que
+  el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
+  fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
+  `pip-compile` (o equivalente), o un `requirements.lock` con las versiones
+  verificadas.
+  Hecho cuando: hay un archivo de versiones exactas que Docker y `.venv` usan,
+  y cada actualización del lock pasa por la suite y `scripts/smoke_real_data.py`.
+- [ ] **2.5 Cobertura del cono de Holt sobre datos reales.** El smoke test dio
+  SPY 43,3% en una sola ventana, contra ~96% validado sobre datos simulados.
+  Una ventana sola no prueba nada.
+  Hecho cuando: hay una medición de cobertura empírica con muchos cutoffs sobre
+  acciones, ETFs y series FRED, reproducible (script + resultado), antes de
+  sacar conclusiones sobre la calibración.
 
 ## Fase 3 — Experimento TimesFM-3
 

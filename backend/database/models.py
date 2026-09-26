@@ -82,6 +82,10 @@ class EngineDecisionModel(Base):
     mase_holt = Column(Float, nullable=False)
     mase_timesfm = Column(Float, nullable=True)  # null if TimesFM was unavailable during evaluation
     n_points_at_evaluation = Column(Integer, nullable=False)
+    # Cutoffs where TimesFM was loaded but fell back to Holt internally (so its
+    # "MASE" there would really be Holt's and is discarded). NULL on rows from
+    # before this column existed, or when TimesFM wasn't available at all.
+    timesfm_failed_cutoffs = Column(Integer, nullable=True)
 
 
 class ClaudeCliUsageModel(Base):

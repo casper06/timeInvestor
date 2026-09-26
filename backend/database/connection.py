@@ -1,5 +1,5 @@
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from backend.config import settings
@@ -32,7 +32,33 @@ def get_db():
     finally:
         db.close()
 
+# Columns added to an existing table after it was first created. create_all()
+# only creates missing TABLES, never missing columns, so an older database
+# needs these added by hand. (table, column, SQL type), all nullable.
+_ADDED_COLUMNS = [
+    ("engine_decisions", "timesfm_failed_cutoffs", "INTEGER"),
+]
+
+
+def migrate_added_columns(bind) -> list:
+    """Adds any column from _ADDED_COLUMNS missing in an existing table.
+    Idempotent. Returns the "table.column" names it added."""
+    added = []
+    inspector = inspect(bind)
+    existing_tables = set(inspector.get_table_names())
+    with bind.begin() as conn:
+        for table, column, sql_type in _ADDED_COLUMNS:
+            if table not in existing_tables:
+                continue  # create_all() creates it with every column
+            if column in {c["name"] for c in inspector.get_columns(table)}:
+                continue
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"))
+            added.append(f"{table}.{column}")
+    return added
+
+
 def init_db():
     """Automatically initialize database tables."""
     from backend.database import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    migrate_added_columns(engine)

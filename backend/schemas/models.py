@@ -259,6 +259,8 @@ class BacktestResponse(BaseModel):
     aggregate_direction_correct: bool = Field(default=False, description="True if aggregate horizon direction matched")
     verdict: str
     warnings: List[str] = Field(default_factory=list)
+    model_name: Optional[str] = Field(default=None, description="Motor que produjo realmente la predicción evaluada (ForecastResponse.model_name)")
+    is_fallback: bool = Field(default=False, description="True si el motor pedido (TimesFM) falló y cayó a Holt internamente: las métricas son de Holt, no de TimesFM")
 
 # Correlation Schemas
 class CorrelationRequest(BaseModel):

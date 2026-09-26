@@ -188,6 +188,15 @@ class EngineSelector:
         if decision is None:
             return None
 
+        # Cutoffs where TimesFM fell back to Holt were dropped from the
+        # comparison (see AutoDiscoveryEngine._run_mini_backtest); say so.
+        failed = decision.timesfm_failed_cutoffs or 0
+        dropped_note = (
+            f" TimesFM falló en {failed} cutoff(s) del mini-backtest (cayó a Holt internamente); "
+            f"la comparación usa solo aquellos donde corrió de verdad."
+            if failed and decision.mase_timesfm is not None else ""
+        )
+
         if decision.engine_choice == "timesfm" and settings.USE_REAL_TIMESFM:
             engine = TimesFMForecastEngine()
             res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
@@ -196,13 +205,13 @@ class EngineSelector:
                     f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: "
                     f"TimesFM ganó MASE {decision.mase_timesfm:.3f} vs Holt "
                     f"{decision.mase_holt:.3f} en un mini-backtest de esta serie puntual."
-                )
+                ) + dropped_note
                 return res
             res.engine_selection_reason = (
                 f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} — TimesFM había "
                 f"ganado MASE {decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}, pero "
                 f"TimesFM no está disponible ahora mismo — usando Holt como fallback transparente."
-            )
+            ) + dropped_note
             return res
 
         engine = DampedHoltForecastEngine()
@@ -225,6 +234,16 @@ class EngineSelector:
                 f"de confianza quedó mal calibrado en el mini-backtest — Holt (elegido por calibración, "
                 f"no porque haya ganado en MASE)."
             )
+        elif decision.mase_timesfm is None and failed:
+            # TimesFM was loaded but fell back to Holt on every cutoff: there is
+            # no real TimesFM MASE to compare. Not re-evaluated early (it would
+            # most likely fail the same way); the regular TTL applies.
+            res.engine_selection_reason = (
+                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: TimesFM falló en los "
+                f"{failed} cutoff(s) del mini-backtest de esta serie (cayó a Holt internamente), así que "
+                f"no hay MASE real de TimesFM — Holt (MASE {decision.mase_holt:.3f}) sin comparación; "
+                f"se re-evalúa con el TTL normal."
+            )
         elif decision.mase_timesfm is None:
             # TimesFM couldn't run at evaluation time: Holt wasn't compared against
             # anything, so "Holt ganó" would be false. AutoDiscoveryEngine._is_stale
@@ -240,6 +259,7 @@ class EngineSelector:
                 f"{decision.mase_holt:.3f} vs TimesFM {decision.mase_timesfm:.3f} en un mini-backtest de esta "
                 f"serie puntual — Holt (elegido por auto-evaluación, no por catálogo ni default)."
             )
+        res.engine_selection_reason += dropped_note
         return res
 
     @staticmethod
