@@ -9,8 +9,13 @@ nominal 95% interval, per category and per horizon step.
 
 Two steps, so a measurement can be reproduced exactly:
 
-    python scripts/holt_coverage_real.py --fetch snapshot.json
-    python scripts/holt_coverage_real.py --replay snapshot.json --out results.json
+    python scripts/holt_coverage_real.py --fetch data/snapshots/holt_coverage_<fecha>.json
+    python scripts/holt_coverage_real.py --replay data/snapshots/holt_coverage_<fecha>.json --out results.json
+
+Keep snapshots in data/snapshots/ (git-ignored, but inside the project so they
+aren't lost): a versioned result is only reproducible with its snapshot. The
+one behind docs/results/holt_coverage_2026-09-26.json is
+data/snapshots/holt_coverage_2026-09-26.json (sha256 c37cf58e…).
 
 --fetch downloads the series through the app's own fetchers (needs
 FRED_API_KEY; never synthetic data) and saves them in the same "values" format

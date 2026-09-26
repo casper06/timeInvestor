@@ -318,8 +318,20 @@ export interface BacktestMetrics {
   mape: number;
   smape?: number;
   mase?: number;
+  /** MASE scaled by the in-sample seasonal naive; only for seasonal series. */
+  mase_seasonal?: number | null;
   directional_accuracy: number;
   observations_evaluated: number;
+}
+
+export interface SeasonalityInfo {
+  frequency: string;
+  period?: number | null;
+  is_seasonal: boolean;
+  acf_at_period?: number | null;
+  threshold?: number | null;
+  n_obs: number;
+  reason: string;
 }
 
 export interface BacktestResponse {
@@ -335,6 +347,9 @@ export interface BacktestResponse {
   future_upper_bound: number[];
   metrics: BacktestMetrics;
   naive_metrics?: BacktestMetrics;
+  /** Seasonal naive benchmark, alongside the random walk; only for seasonal series. */
+  seasonal_naive_metrics?: BacktestMetrics | null;
+  seasonality?: SeasonalityInfo | null;
   interval_coverage?: number;
   aggregate_direction_correct?: boolean;
   verdict: string;

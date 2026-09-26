@@ -9,6 +9,7 @@ from backend.schemas.models import (
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.forecast_engine import BaseForecastEngine, get_forecast_engine
+from backend.services.seasonality import detect_seasonality, seasonal_naive_forecast, seasonal_scale
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +139,34 @@ class BacktestEngine:
             observations_evaluated=eval_horizon
         )
 
+        # 5b. Seasonal naive benchmark + seasonally scaled MASE, only for series
+        # whose TRAINING data passes the seasonality test (no look-ahead). The
+        # 1-step `mase` above stays as it is; the seasonal one goes in its own
+        # field, for the model and for both naive benchmarks.
+        seasonality = detect_seasonality(train_points)
+        seasonal_naive_metrics = None
+        mase_seasonal = None
+        s_scale = seasonal_scale(y_train_vals, seasonality.period) if seasonality.is_seasonal else None
+        if s_scale is not None:
+            m = seasonality.period
+            y_snaive = seasonal_naive_forecast(y_train_vals, eval_horizon, m)
+            snaive_mae = float(np.mean(np.abs(y_actual - y_snaive)))
+            if eval_horizon > 1:
+                snaive_dir = float(np.mean(np.sign(np.diff(y_actual)) == np.sign(np.diff(y_snaive))) * 100)
+            else:
+                snaive_dir = 50.0
+            mase_seasonal = float(mae / (s_scale + epsilon))
+            naive_metrics.mase_seasonal = round(float(naive_mae / (s_scale + epsilon)), 3)
+            seasonal_naive_metrics = BacktestMetrics(
+                mae=round(snaive_mae, 2),
+                mape=round(float(np.mean(np.abs((y_actual - y_snaive) / (np.abs(y_actual) + epsilon))) * 100), 2),
+                smape=round(float(np.mean(2.0 * np.abs(y_actual - y_snaive) / (np.abs(y_actual) + np.abs(y_snaive) + epsilon)) * 100), 2),
+                mase=round(float(snaive_mae / (in_sample_naive_mae + epsilon)), 3),
+                mase_seasonal=round(float(snaive_mae / (s_scale + epsilon)), 3),
+                directional_accuracy=round(snaive_dir, 1),
+                observations_evaluated=eval_horizon,
+            )
+
         # 6. Verdict and Warnings
         warnings: List[str] = []
         # TimesFMForecastEngine.forecast() catches its own failures and answers
@@ -167,6 +196,22 @@ class BacktestEngine:
                 f"Calibración deficiente frente a la inercia del último precio observado."
             )
 
+        if seasonal_naive_metrics is not None:
+            snaive_mae = seasonal_naive_metrics.mae
+            if mae < snaive_mae:
+                verdict += (
+                    f" Serie estacional (m={seasonality.period}): frente al naive estacional (mismo período "
+                    f"del ciclo anterior) el modelo también gana, reduciendo el MAE un "
+                    f"{(snaive_mae - mae) / (snaive_mae + epsilon) * 100:.1f}% "
+                    f"(MASE estacional {mase_seasonal:.3f})."
+                )
+            else:
+                verdict += (
+                    f" Serie estacional (m={seasonality.period}): el modelo NO supera al naive estacional "
+                    f"(MAE {mae:.2f} vs {snaive_mae:.2f} {data.unit}; MASE estacional {mase_seasonal:.3f}). "
+                    f"Repetir el mismo período del ciclo anterior predice mejor."
+                )
+
         display_train = train_points[-120:]
 
         return BacktestResponse(
@@ -185,10 +230,13 @@ class BacktestEngine:
                 mape=round(mape, 2),
                 smape=round(smape, 2),
                 mase=round(mase, 3),
+                mase_seasonal=round(mase_seasonal, 3) if mase_seasonal is not None else None,
                 directional_accuracy=round(directional_accuracy, 1),
                 observations_evaluated=eval_horizon
             ),
             naive_metrics=naive_metrics,
+            seasonal_naive_metrics=seasonal_naive_metrics,
+            seasonality=seasonality,
             interval_coverage=round(interval_coverage, 1),
             aggregate_direction_correct=aggregate_direction_correct,
             verdict=verdict,
