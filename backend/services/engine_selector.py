@@ -14,8 +14,12 @@ are called out explicitly rather than silently omitted.
 Benchmark results (5 walk-forward cutoffs per series, real data, run 2026-09-22):
 
   Seasonal FRED series (IPG2211A2N, RSAFSNA, HOUSTNSA, MRTSSM4451USN):
-    TimesFM won 4/4 (100%) — MASE 0.41-1.42 (TimesFM) vs 0.87-4.12 (Holt).
-    -> Routes to TimesFM.
+    The 2026-09-22 round (TimesFM vs Holt only) had TimesFM 4/4. Re-measured on
+    2026-09-26 against a fair seasonal rival (Holt-Winters, seasonal naive,
+    Prophet; docs/results/seasonal_benchmark_2026-09-26.md): TimesFM beats
+    Holt-Winters firmly on IPG2211A2N, probably on HOUSTNSA and RSAFSNA (the
+    latter fragile without 2020), and not significantly on MRTSSM4451USN.
+    -> Per-series entries in SEASONAL_FRED_CATALOG, each with its evidence.
 
   Diversified index/sector ETFs (SPY, QQQ, XLE, XLK):
     TimesFM won 0/4 (0%) — Holt/Naive RW matched or beat TimesFM on all four.
@@ -50,17 +54,54 @@ from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.schemas.models import TimeSeriesPoint, ForecastResponse
+from dataclasses import dataclass
+
 from backend.services.forecast_engine import (
     BaseForecastEngine,
     DampedHoltForecastEngine,
+    HoltWintersForecastEngine,
     TimesFMForecastEngine,
 )
+from backend.services.seasonality import detect_seasonality
 
 logger = logging.getLogger(__name__)
 
+@dataclass(frozen=True)
+class SeasonalCatalogEntry:
+    """One curated seasonal series: which engine, how solid the evidence is,
+    and where the result lives. `evidence` is what the user reads."""
+    engine: str      # "timesfm" | "holt_winters"
+    strength: str    # "firme" | "probable" | "probable, frágil" | "no significativa"
+    evidence: str
+    result_ref: str
+
+
+_SEASONAL_RESULT = "docs/results/seasonal_benchmark_2026-09-26.md"
+
 # Curated catalogs — explicit membership, never inferred from name/ticker shape.
-# Each entry here is backed by the benchmark documented in this module's docstring.
-SEASONAL_FRED_CATALOG = {"IPG2211A2N", "RSAFSNA", "HOUSTNSA", "MRTSSM4451USN"}
+# Seasonal entries come from the 3.0c+d benchmark (paired sign test against
+# Holt-Winters, 24 cutoffs; "firme" = survives Bonferroni over the 4 series,
+# alpha 0.0125).
+SEASONAL_FRED_CATALOG = {
+    "IPG2211A2N": SeasonalCatalogEntry(
+        "timesfm", "firme",
+        "le ganó a Holt-Winters en 20 de 24 cutoffs (p=0,002; sobrevive a Bonferroni)",
+        _SEASONAL_RESULT),
+    "HOUSTNSA": SeasonalCatalogEntry(
+        "timesfm", "probable",
+        "le ganó a Holt-Winters en 18 de 24 cutoffs (p=0,023; no sobrevive a Bonferroni)",
+        _SEASONAL_RESULT),
+    "RSAFSNA": SeasonalCatalogEntry(
+        "timesfm", "probable, frágil",
+        "le ganó a Holt-Winters en 18 de 24 cutoffs (p=0,023); sin las ventanas de 2020, "
+        "16 de 22 (p=0,052) y ganaría Holt-Winters",
+        _SEASONAL_RESULT),
+    "MRTSSM4451USN": SeasonalCatalogEntry(
+        "holt_winters", "no significativa",
+        "TimesFM tuvo menor error medio pero no le ganó a Holt-Winters de forma "
+        "significativa (16 de 24 cutoffs, p=0,152)",
+        _SEASONAL_RESULT),
+}
 DIVERSIFIED_ETF_CATALOG = {"SPY", "QQQ", "XLE", "XLK"}
 
 # Below this many points, Holt's MLE fit has too few residuals for sigma to be
@@ -108,15 +149,23 @@ class EngineSelector:
         n_points = len(points)
 
         if clean_id and clean_id in SEASONAL_FRED_CATALOG:
-            return EngineSelector._run_with_timesfm_preference(
-                points,
-                horizon=horizon,
-                confidence=confidence,
-                freq=freq,
-                reason_if_real=(
-                    f"Serie FRED estacional ({clean_id}) — TimesFM seleccionado: "
-                    f"ganó 4/4 series de esta categoría en el benchmark real "
-                    f"(MASE muy inferior a Holt)."
+            entry = SEASONAL_FRED_CATALOG[clean_id]
+            if entry.engine == "timesfm":
+                return EngineSelector._run_with_timesfm_preference(
+                    points,
+                    horizon=horizon,
+                    confidence=confidence,
+                    freq=freq,
+                    reason_if_real=(
+                        f"Serie FRED estacional ({clean_id}) — TimesFM por catálogo, evidencia "
+                        f"{entry.strength}: {entry.evidence} (ver {entry.result_ref})."
+                    ),
+                )
+            return EngineSelector._run_holt_winters_or_holt(
+                points, horizon=horizon, confidence=confidence, freq=freq,
+                reason_if_ok=(
+                    f"Serie FRED estacional ({clean_id}) — Holt-Winters por catálogo: "
+                    f"{entry.evidence} (ver {entry.result_ref})."
                 ),
             )
 
@@ -188,6 +237,14 @@ class EngineSelector:
         if decision is None:
             return None
 
+        # What TimesFM was compared against: Holt, or Holt-Winters with the
+        # seasonal MASE for seasonal series (criterion v3). NULL = legacy Holt.
+        base = decision.baseline_engine or "holt"
+        base_label = "Holt-Winters" if base == "holt_winters" else "Holt"
+        metric = "MASE estacional" if decision.metric == "mase_seasonal" else "MASE"
+        date = decision.evaluated_at.strftime('%Y-%m-%d')
+        mase_base = decision.mase_holt  # error of the baseline engine (see baseline_engine)
+
         # Cutoffs where TimesFM fell back to Holt were dropped from the
         # comparison (see AutoDiscoveryEngine._run_mini_backtest); say so.
         failed = decision.timesfm_failed_cutoffs or 0
@@ -197,69 +254,67 @@ class EngineSelector:
             if failed and decision.mase_timesfm is not None else ""
         )
 
-        if decision.engine_choice == "timesfm" and settings.USE_REAL_TIMESFM:
-            engine = TimesFMForecastEngine()
-            res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
-            if not res.is_fallback:
-                res.engine_selection_reason = (
-                    f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: "
-                    f"TimesFM ganó MASE {decision.mase_timesfm:.3f} vs Holt "
-                    f"{decision.mase_holt:.3f} en un mini-backtest de esta serie puntual."
-                ) + dropped_note
-                return res
-            res.engine_selection_reason = (
-                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} — TimesFM había "
-                f"ganado MASE {decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}, pero "
-                f"TimesFM no está disponible ahora mismo — usando Holt como fallback transparente."
-            ) + dropped_note
-            return res
-
-        engine = DampedHoltForecastEngine()
-        res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
         if decision.engine_choice == "timesfm":
-            res.engine_selection_reason = (
-                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} — TimesFM había "
-                f"ganado MASE {decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}, pero "
-                f"USE_REAL_TIMESFM=false en este entorno — usando Holt como fallback transparente."
+            won = (f"TimesFM ganó {metric} {decision.mase_timesfm:.3f} vs {base_label} "
+                   f"{mase_base:.3f} en un mini-backtest de esta serie puntual")
+            attempt = None
+            if settings.USE_REAL_TIMESFM:
+                attempt = TimesFMForecastEngine().forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+                if not attempt.is_fallback:
+                    attempt.engine_selection_reason = f"Auto-evaluado el {date}: {won}." + dropped_note
+                    return attempt
+                problem = f"TimesFM no corrió ahora ({attempt.fallback_reason or 'sin motivo informado'})"
+            else:
+                problem = "USE_REAL_TIMESFM=false en este entorno"
+            res = EngineSelector._plan_b(points, horizon, confidence, freq, attempt)
+            res.engine_selection_reason = f"Auto-evaluado el {date}: {won}, pero {problem}. " + res.engine_selection_reason
+            return EngineSelector._append(res, dropped_note)
+
+        if base == "holt_winters":
+            res = EngineSelector._run_holt_winters_or_holt(
+                points, horizon=horizon, confidence=confidence, freq=freq, reason_if_ok="",
             )
-        elif decision.mase_timesfm is not None and decision.mase_timesfm < decision.mase_holt:
-            # TimesFM actually had the lower (better) MASE but was disqualified by
-            # the calibration guard (its interval coverage was too far below
-            # Holt's) — saying "Holt ganó MASE" here would be literally false
-            # (mase_timesfm < mase_holt), so the reason must say what actually
-            # happened: TimesFM won on MASE alone, lost on calibration.
-            res.engine_selection_reason = (
-                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: TimesFM tuvo mejor "
-                f"MASE ({decision.mase_timesfm:.3f} vs Holt {decision.mase_holt:.3f}) pero su intervalo "
-                f"de confianza quedó mal calibrado en el mini-backtest — Holt (elegido por calibración, "
-                f"no porque haya ganado en MASE)."
+            prefix = res.engine_selection_reason  # non-empty only if HW failed and Holt answered
+        else:
+            res = DampedHoltForecastEngine().forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+            prefix = ""
+
+        if decision.mase_timesfm is not None and decision.mase_timesfm < mase_base:
+            # TimesFM had the better (lower) error but was disqualified by the
+            # calibration guard — "X ganó" would be false; say what happened.
+            reason = (
+                f"Auto-evaluado el {date}: TimesFM tuvo mejor {metric} ({decision.mase_timesfm:.3f} vs "
+                f"{base_label} {mase_base:.3f}) pero su intervalo de confianza quedó mal calibrado en el "
+                f"mini-backtest — {base_label} (elegido por calibración, no porque haya ganado en {metric})."
             )
         elif decision.mase_timesfm is None and failed:
-            # TimesFM was loaded but fell back to Holt on every cutoff: there is
-            # no real TimesFM MASE to compare. Not re-evaluated early (it would
-            # most likely fail the same way); the regular TTL applies.
-            res.engine_selection_reason = (
-                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: TimesFM falló en los "
-                f"{failed} cutoff(s) del mini-backtest de esta serie (cayó a Holt internamente), así que "
-                f"no hay MASE real de TimesFM — Holt (MASE {decision.mase_holt:.3f}) sin comparación; "
-                f"se re-evalúa con el TTL normal."
+            # TimesFM was loaded but fell back to Holt on every cutoff: no real
+            # TimesFM error to compare. Not re-evaluated early; regular TTL.
+            reason = (
+                f"Auto-evaluado el {date}: TimesFM falló en los {failed} cutoff(s) del mini-backtest de esta "
+                f"serie (cayó a Holt internamente), así que no hay {metric} real de TimesFM — {base_label} "
+                f"({metric} {mase_base:.3f}) sin comparación; se re-evalúa con el TTL normal."
             )
         elif decision.mase_timesfm is None:
-            # TimesFM couldn't run at evaluation time: Holt wasn't compared against
-            # anything, so "Holt ganó" would be false. AutoDiscoveryEngine._is_stale
-            # re-evaluates this as soon as TimesFM is available.
-            res.engine_selection_reason = (
-                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')} con TimesFM no "
-                f"disponible: TimesFM no evaluado, Holt (MASE {decision.mase_holt:.3f}) sin "
-                f"comparación — se re-evalúa apenas TimesFM esté disponible, sin esperar el TTL."
+            # TimesFM couldn't run at evaluation time: nothing was compared, so
+            # "ganó" would be false. _is_stale re-evaluates as soon as it can.
+            reason = (
+                f"Auto-evaluado el {date} con TimesFM no disponible: TimesFM no evaluado, {base_label} "
+                f"({metric} {mase_base:.3f}) sin comparación — se re-evalúa apenas TimesFM esté disponible, "
+                f"sin esperar el TTL."
             )
         else:
-            res.engine_selection_reason = (
-                f"Auto-evaluado el {decision.evaluated_at.strftime('%Y-%m-%d')}: Holt ganó MASE "
-                f"{decision.mase_holt:.3f} vs TimesFM {decision.mase_timesfm:.3f} en un mini-backtest de esta "
-                f"serie puntual — Holt (elegido por auto-evaluación, no por catálogo ni default)."
+            reason = (
+                f"Auto-evaluado el {date}: {base_label} ganó {metric} {mase_base:.3f} vs TimesFM "
+                f"{decision.mase_timesfm:.3f} en un mini-backtest de esta serie puntual — {base_label} "
+                f"(elegido por auto-evaluación, no por catálogo ni default)."
             )
-        res.engine_selection_reason += dropped_note
+        res.engine_selection_reason = f"{prefix} {reason}" if prefix else reason
+        return EngineSelector._append(res, dropped_note)
+
+    @staticmethod
+    def _append(res: ForecastResponse, note: str) -> ForecastResponse:
+        res.engine_selection_reason += note
         return res
 
     @staticmethod
@@ -279,6 +334,63 @@ class EngineSelector:
         return res
 
     @staticmethod
+    def _run_holt_winters_or_holt(
+        points: List[TimeSeriesPoint],
+        reason_if_ok: str,
+        horizon: int = 30,
+        confidence: float = 0.95,
+        freq: str = "D",
+    ) -> ForecastResponse:
+        """Holt-Winters; if it fails (not seasonal in this window, too little
+        history, fit error) Holt answers, with the reason — never silently.
+        On success the reason is `reason_if_ok`; on failure it says why."""
+        try:
+            res = HoltWintersForecastEngine().forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+            res.engine_selection_reason = reason_if_ok
+            return res
+        except Exception as e:
+            logger.warning(f"Holt-Winters falló ({type(e).__name__}: {e}); se usa Holt.")
+            res = DampedHoltForecastEngine().forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+            res.is_fallback = True
+            res.engine_selection_reason = (
+                f"Holt-Winters no pudo correr ({e}) — usando Holt como fallback transparente."
+            )
+            return res
+
+    @staticmethod
+    def _plan_b(
+        points: List[TimeSeriesPoint],
+        horizon: int,
+        confidence: float,
+        freq: str,
+        timesfm_attempt: Optional[ForecastResponse],
+    ) -> ForecastResponse:
+        """What runs when TimesFM was preferred but can't run (unavailable or
+        failed): Holt-Winters for series the 3.0a detector marks seasonal
+        (Holt loses even to the seasonal naive there, 3.0d), Holt otherwise.
+        TimesFM's fallback cause (if it was attempted) is kept on the response;
+        model_name is always the engine that actually ran."""
+        seasonality = detect_seasonality(points)
+        if seasonality.is_seasonal:
+            res = EngineSelector._run_holt_winters_or_holt(
+                points, horizon=horizon, confidence=confidence, freq=freq,
+                reason_if_ok=(
+                    f"Plan B estacional: Holt-Winters ({seasonality.reason}) En series estacionales, "
+                    f"Holt pierde incluso contra el naive estacional (benchmark 3.0d)."
+                ),
+            )
+        else:
+            res = EngineSelector._run_holt(
+                points, horizon=horizon, confidence=confidence, freq=freq,
+                reason=f"Plan B: Holt, serie no estacional ({seasonality.reason})",
+            )
+        res.is_fallback = True
+        if timesfm_attempt is not None:
+            res.fallback_kind = timesfm_attempt.fallback_kind
+            res.fallback_reason = timesfm_attempt.fallback_reason
+        return res
+
+    @staticmethod
     def _run_with_timesfm_preference(
         points: List[TimeSeriesPoint],
         reason_if_real: str,
@@ -286,27 +398,20 @@ class EngineSelector:
         confidence: float = 0.95,
         freq: str = "D",
     ) -> ForecastResponse:
-        """Tries TimesFM; falls back to Holt with an explicit reason if it's
-        unavailable (USE_REAL_TIMESFM=false or weights failed to load) — never
-        silently serves Holt while claiming TimesFM was used."""
+        """Tries TimesFM; if it's unavailable or fails, runs the plan B
+        (Holt-Winters for seasonal series, Holt otherwise) with an explicit
+        reason — never silently serves another engine while claiming TimesFM."""
+        attempt = None
         if settings.USE_REAL_TIMESFM:
-            engine = TimesFMForecastEngine()
-            res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
-            if not res.is_fallback:
-                res.engine_selection_reason = reason_if_real
-                return res
-            # TimesFMForecastEngine already fell back to Holt internally (weights
-            # failed to load despite USE_REAL_TIMESFM=true) — report that plainly.
-            res.engine_selection_reason = (
-                "Categoría favorece TimesFM por benchmark, pero TimesFM no está "
-                "disponible (pesos no cargados) — usando Holt como fallback transparente."
-            )
-            return res
-
-        engine = DampedHoltForecastEngine()
-        res = engine.forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+            attempt = TimesFMForecastEngine().forecast(points, horizon=horizon, confidence=confidence, freq=freq)
+            if not attempt.is_fallback:
+                attempt.engine_selection_reason = reason_if_real
+                return attempt
+            problem = f"TimesFM no corrió ({attempt.fallback_reason or 'sin motivo informado'})"
+        else:
+            problem = "USE_REAL_TIMESFM=false en este entorno"
+        res = EngineSelector._plan_b(points, horizon, confidence, freq, attempt)
         res.engine_selection_reason = (
-            "Categoría favorece TimesFM por benchmark, pero USE_REAL_TIMESFM=false "
-            "en este entorno — usando Holt como fallback transparente."
+            f"El catálogo indica TimesFM, pero {problem}. " + res.engine_selection_reason
         )
         return res

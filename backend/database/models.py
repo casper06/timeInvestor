@@ -89,6 +89,12 @@ class EngineDecisionModel(Base):
     # Version of the evaluation criterion (auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION).
     # Older version -> stale. NULL on rows from before this column (= v1).
     criteria_version = Column(Integer, nullable=True)
+    # What TimesFM was compared against (v3+): "holt" or "holt_winters", and
+    # with which metric: "mase" (1-step) or "mase_seasonal". NULL = legacy
+    # (Holt, 1-step MASE). mase_holt holds the BASELINE's error.
+    baseline_engine = Column(String(20), nullable=True)
+    metric = Column(String(20), nullable=True)
+    baseline_skipped_cutoffs = Column(Integer, nullable=True)
 
 
 class ClaudeCliUsageModel(Base):
