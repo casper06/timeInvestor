@@ -89,13 +89,23 @@ How it works:
 6. Every later request for the same series is a single indexed lookup — no
    inference re-run — until the decision goes stale.
 
-**Invalidation** (both conditions checked, either one triggers re-evaluation):
+**Invalidation** (any one of these triggers re-evaluation):
 - More than `DECISION_TTL_DAYS` (30) since `evaluated_at` — a regime shift
   shouldn't be locked in forever from one measurement.
 - The series has grown by `STALE_GROWTH_FRACTION` (20%) or more new points
   since `n_points_at_evaluation` — e.g. a daily equity accumulating ~21 new
   trading days/month eventually has enough new signal to be worth re-checking
   independent of the calendar.
+- The decision was taken **without TimesFM** (`mase_timesfm IS NULL`) and
+  TimesFM is available now. "TimesFM never ran" is not "Holt won": Holt wasn't
+  compared against anything, so it's re-evaluated right away instead of waiting
+  out the TTL. While TimesFM is still unavailable the cached decision is served
+  as-is (re-running would be Holt-only again). The check is
+  `TimesFMForecastEngine.is_available()`: it doesn't touch the model with
+  `USE_REAL_TIMESFM=false`, and otherwise loads it at most once per process
+  (a failed load is never retried), so asking on every request is cheap.
+  No schema change: `mase_timesfm` was already nullable and `NULL` already
+  meant exactly this, so existing databases keep working as they are.
 
 A failed mini-backtest (e.g. a data-provider hiccup) is caught and logged, and
 `decide()` returns `None` (or a stale cached decision if one exists) rather

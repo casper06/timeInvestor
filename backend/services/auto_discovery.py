@@ -71,6 +71,12 @@ MINI_BACKTEST_N_CUTOFFS = 3
 MAX_ACCEPTABLE_COVERAGE_GAP_PP = 30.0
 
 
+def _available_timesfm_engine() -> Optional[TimesFMForecastEngine]:
+    """The loaded TimesFM singleton, or None if it can't run in this process.
+    See TimesFMForecastEngine.is_available for why this is cheap per request."""
+    return TimesFMForecastEngine() if TimesFMForecastEngine.is_available() else None
+
+
 class AutoDiscoveryEngine:
     """Per-series Holt-vs-TimesFM mini-backtest, cached in SQLite."""
 
@@ -83,10 +89,16 @@ class AutoDiscoveryEngine:
         age = datetime.now(timezone.utc) - decision.evaluated_at.replace(tzinfo=timezone.utc)
         if age > timedelta(days=DECISION_TTL_DAYS):
             return True
-        if decision.n_points_at_evaluation <= 0:
-            return False
-        growth = (current_n_points - decision.n_points_at_evaluation) / decision.n_points_at_evaluation
-        return growth >= STALE_GROWTH_FRACTION
+        if decision.n_points_at_evaluation > 0:
+            growth = (current_n_points - decision.n_points_at_evaluation) / decision.n_points_at_evaluation
+            if growth >= STALE_GROWTH_FRACTION:
+                return True
+        # mase_timesfm IS NULL means TimesFM was unavailable when this was
+        # evaluated (_run_mini_backtest's only path to it): Holt was never
+        # compared against anything. Stale as soon as TimesFM can run; while it
+        # still can't, a re-run would be Holt-only again, so the regular TTL
+        # applies. Checked last: it's the only condition that may load TimesFM.
+        return decision.mase_timesfm is None and _available_timesfm_engine() is not None
 
     @staticmethod
     def decide(
@@ -154,13 +166,14 @@ class AutoDiscoveryEngine:
         # Holt internally — so availability is checked ONCE up front instead:
         # if the real model never loaded, there's no point running the mini-
         # backtest against it at all (every cutoff would just be Holt vs Holt).
-        timesfm_engine: Optional[TimesFMForecastEngine] = None
-        if settings.USE_REAL_TIMESFM:
-            candidate = TimesFMForecastEngine()
-            if candidate._model is not None:
-                timesfm_engine = candidate
+        timesfm_engine = _available_timesfm_engine()
 
         cutoffs = AutoDiscoveryEngine._pick_cutoffs(series_id, is_macro)
+        if not cutoffs:
+            # Raised instead of caching mean([]) = NaN as a "holt" decision: that
+            # row would also have mase_timesfm=None, which _is_stale reads as
+            # "TimesFM unavailable" and would re-run on every request.
+            raise ValueError(f"No hay historia suficiente para ningún cutoff del mini-backtest de {series_id}")
 
         holt_mases, holt_coverages = [], []
         tfm_mases, tfm_coverages = [], []
