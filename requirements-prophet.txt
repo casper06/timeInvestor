@@ -1,0 +1,11 @@
+# Optional: Prophet (Meta), ONLY for the seasonal benchmark
+# (scripts/seasonal_benchmark.py, item 3.0c). Not used in production.
+#
+# Install restricted by the lock so it can't move shared dependencies:
+#   pip install -r requirements-prophet.txt -c requirements.lock
+#
+# Maintenance status (verified 2026-09-26 in github.com/facebook/prophet):
+# "Prophet is in maintenance mode as of v1.4.0 ... No new features are planned."
+# The Windows wheel bundles its compiled Stan model (cmdstan), so no compiler
+# is needed.
+prophet==1.4.0

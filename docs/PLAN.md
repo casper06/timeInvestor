@@ -186,14 +186,27 @@ verificada.
   - [x] **3.0a Naive estacional + MASE estacional** en el backtest (PR #26,
     mergeado). El MASE de 1 paso se mantiene; el estacional
     va en un campo aparte.
-  - [x] **3.0b Holt-Winters** como motor (rama `feat/holt-winters`, PR abierto):
+  - [x] **3.0b Holt-Winters** como motor (PR #27, mergeado):
     `ETSModel` de statsmodels, ETS(A,Ad,A) en log, MLE, intervalos analíticos.
     Disponible con `engine: "holt_winters"` en /forecast y /backtest; no está en
     el selector. Cobertura sobre las FRED estacionales:
     `docs/results/hw_vs_holt_coverage_2026-09-26.json`.
-  - [ ] **3.0c Prophet**, solo en el benchmark, con dependencia opcional.
-  - [ ] **3.0d Re-benchmark** de las series estacionales contra todos los
-    rivales, y decisión sobre `SEASONAL_FRED_CATALOG`.
+  - [x] **3.0c + 3.0d (una sola ronda, rama `feat/seasonal-benchmark`, PR
+    abierto):** veredicto en `docs/results/seasonal_benchmark_2026-09-26.md`.
+    - TimesFM tiene el menor error en las 4 series y le gana a HW de forma
+      significativa en 3 (IPG2211A2N, RSAFSNA frágil, HOUSTNSA); en
+      MRTSSM4451USN, HW.
+    - Holt (el plan B actual) pierde incluso contra el naive estacional.
+    - Prophet no entra al selector.
+  - [ ] **3.0e Arreglar la banda de TimesFM (prerrequisito del selector).**
+    `TimesFMForecastEngine` usa la columna 0 de los cuantiles (la media) como
+    límite inferior. La banda real es columnas 1 (p10) y 9 (p90). La app
+    muestra [media, p90]: cubre 36–62%, contra 84–92% de la p10–p90 real.
+    Después, re-evaluar las decisiones de auto-discovery que TimesFM perdió
+    "por calibración" (CEG y NVDA en la DB local).
+  - [ ] **3.0f Aplicar el veredicto al selector** (`SEASONAL_FRED_CATALOG` y
+    Holt-Winters como plan B), una vez que el dueño del repo decida sobre la
+    propuesta del documento de resultados.
 
 - [ ] **3.1 Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
   walk-forward.
@@ -246,9 +259,17 @@ Rama: una por ítem, a definir.
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
   cola, remitir a la pestaña de Riesgo.
+  Además, la tarjeta "Objetivo +{horizon}d" (`MetricCards.tsx`) muestra un
+  precio puntual con más precisión de la que respaldan los backtests en
+  acciones individuales. Evaluar mostrar el rango como dato principal y el
+  punto central como secundario, o agregar una advertencia.
   Además, el panel de backtest tiene que mostrar `mase_seasonal`,
   `seasonal_naive_metrics` y el veredicto de estacionalidad con su ACF y su
   umbral (`seasonality`). Hoy solo los menciona el texto del veredicto.
 - [ ] **4.8 (baja prioridad, solo investigar)** Intervalo con volatilidad
   adaptativa (EWMA/GARCH) para mejorar la cobertura condicional. Investigar,
   no implementar.
+- [ ] **4.9 (baja prioridad, después de 3.0d)** Los intervalos analíticos de
+  `ETSModel` no incluyen la incertidumbre de los parámetros (Holt-Winters
+  sub-cubre: 91,3% al 95% en 3.0b). Evaluar intervalos por simulación o
+  bootstrap.
