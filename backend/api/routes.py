@@ -50,6 +50,7 @@ from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, g
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.llm_router import get_llm_client
 from backend.services.engine_selector import EngineSelector
+from backend.services.forecast_engine import HoltWintersForecastEngine, NotSeasonalError
 from backend.services.backtest_engine import BacktestEngine
 from backend.services.correlation_engine import CorrelationEngine
 from backend.services.portfolio_engine import PortfolioEngine
@@ -198,6 +199,24 @@ def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
     Generates time series projection and confidence intervals.
     Returns TimesFM-compliant structure: { timestamps, values, lower_bound, upper_bound }.
     """
+    if payload.engine == "holt_winters":
+        # Explicit engine: bypasses EngineSelector on purpose (Holt-Winters is
+        # not part of the selector yet, item 3.0d).
+        try:
+            result = HoltWintersForecastEngine().forecast(
+                payload.points, horizon=payload.horizon, confidence=payload.confidence, freq=payload.freq or "M",
+            )
+        except NotSeasonalError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error computing Holt-Winters forecast: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Holt-Winters falló: {e}")
+        result.engine_selection_reason = (
+            f"Motor pedido explícitamente en el request (engine=holt_winters), sin pasar por el "
+            f"selector: estacionalidad detectada con período {int(result.fitted_params['seasonal_period'])}."
+        )
+        return result
+
     try:
         result = EngineSelector.select(
             points=payload.points,
@@ -475,8 +494,11 @@ def run_backtest(payload: BacktestRequest):
             series_id=payload.series_id,
             cutoff_date=payload.cutoff_date,
             horizon=payload.horizon,
-            confidence=payload.confidence
+            confidence=payload.confidence,
+            engine_override=HoltWintersForecastEngine() if payload.engine == "holt_winters" else None,
         )
+    except NotSeasonalError as nse:
+        raise HTTPException(status_code=422, detail=str(nse))
     except ValueError as ve:
         err_msg = str(ve)
         if "sintética" in err_msg.lower():

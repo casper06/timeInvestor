@@ -1,0 +1,148 @@
+{
+  "nominal": 0.95,
+  "pooled": {
+    "holt": {
+      "above_pct": 2.5462962962962963,
+      "below_pct": 0.6944444444444444,
+      "coverage80": 85.41666666666666,
+      "coverage95": 96.75925925925925,
+      "coverage95_h1": 98.61111111111111,
+      "coverage95_h12": 95.83333333333333,
+      "coverage95_h3": 98.61111111111111,
+      "coverage95_h6": 95.83333333333333,
+      "mape_pct": 10.83002759826317,
+      "n": 864,
+      "s_excess_kurtosis": 0.4256807135246814,
+      "s_mean": 0.11182725597755103,
+      "s_std": 0.8797656298580225,
+      "width_rel_mean_pct": 73.38587242740829
+    },
+    "holt_winters": {
+      "above_pct": 5.092592592592593,
+      "below_pct": 3.587962962962963,
+      "coverage80": 76.38888888888889,
+      "coverage95": 91.31944444444444,
+      "coverage95_h1": 91.66666666666667,
+      "coverage95_h12": 91.66666666666667,
+      "coverage95_h3": 94.44444444444444,
+      "coverage95_h6": 88.88888888888889,
+      "mape_pct": 5.985359858028426,
+      "n": 864,
+      "s_excess_kurtosis": 5.869672664030496,
+      "s_mean": 0.2796884327137887,
+      "s_std": 1.3789042497736221,
+      "width_rel_mean_pct": 25.554520493988313
+    }
+  },
+  "series": {
+    "HOUSTNSA": {
+      "cutoffs_dropped_not_seasonal": 0,
+      "cutoffs_used": 24,
+      "holt": {
+        "above_pct": 0.0,
+        "below_pct": 0.3472222222222222,
+        "coverage80": 96.52777777777779,
+        "coverage95": 99.65277777777777,
+        "coverage95_h1": 100.0,
+        "coverage95_h12": 100.0,
+        "coverage95_h3": 100.0,
+        "coverage95_h6": 100.0,
+        "mape_pct": 18.836151878265188,
+        "n": 288,
+        "s_excess_kurtosis": -0.021391402940273085,
+        "s_mean": -0.08533969100431243,
+        "s_std": 0.6081540107258383,
+        "width_rel_mean_pct": 153.15174735758256
+      },
+      "holt_winters": {
+        "above_pct": 1.0416666666666667,
+        "below_pct": 5.902777777777778,
+        "coverage80": 78.81944444444444,
+        "coverage95": 93.05555555555556,
+        "coverage95_h1": 95.83333333333333,
+        "coverage95_h12": 95.83333333333333,
+        "coverage95_h3": 91.66666666666667,
+        "coverage95_h6": 91.66666666666667,
+        "mape_pct": 11.249419806958958,
+        "n": 288,
+        "s_excess_kurtosis": 4.840784403083967,
+        "s_mean": -0.15475583761194456,
+        "s_std": 1.2345485984512972,
+        "width_rel_mean_pct": 49.67465538238998
+      }
+    },
+    "IPG2211A2N": {
+      "cutoffs_dropped_not_seasonal": 0,
+      "cutoffs_used": 24,
+      "holt": {
+        "above_pct": 3.4722222222222223,
+        "below_pct": 0.6944444444444444,
+        "coverage80": 76.04166666666666,
+        "coverage95": 95.83333333333333,
+        "coverage95_h1": 95.83333333333333,
+        "coverage95_h12": 100.0,
+        "coverage95_h3": 95.83333333333333,
+        "coverage95_h6": 87.5,
+        "mape_pct": 7.863034700173027,
+        "n": 288,
+        "s_excess_kurtosis": -0.9343719560149211,
+        "s_mean": 0.1453795105136632,
+        "s_std": 1.0236163365355815,
+        "width_rel_mean_pct": 35.48711534912742
+      },
+      "holt_winters": {
+        "above_pct": 4.861111111111111,
+        "below_pct": 1.0416666666666667,
+        "coverage80": 75.34722222222221,
+        "coverage95": 94.09722222222223,
+        "coverage95_h1": 91.66666666666667,
+        "coverage95_h12": 100.0,
+        "coverage95_h3": 95.83333333333333,
+        "coverage95_h6": 87.5,
+        "mape_pct": 3.1672454801139533,
+        "n": 288,
+        "s_excess_kurtosis": 0.13652716996328218,
+        "s_mean": 0.40696871060274664,
+        "s_std": 1.000570907499783,
+        "width_rel_mean_pct": 14.7104869724
+      }
+    },
+    "RSAFSNA": {
+      "cutoffs_dropped_not_seasonal": 0,
+      "cutoffs_used": 24,
+      "holt": {
+        "above_pct": 4.166666666666667,
+        "below_pct": 1.0416666666666667,
+        "coverage80": 83.68055555555556,
+        "coverage95": 94.79166666666667,
+        "coverage95_h1": 100.0,
+        "coverage95_h12": 87.5,
+        "coverage95_h3": 100.0,
+        "coverage95_h6": 100.0,
+        "mape_pct": 5.790896216351293,
+        "n": 288,
+        "s_excess_kurtosis": 1.3380789622056017,
+        "s_mean": 0.27544194842330233,
+        "s_std": 0.9179932740711626,
+        "width_rel_mean_pct": 31.51875457551484
+      },
+      "holt_winters": {
+        "above_pct": 9.375,
+        "below_pct": 3.8194444444444446,
+        "coverage80": 75.0,
+        "coverage95": 86.80555555555556,
+        "coverage95_h1": 87.5,
+        "coverage95_h12": 79.16666666666667,
+        "coverage95_h3": 95.83333333333333,
+        "coverage95_h6": 87.5,
+        "mape_pct": 3.539414287012367,
+        "n": 288,
+        "s_excess_kurtosis": 4.676569379416486,
+        "s_mean": 0.5868524251505639,
+        "s_std": 1.7005275007152405,
+        "width_rel_mean_pct": 12.278419127174965
+      }
+    }
+  },
+  "snapshot_sha256": "c37cf58e790a37b23cf937e751f9a62d6444bbeb9569d9ea8c5a164795eb5659"
+}

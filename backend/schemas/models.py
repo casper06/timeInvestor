@@ -54,6 +54,7 @@ class ForecastRequest(BaseModel):
     freq: Optional[str] = Field(default="D", description="Frequency: 'D' for daily, 'M' for monthly")
     series_id: Optional[str] = Field(default=None, description="Series identifier (ticker or FRED series ID), used by EngineSelector to look up its category. None falls back to the default individual-equity selection path.")
     series_type: Optional[str] = Field(default=None, description="'equity' or 'macro', as in TimeSeriesData.type — used by EngineSelector alongside series_id")
+    engine: Optional[Literal["holt_winters"]] = Field(default=None, description="Motor explícito. 'holt_winters' (ETS con estacionalidad) solo para series que el detector marca como estacionales; si no lo son, 422. None = comportamiento por defecto")
 
 class ForecastResponse(BaseModel):
     timestamps: List[str] = Field(..., description="Projected future timestamps")
@@ -235,6 +236,7 @@ class BacktestRequest(BaseModel):
     cutoff_date: str
     horizon: int = Field(default=60, ge=5, le=365)
     confidence: float = Field(default=0.95, ge=0.5, le=0.99)
+    engine: Optional[Literal["holt_winters"]] = Field(default=None, description="Motor explícito. 'holt_winters' (ETS con estacionalidad) solo para series que el detector marca como estacionales; si no lo son, 422. None = comportamiento por defecto")
 
 class BacktestMetrics(BaseModel):
     mae: float

@@ -208,6 +208,103 @@ class DampedHoltForecastEngine(BaseForecastEngine):
 StatisticalMockForecastEngine = DampedHoltForecastEngine
 
 
+class NotSeasonalError(ValueError):
+    """Holt-Winters was asked for a series the seasonality detector (3.0a) does
+    not mark as seasonal. Raised instead of silently fitting a seasonal model
+    to a series without a cycle, or silently answering with plain Holt."""
+
+
+class HoltWintersForecastEngine(BaseForecastEngine):
+    """
+    Holt-Winters: ETS(A,Ad,A) via statsmodels' ETSModel (item 3.0b).
+
+    - On log values when the series is positive: additive seasonality in log is
+      multiplicative in levels, consistent with DampedHoltForecastEngine, which
+      also works in log.
+    - Additive damped trend, as Holt.
+    - Parameters by maximum likelihood: ETSModel.fit maximizes the
+      log-likelihood (ExponentialSmoothing, the other statsmodels API, minimizes
+      SSE instead and has no get_prediction).
+    - Seasonal period from backend.services.seasonality.detect_seasonality; only
+      series it marks as seasonal are accepted (NotSeasonalError otherwise).
+    - Intervals: the library's analytic ones (get_prediction(method="exact")).
+      ETS(A,Ad,A) is linear, so they have a closed form; they're deterministic
+      (simulated ones depend on the random draw) and Gaussian like Holt's, so a
+      comparison between the two isolates the seasonal component. Point value:
+      exp(mu + var/2) and bounds exp(mu ± z·se), exactly as Holt does in log.
+    """
+
+    def forecast(
+        self,
+        points: List[TimeSeriesPoint],
+        horizon: int = 30,
+        confidence: float = 0.95,
+        freq: str = "M",
+    ) -> ForecastResponse:
+        import warnings as _warnings
+        from statsmodels.tsa.exponential_smoothing.ets import ETSModel
+        from backend.services.seasonality import detect_seasonality
+
+        sorted_points = sorted(points, key=lambda p: p.timestamp)
+        seasonality = detect_seasonality(sorted_points)
+        if not seasonality.is_seasonal:
+            raise NotSeasonalError(f"Holt-Winters no aplica a esta serie: {seasonality.reason}")
+        m = seasonality.period
+
+        vals = np.array([p.value for p in sorted_points], dtype=float)
+        use_log = bool(np.all(vals > 0))
+        y = np.log(vals) if use_log else vals
+
+        # A pandas Series with a plain integer index: get_prediction needs an
+        # index for its row labels; integer positions avoid any date/freq logic.
+        import pandas as pd
+        model = ETSModel(
+            pd.Series(y), error="add", trend="add", damped_trend=True,
+            seasonal="add", seasonal_periods=m, initialization_method="estimated",
+        )
+        with _warnings.catch_warnings(record=True) as caught:
+            _warnings.simplefilter("always")
+            res = model.fit(disp=False)
+        convergence_warnings = [str(w.message) for w in caught if "converge" in str(w.message).lower()]
+        if convergence_warnings:
+            logger.warning(f"Holt-Winters: el ajuste MLE avisó que no convergió: {convergence_warnings[0]}")
+
+        n = len(y)
+        pred = res.get_prediction(start=n, end=n + horizon - 1, method="exact")
+        frame = pred.summary_frame(alpha=1.0 - confidence)
+        mu = np.asarray(frame["mean"], dtype=float)
+        lo = np.asarray(frame["pi_lower"], dtype=float)
+        hi = np.asarray(frame["pi_upper"], dtype=float)
+        z = stats.norm.ppf(1.0 - (1.0 - confidence) / 2.0)
+        var = ((hi - lo) / (2.0 * z)) ** 2
+
+        if use_log:
+            values = np.exp(mu + var / 2.0)
+            lower, upper = np.exp(lo), np.exp(hi)
+        else:
+            values, lower, upper = mu, lo, hi
+
+        params = dict(zip(res.param_names, np.asarray(res.params, dtype=float)))
+        fitted = {
+            "alpha": round(params.get("smoothing_level", float("nan")), 4),
+            "beta": round(params.get("smoothing_trend", float("nan")), 4),
+            "gamma": round(params.get("smoothing_seasonal", float("nan")), 4),
+            "phi": round(params.get("damping_trend", float("nan")), 4),
+            "seasonal_period": float(m),
+            "log_likelihood": round(float(res.llf), 3),
+            "converged": 0.0 if convergence_warnings else 1.0,
+        }
+        timestamps = DampedHoltForecastEngine()._generate_future_timestamps(sorted_points[-1].timestamp, horizon, freq)
+        return ForecastResponse(
+            timestamps=timestamps,
+            values=[round(float(v), 2) for v in values],
+            lower_bound=[round(float(v), 2) for v in lower],
+            upper_bound=[round(float(v), 2) for v in upper],
+            model_name=f"holt-winters-ets(A,Ad,A) m={m}",
+            fitted_params=fitted,
+        )
+
+
 class TimesFMForecastEngine(BaseForecastEngine):
     """
     Adapter for Google TimesFM 2.5 (200M), the PyTorch foundation model for time series

@@ -46,6 +46,9 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
   const [horizon, setHorizon] = useState<number>(60);
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<BacktestResponse | null>(null);
+  // Holt-Winters is chosen explicitly here; it isn't part of the automatic
+  // engine selection yet (item 3.0d).
+  const [useHoltWinters, setUseHoltWinters] = useState<boolean>(false);
 
   const points = seriesData?.points || [];
 
@@ -65,7 +68,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
     if (!selectedDate) return;
     setLoading(true);
     try {
-      const res = await runBacktest(activeSeriesId, selectedDate, horizon, 0.95);
+      const res = await runBacktest(activeSeriesId, selectedDate, horizon, 0.95, useHoltWinters ? 'holt_winters' : undefined);
       setResult(res);
       onResult?.(res);
     } catch (err) {
@@ -255,6 +258,19 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
 
       <div className="flex justify-end border-b border-slate-800 pb-4">
         <div className="flex items-center flex-wrap gap-3 text-xs">
+          {/* Engine: default, or Holt-Winters for seasonal series */}
+          <label
+            className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 cursor-pointer"
+            title="Holt-Winters modela la estacionalidad. Solo aplica a series que el detector marca como estacionales (por ejemplo, FRED mensuales NSA); si no, el servidor lo rechaza con el motivo."
+          >
+            <input
+              type="checkbox"
+              checked={useHoltWinters}
+              onChange={(e) => setUseHoltWinters(e.target.checked)}
+            />
+            <span className="text-slate-400">Holt-Winters (estacional)</span>
+          </label>
+
           {/* Horizon Selector */}
           <div className="flex items-center space-x-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1">
             <span className="text-slate-500">Horizonte H:</span>
@@ -312,6 +328,19 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
             <span>Inicio: {points[20]?.timestamp}</span>
             <span>Fin: {points[points.length - 15]?.timestamp}</span>
           </div>
+        </div>
+      )}
+
+      {/* Which engine actually produced the evaluated prediction */}
+      {result?.model_name && (
+        <div className="text-[11px] text-slate-400">
+          Motor evaluado:{' '}
+          <span
+            data-testid="backtest-engine-badge"
+            className="font-mono px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200"
+          >
+            {result.model_name}
+          </span>
         </div>
       )}
 
