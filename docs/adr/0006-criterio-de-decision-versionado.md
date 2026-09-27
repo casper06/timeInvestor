@@ -22,6 +22,8 @@ Versiones:
 - v4 (2.3, #33): regla robusta (ADR-0007).
 - v5 (2.3d): la misma regla, evaluada en el horizonte canónico de cada
   frecuencia (ADR-0019).
+- v6 (2.10): igual que v5, pero si el MASE no está definido en algún
+  cutoff, la serie se decide con MAE en pares (ADR-0020).
 
 ## Consecuencias
 

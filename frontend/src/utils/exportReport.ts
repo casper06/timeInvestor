@@ -106,7 +106,11 @@ export function generateMarkdownReport(data: ReportData): string {
       `**Veredicto:** ${bt.verdict}\n\n` +
         `- **Fecha de corte evaluada:** ${bt.cutoff_date} (horizonte: ${horizonLabel(bt.horizon, seriesFrequency(bt.frequency))})\n` +
         `- **Acierto direccional:** ${bt.metrics.directional_accuracy.toFixed(1)}%\n` +
-        `- **MAPE:** ${bt.metrics.mape.toFixed(2)}% • **MAE:** ${bt.metrics.mae.toFixed(2)}\n` +
+        `- **MAPE:** ${
+          bt.metrics.mape != null
+            ? `${bt.metrics.mape.toFixed(2)}%`
+            : `no definido (${bt.metrics.undefined?.mape || 'sin motivo informado'})`
+        } • **MAE:** ${bt.metrics.mae.toFixed(2)}\n` +
         (bt.interval_coverage !== undefined ? `- **Cobertura del intervalo:** ${bt.interval_coverage.toFixed(1)}%\n` : '') +
         `\n`
     );

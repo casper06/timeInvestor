@@ -393,10 +393,20 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
 
           <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
             <div className="text-slate-400 text-[11px] uppercase tracking-wider">Error MAPE</div>
-            <div className="text-xl font-bold font-mono text-cyan-300 mt-1">
-              {result.metrics.mape.toFixed(2)}%
+            {result.metrics.mape != null ? (
+              <div className="text-xl font-bold font-mono text-cyan-300 mt-1">
+                {result.metrics.mape.toFixed(2)}%
+              </div>
+            ) : (
+              <div className="text-sm font-bold text-slate-400 mt-1" data-testid="mape-undefined">
+                no definido
+              </div>
+            )}
+            <div className="text-[10px] text-slate-500 mt-0.5">
+              {result.metrics.mape != null
+                ? 'Porcentaje de error absoluto'
+                : result.metrics.undefined?.mape || 'MAPE no definido'}
             </div>
-            <div className="text-[10px] text-slate-500 mt-0.5">Porcentaje de error absoluto</div>
           </div>
 
           <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">

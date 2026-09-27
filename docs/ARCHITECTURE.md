@@ -149,7 +149,7 @@ flowchart TD
   resultado.
 - **Auto-discovery** (`backend/services/auto_discovery.py`): cubre cualquier
   serie fuera de los catálogos con 90 puntos o más. El mini-backtest
-  (criterio v5) toma 8 cutoffs repartidos en una ventana reciente según la
+  (criterio v6) toma 8 cutoffs repartidos en una ventana reciente según la
   frecuencia (`RECENT_WINDOW`: 504 puntos en diarias, 104 en semanales, 120
   en mensuales, 40 en trimestrales), cada uno con el horizonte canónico de la
   frecuencia (`_decision_horizon`: diaria 60, semanal 13, mensual 12,
@@ -162,7 +162,15 @@ flowchart TD
     y se cuentan en `timesfm_failed_cutoffs`.
   - Si el base rechaza un cutoff, se cuenta en `baseline_skipped_cutoffs`.
 
-### Regla de decisión (`decide_robust`, igual en v4 y v5)
+### Regla de decisión (`decide_robust`, igual en v4, v5 y v6)
+
+- **Métrica** (v6): MASE (o MASE estacional). Si no está definido en algún
+  cutoff (la serie no varió en ese entrenamiento), la serie entera usa el
+  **MAE en pares** (ADR-0020).
+- **Historia mínima**: `min_history_for_decision(h)` = max(30, 2h) + h + 6
+  puntos (diaria 186, semanal 49, mensual 48, trimestral 40). Con menos, el
+  motivo dice "Historia insuficiente para evaluar (N de M puntos): se usa
+  Holt por defecto".
 
 ```mermaid
 flowchart TD
@@ -213,10 +221,10 @@ stateDiagram-v2
 
 `_is_stale` marca una fila como vieja por cualquiera de estas razones:
 - **Versión del criterio**: `criteria_version` (NULL = 1) es menor que
-  `AUTO_DISCOVERY_CRITERIA_VERSION` (5). Hubo versiones 1 a 5: v2 en 3.0e
+  `AUTO_DISCOVERY_CRITERIA_VERSION` (6). Hubo versiones 1 a 6: v2 en 3.0e
   (banda de TimesFM y nivel común de comparación), v3 en 3.0f (base
-  Holt-Winters en series estacionales), v4 en 2.3 y v5 en 2.3d (horizonte
-  canónico).
+  Holt-Winters en series estacionales), v4 en 2.3, v5 en 2.3d (horizonte
+  canónico) y v6 en 2.10 (MAE en pares cuando el MASE no está definido).
 - **TTL**: pasaron más de `DECISION_TTL_DAYS` (30) desde `evaluated_at`.
 - **Crecimiento**: la serie creció `STALE_GROWTH_FRACTION` (20%) o más en
   puntos.
