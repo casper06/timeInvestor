@@ -53,9 +53,10 @@ def _fail(message: str) -> "NoReturn":
 class _Evaluator:
     """Per-cutoff backtests of one series, cached by (cutoff index, engine)."""
 
-    def __init__(self, sid: str, series, is_macro: bool):
+    def __init__(self, sid: str, series, is_macro: bool, horizon: int = None):
         from backend.services import backtest_engine
         self.sid, self.series, self.is_macro = sid, series, is_macro
+        self.horizon = horizon  # None = auto_discovery.MINI_BACKTEST_HORIZON
         self.points = sorted(series.points, key=lambda p: p.timestamp)
         self._bt = backtest_engine
         self.cache = {}
@@ -87,7 +88,8 @@ class _Evaluator:
         self._bt.MarketDataFetcher, self._bt.FREDDataFetcher = _Market, _Fred
         try:
             res = BacktestEngine.run_backtest(
-                series_id=self.sid, cutoff_date=self.points[idx].timestamp, horizon=ad.MINI_BACKTEST_HORIZON,
+                series_id=self.sid, cutoff_date=self.points[idx].timestamp,
+                horizon=self.horizon if self.horizon is not None else ad.MINI_BACKTEST_HORIZON,
                 confidence=ad.GUARD_INTERVAL_LEVEL, is_macro=self.is_macro, engine_override=engine)
             out = {"mase": res.metrics.mase, "mase_seasonal": res.metrics.mase_seasonal,
                    "cov": res.interval_coverage, "fallback": bool(res.is_fallback), "refused": False,

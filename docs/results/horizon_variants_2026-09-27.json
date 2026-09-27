@@ -1,0 +1,829 @@
+{
+ "series": {
+  "HOUSTNSA": {
+   "baseline": "holt_winters",
+   "category": "fred",
+   "kind": "monthly",
+   "rows": {
+    "12": {
+     "base_pct": 0.25,
+     "disagree_pct": 0.25,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.6851216000504792,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-10-01",
+      "2019-02-01",
+      "2020-05-01",
+      "2021-08-01",
+      "2022-11-01",
+      "2024-03-01",
+      "2025-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    },
+    "24": {
+     "base_pct": 7.5,
+     "disagree_pct": 7.5,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 4,
+     "latency_s": 1.640088799991645,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-09-01",
+      "2018-10-01",
+      "2019-12-01",
+      "2021-01-01",
+      "2022-03-01",
+      "2023-04-01",
+      "2024-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    },
+    "30": {
+     "base_pct": 12.25,
+     "disagree_pct": 12.25,
+     "flips": 3,
+     "flips_hyst": 0,
+     "independent_of_8": 3,
+     "latency_s": 1.526401299983263,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-08-01",
+      "2018-08-01",
+      "2019-09-01",
+      "2020-10-01",
+      "2021-11-01",
+      "2022-11-01",
+      "2023-12-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "INDPRO": {
+   "baseline": "holt",
+   "category": "fred",
+   "kind": "monthly",
+   "rows": {
+    "12": {
+     "base_pct": 90.5,
+     "disagree_pct": 9.5,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.2233906000037678,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-10-01",
+      "2019-02-01",
+      "2020-05-01",
+      "2021-08-01",
+      "2022-11-01",
+      "2024-03-01",
+      "2025-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "24": {
+     "base_pct": 58.0,
+     "disagree_pct": 58.0,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 4,
+     "latency_s": 1.2381474999710917,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-09-01",
+      "2018-10-01",
+      "2019-12-01",
+      "2021-01-01",
+      "2022-03-01",
+      "2023-04-01",
+      "2024-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    },
+    "30": {
+     "base_pct": 82.25,
+     "disagree_pct": 17.75,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 3,
+     "latency_s": 1.256832499988377,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-08-01",
+      "2018-08-01",
+      "2019-09-01",
+      "2020-10-01",
+      "2021-11-01",
+      "2022-11-01",
+      "2023-12-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "IPG2211A2N": {
+   "baseline": "holt_winters",
+   "category": "fred",
+   "kind": "monthly",
+   "rows": {
+    "12": {
+     "base_pct": 59.0,
+     "disagree_pct": 41.0,
+     "flips": 3,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.7734077000059187,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-10-01",
+      "2019-02-01",
+      "2020-05-01",
+      "2021-08-01",
+      "2022-11-01",
+      "2024-03-01",
+      "2025-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt_winters",
+     "tfm_fallbacks": 0
+    },
+    "24": {
+     "base_pct": 78.75,
+     "disagree_pct": 21.25,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 4,
+     "latency_s": 1.7353405999601819,
+     "latest": "holt_winters",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-09-01",
+      "2018-10-01",
+      "2019-12-01",
+      "2021-01-01",
+      "2022-03-01",
+      "2023-04-01",
+      "2024-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt_winters",
+     "tfm_fallbacks": 0
+    },
+    "30": {
+     "base_pct": 71.75,
+     "disagree_pct": 28.25,
+     "flips": 5,
+     "flips_hyst": 0,
+     "independent_of_8": 3,
+     "latency_s": 1.6937883999780752,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-08-01",
+      "2018-08-01",
+      "2019-09-01",
+      "2020-10-01",
+      "2021-11-01",
+      "2022-11-01",
+      "2023-12-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt_winters",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "JNJ": {
+   "baseline": "holt",
+   "category": "accion",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 97.0,
+     "disagree_pct": 3.0,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.345512800035067,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 92.25,
+     "disagree_pct": 7.75,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.2779415000113659,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "JPM": {
+   "baseline": "holt",
+   "category": "accion",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 48.75,
+     "disagree_pct": 48.75,
+     "flips": 3,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.3178439000039361,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 48.25,
+     "disagree_pct": 48.25,
+     "flips": 2,
+     "flips_hyst": 1,
+     "independent_of_8": 8,
+     "latency_s": 1.3556706000235863,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "KO": {
+   "baseline": "holt",
+   "category": "accion",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 100.0,
+     "disagree_pct": 0.0,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.349648299976252,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 100.0,
+     "disagree_pct": 0.0,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.2324500999529846,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "NVDA": {
+   "baseline": "holt",
+   "category": "accion",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 94.5,
+     "disagree_pct": 5.5,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.496830299962312,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 99.5,
+     "disagree_pct": 0.5,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.4572283999877982,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "QQQ": {
+   "baseline": "holt",
+   "category": "etf",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 86.25,
+     "disagree_pct": 13.75,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.4284662999561988,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 98.0,
+     "disagree_pct": 2.0,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.4010066000046209,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "RSAFSNA": {
+   "baseline": "holt_winters",
+   "category": "fred",
+   "kind": "monthly",
+   "rows": {
+    "12": {
+     "base_pct": 75.75,
+     "disagree_pct": 24.25,
+     "flips": 1,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.8843613000353798,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-10-01",
+      "2019-02-01",
+      "2020-05-01",
+      "2021-08-01",
+      "2022-11-01",
+      "2024-03-01",
+      "2025-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt_winters",
+     "tfm_fallbacks": 0
+    },
+    "24": {
+     "base_pct": 84.0,
+     "disagree_pct": 16.0,
+     "flips": 2,
+     "flips_hyst": 1,
+     "independent_of_8": 4,
+     "latency_s": 1.8185247000074014,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-09-01",
+      "2018-10-01",
+      "2019-12-01",
+      "2021-01-01",
+      "2022-03-01",
+      "2023-04-01",
+      "2024-06-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt_winters",
+     "tfm_fallbacks": 0
+    },
+    "30": {
+     "base_pct": 70.5,
+     "disagree_pct": 29.5,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 3,
+     "latency_s": 1.8087678999872878,
+     "latest": "holt_winters",
+     "latest_cutoffs": [
+      "2016-07-01",
+      "2017-08-01",
+      "2018-08-01",
+      "2019-09-01",
+      "2020-10-01",
+      "2021-11-01",
+      "2022-11-01",
+      "2023-12-01"
+     ],
+     "n_windows": 7,
+     "reference": "holt_winters",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "SPY": {
+   "baseline": "holt",
+   "category": "etf",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 66.25,
+     "disagree_pct": 33.75,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.3148030000156723,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 81.0,
+     "disagree_pct": 19.0,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.3098111000144854,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "UNRATE": {
+   "baseline": "holt",
+   "category": "fred",
+   "kind": "monthly",
+   "rows": {
+    "12": {
+     "base_pct": 59.0,
+     "disagree_pct": 59.0,
+     "flips": 3,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.283549799991306,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-06-01",
+      "2017-09-01",
+      "2019-01-01",
+      "2020-04-01",
+      "2021-07-01",
+      "2022-10-01",
+      "2024-02-01",
+      "2025-05-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    },
+    "24": {
+     "base_pct": 23.25,
+     "disagree_pct": 23.25,
+     "flips": 2,
+     "flips_hyst": 0,
+     "independent_of_8": 4,
+     "latency_s": 1.2998864999972284,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-06-01",
+      "2017-08-01",
+      "2018-09-01",
+      "2019-11-01",
+      "2020-12-01",
+      "2022-02-01",
+      "2023-03-01",
+      "2024-05-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    },
+    "30": {
+     "base_pct": 19.25,
+     "disagree_pct": 19.25,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 3,
+     "latency_s": 1.4040766999823973,
+     "latest": "timesfm",
+     "latest_cutoffs": [
+      "2016-06-01",
+      "2017-07-01",
+      "2018-07-01",
+      "2019-08-01",
+      "2020-09-01",
+      "2021-10-01",
+      "2022-10-01",
+      "2023-11-01"
+     ],
+     "n_windows": 7,
+     "reference": "timesfm",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "XLE": {
+   "baseline": "holt",
+   "category": "etf",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 95.5,
+     "disagree_pct": 4.5,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.324066800007131,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 98.75,
+     "disagree_pct": 1.25,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.3154756000149064,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "XLK": {
+   "baseline": "holt",
+   "category": "etf",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 98.75,
+     "disagree_pct": 1.25,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.3418321999488398,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 99.75,
+     "disagree_pct": 0.25,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.4409504999639466,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  },
+  "XOM": {
+   "baseline": "holt",
+   "category": "accion",
+   "kind": "daily",
+   "rows": {
+    "30": {
+     "base_pct": 100.0,
+     "disagree_pct": 0.0,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.2390628000139259,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-10-02",
+      "2025-01-08",
+      "2025-04-17",
+      "2025-07-25",
+      "2025-10-30",
+      "2026-02-06",
+      "2026-05-15"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    },
+    "60": {
+     "base_pct": 97.0,
+     "disagree_pct": 3.0,
+     "flips": 0,
+     "flips_hyst": 0,
+     "independent_of_8": 8,
+     "latency_s": 1.2659647000255063,
+     "latest": "holt",
+     "latest_cutoffs": [
+      "2024-06-26",
+      "2024-09-25",
+      "2024-12-26",
+      "2025-03-31",
+      "2025-07-01",
+      "2025-09-30",
+      "2025-12-31",
+      "2026-04-02"
+     ],
+     "n_windows": 7,
+     "reference": "holt",
+     "tfm_fallbacks": 0
+    }
+   }
+  }
+ },
+ "snapshot_sha256": "c37cf58e790a37b23cf937e751f9a62d6444bbeb9569d9ea8c5a164795eb5659"
+}

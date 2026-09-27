@@ -99,7 +99,7 @@ Rama: a definir.
   Requisito agregado: un mínimo de cutoffs en par (donde TimesFM realmente
   corrió, ver 2.1) para poder elegir TimesFM. Hoy, si TimesFM falla en 2 de 3
   cutoffs, la decisión sale de un solo cutoff.
-- [x] **2.3 Decisión más robusta:** (rama `feat/robust-decision`, PR abierto; criterio v4 en `docs/results/decision_variants_2026-09-26.md`: 8 cutoffs en ventana reciente, mayoría + margen 10%, ≥ 7 pares, empate → base, histéresis ×2, sin guard. Acciones/ETFs: 88% al motor base y 0 cambios; FRED estacional baja el desacuerdo, FRED SA no) 5–8 cutoffs, un margen (por ejemplo
+- [x] **2.3 Decisión más robusta:** (PR #33, mergeado; criterio v4 en `docs/results/decision_variants_2026-09-26.md`: 8 cutoffs en ventana reciente, mayoría + margen 10%, ≥ 7 pares, empate → base, histéresis ×2, sin guard. Acciones/ETFs: 88% al motor base y 0 cambios; FRED estacional baja el desacuerdo, FRED SA no) 5–8 cutoffs, un margen (por ejemplo
   `MASE_tfm ≤ 0.95·MASE_holt` o Diebold-Mariano) y que un empate lo gane Holt.
   Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
   y hay tests del margen y del empate.
@@ -109,6 +109,14 @@ Rama: a definir.
   cosa. La decisión tiene que usar muchos cutoffs o sacar la cobertura del
   criterio.
 
+- [ ] **2.3b Horizonte del mini-backtest por frecuencia.** Medido
+  (`docs/results/horizon_variants_2026-09-27.md`): **no se implementó**. Con
+  12 meses desaparece la superposición (8 de 8 ventanas independientes, contra
+  3 de 8 con 30), pero el desacuerdo en FRED SA sube de 18,5% a 34,2%; en
+  diarias, 60 mejora ETFs (13,3% → 5,6%) y deja igual acciones. Bloqueado por
+  4.14: sin horizonte en las unidades de la serie en la UI, no se puede
+  evaluar "en el horizonte que se muestra". Re-medir después de 4.14 con
+  `scripts/horizon_variants.py`.
 - [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
@@ -417,6 +425,17 @@ Rama: una por ítem, a definir.
       (no hay key).
   Hecho cuando: hay una recomendación de cuál integrar primero para el caso
   "consumo eléctrico por IA" de la Fase 5, con una llamada real a cada una.
+- [ ] **4.14 Horizonte en las unidades de la serie (UI/API), alta prioridad.**
+  La UI pide siempre 30/60/90/180 pasos con `freq='D'` (`App.tsx`), también
+  para series mensuales. Verificado con INDPRO: el pedido por defecto
+  devuelve 60 pasos **mensuales** (una banda de 5 años, [84; 127]),
+  etiquetados con fechas diarias (2026-06-02 → 2026-08-24) y "Objetivo +60d";
+  con 180 serían 15 años mostrados como ~8 meses (por cálculo, no
+  verificado). Además, 180 pasos supera `MAX_HORIZON` = 128 de TimesFM y cae
+  a Holt.
+  Hecho cuando: la UI elige horizonte y `freq` según la frecuencia detectada
+  de la serie (por ejemplo, 3/6/12/24 meses para mensuales), las tarjetas y
+  el gráfico muestran la unidad correcta, y hay tests.
 - [ ] **4.13 Capacidad de pronóstico visible en la UI.** Para cada serie,
   mostrar si el motor le gana al naive en su backtest (random walk o
   estacional, según corresponda) y, cuando no le gana, decirlo
@@ -475,7 +494,7 @@ Preguntas abiertas antes de planificar ítems:
 
 ## Orden de trabajo acordado (2026-09-26)
 
-2.2 → 2.3 → 3.5 → 4.13 → 4.11 → 3.4. Primero la confiabilidad del
+2.2 → 2.3 → 4.14 → 2.3b → 3.5 → 4.13 → 4.11 → 3.4 (4.14 y 2.3b agregados el 2026-09-27). Primero la confiabilidad del
 pronóstico de FRED (cuánto oscilan y qué tan robustas son las decisiones, en
 qué categorías se le gana al naive, y mostrarlo); después, anclar los IDs y
 los vintages. El prompt (4.10) y la Fase 5 van después.
