@@ -127,7 +127,7 @@ serie**, según qué demostró funcionar mejor con datos reales, no según qué
 | Serie FRED estacional del catálogo: `IPG2211A2N`, `HOUSTNSA`, `RSAFSNA` | **TimesFM** (plan B: Holt-Winters) | Contra Holt-Winters, en 24 cutoffs pareados: firme en IPG2211A2N; probable en HOUSTNSA y RSAFSNA ([`seasonal_benchmark`](docs/results/seasonal_benchmark_2026-09-26.md)) |
 | Serie FRED estacional del catálogo: `MRTSSM4451USN` | **Holt-Winters** | TimesFM no le ganó de forma significativa (16 de 24, p = 0,152) |
 | Índice/ETF del catálogo: `SPY`, `QQQ`, `XLE`, `XLK` | **Holt** | TimesFM no ganó en ninguno (0/4) en el benchmark original |
-| Cualquier otra serie con 90 puntos o más | **Auto-discovery** (criterio v4) | Mini-backtest propio: 8 cutoffs recientes; TimesFM gana solo con mayoría de cutoffs y 10% de margen; si no, el motor base (Holt, o Holt-Winters si es estacional). Decisión cacheada en SQLite |
+| Cualquier otra serie con 90 puntos o más | **Auto-discovery** (criterio v5) | Mini-backtest propio en el horizonte canónico de la frecuencia (diaria 60, semanal 13, mensual 12, trimestral 4) y 8 cutoffs recientes; TimesFM gana solo con mayoría de cutoffs y 10% de margen; si no, el motor base (Holt, o Holt-Winters si es estacional). Decisión cacheada en SQLite |
 | Menos de 90 puntos | **Holt** (baja confianza) | Ninguna ventana corta favoreció a TimesFM |
 
 Si TimesFM no puede correr, se pasa al plan B con el motivo: Holt-Winters si

@@ -20,6 +20,8 @@ Versiones:
 - v3 (3.0f, #30): Holt-Winters con MASE estacional como base de las series
   estacionales.
 - v4 (2.3, #33): regla robusta (ADR-0007).
+- v5 (2.3d): la misma regla, evaluada en el horizonte canónico de cada
+  frecuencia (ADR-0019).
 
 ## Consecuencias
 
