@@ -33,3 +33,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0020](0020-metricas-escaladas-no-definidas.md) | Métricas escaladas no definidas (sin + epsilon); decisión con MAE en pares (criterio v6) | Aceptada | #43 |
 | [0021](0021-precision-de-la-fuente.md) | Precisión de la fuente: sin redondeo en la carga; se redondea al mostrar (criterio v7) | Aceptada | #45 |
 | [0022](0022-motores-sin-redondeo.md) | Motores y backtest sin redondeo; el redondeo es solo de presentación (criterio v8) | Aceptada | 2.11 |
+| [0023](0023-capacidad-de-pronostico-visible.md) | Capacidad de pronóstico visible por serie (aporta / no aporta / no evaluado; criterio v9) | Aceptada | 4.13 |

@@ -136,6 +136,27 @@ class EngineSelector:
         freq: str = "D",
         db: Optional[Session] = None,
     ) -> ForecastResponse:
+        """EngineSelector._select plus the forecast-skill verdict (4.13): every
+        response says whether the forecast beats the naive, or why that
+        wasn't evaluated."""
+        from backend.services.forecast_skill import not_evaluated
+        res = EngineSelector._select(points, series_id, series_type, horizon, confidence, freq, db)
+        if res.skill is None:
+            res.skill = not_evaluated(
+                "sin evaluación contra el naive para esta serie: no pasó por el auto-discovery "
+                "(camino por defecto)")
+        return res
+
+    @staticmethod
+    def _select(
+        points: List[TimeSeriesPoint],
+        series_id: Optional[str] = None,
+        series_type: Optional[str] = None,
+        horizon: int = 30,
+        confidence: float = 0.95,
+        freq: str = "D",
+        db: Optional[Session] = None,
+    ) -> ForecastResponse:
         """Runs the appropriate engine for this series and returns its
         ForecastResponse with `engine_selection_reason` filled in.
 
@@ -158,7 +179,7 @@ class EngineSelector:
         if clean_id and clean_id in SEASONAL_FRED_CATALOG:
             entry = SEASONAL_FRED_CATALOG[clean_id]
             if entry.engine == "timesfm":
-                return EngineSelector._evaluated_at(SEASONAL_CATALOG_HORIZON, EngineSelector._run_with_timesfm_preference(
+                return EngineSelector._catalog_skill(clean_id, EngineSelector._evaluated_at(SEASONAL_CATALOG_HORIZON, EngineSelector._run_with_timesfm_preference(
                     points,
                     horizon=horizon,
                     confidence=confidence,
@@ -167,17 +188,18 @@ class EngineSelector:
                         f"Serie FRED estacional ({clean_id}) — TimesFM por catálogo, evidencia "
                         f"{entry.strength}: {entry.evidence} (ver {entry.result_ref})."
                     ),
-                ))
-            return EngineSelector._evaluated_at(SEASONAL_CATALOG_HORIZON, EngineSelector._run_holt_winters_or_holt(
+                )))
+            return EngineSelector._catalog_skill(clean_id, EngineSelector._evaluated_at(SEASONAL_CATALOG_HORIZON, EngineSelector._run_holt_winters_or_holt(
                 points, horizon=horizon, confidence=confidence, freq=freq,
                 reason_if_ok=(
                     f"Serie FRED estacional ({clean_id}) — Holt-Winters por catálogo: "
                     f"{entry.evidence} (ver {entry.result_ref})."
                 ),
-            ))
+            )))
 
         if clean_id and clean_id in DIVERSIFIED_ETF_CATALOG:
-            return EngineSelector._evaluated_at(ETF_CATALOG_HORIZON, EngineSelector._run_holt(
+            return EngineSelector._no_skill("catálogo de ETFs: su benchmark comparó Holt con TimesFM, no contra el "
+                                            "naive, así que no hay evidencia registrada", EngineSelector._evaluated_at(ETF_CATALOG_HORIZON, EngineSelector._run_holt(
                 points,
                 horizon=horizon,
                 confidence=confidence,
@@ -188,7 +210,7 @@ class EngineSelector:
                     f"real (0/4 series), pese a la hipótesis inicial de que series "
                     f"diversificadas favorecerían a TimesFM."
                 ),
-            ))
+            )))
 
         if db is not None and clean_id and n_points >= AUTO_DISCOVERY_MIN_HISTORY:
             auto_result = EngineSelector._try_auto_discovery(
@@ -245,17 +267,25 @@ class EngineSelector:
         try:
             decision = AutoDiscoveryEngine.decide(db, clean_id, n_points, is_macro=is_macro)
         except InsufficientHistoryError as e:
-            return EngineSelector._run_holt(
+            why = (f"Historia insuficiente para evaluar ({e.n} de {e.required} puntos, para decidir a "
+                   f"{e.horizon} pasos)")
+            return EngineSelector._no_skill(why, EngineSelector._run_holt(
                 points, horizon=horizon, confidence=confidence, freq=freq,
-                reason=(f"Historia insuficiente para evaluar ({e.n} de {e.required} puntos, para decidir a "
-                        f"{e.horizon} pasos): se usa Holt por defecto."),
-            )
+                reason=f"{why}: se usa Holt por defecto.",
+            ))
         if decision is None:
             return None
         # NULL = a row from before the column: every criterion so far used 30.
         decided_at = decision.horizon or MINI_BACKTEST_HORIZON
-        return EngineSelector._evaluated_at(decided_at, EngineSelector._from_decision(
+        res = EngineSelector._evaluated_at(decided_at, EngineSelector._from_decision(
             decision, points, horizon, confidence, freq))
+        from backend.services.forecast_skill import not_evaluated, served_engine, skill_for_decision
+        if res.is_fallback or served_engine(res.model_name) != decision.engine_choice:
+            res.skill = not_evaluated(
+                f"respondió {res.model_name}, no el motor evaluado ({decision.engine_choice}): plan B o fallback")
+        else:
+            res.skill = skill_for_decision(decision)
+        return res
 
     @staticmethod
     def _from_decision(decision, points, horizon, confidence, freq) -> ForecastResponse:
@@ -357,6 +387,23 @@ class EngineSelector:
             )
         res.engine_selection_reason = f"{prefix} {reason}" if prefix else reason
         return EngineSelector._append(res, dropped_note)
+
+    @staticmethod
+    def _no_skill(reason: str, res: ForecastResponse) -> ForecastResponse:
+        from backend.services.forecast_skill import not_evaluated
+        res.skill = not_evaluated(reason)
+        return res
+
+    @staticmethod
+    def _catalog_skill(series_id: str, res: ForecastResponse) -> ForecastResponse:
+        """Seasonal catalog: the 3.0d evidence, if the catalog engine answered."""
+        from backend.services.forecast_skill import not_evaluated, served_engine, skill_for_catalog
+        if res.is_fallback:
+            res.skill = not_evaluated(f"respondió el plan B ({res.model_name}), no el motor del catálogo",
+                                      "naive_estacional")
+        else:
+            res.skill = skill_for_catalog(series_id, served_engine(res.model_name))
+        return res
 
     @staticmethod
     def _evaluated_at(decision_horizon: int, res: ForecastResponse) -> ForecastResponse:

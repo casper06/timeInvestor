@@ -21,6 +21,7 @@ own docstring for measured numbers). Once cached, subsequent requests for the
 same series pay zero extra cost until the decision goes stale.
 """
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -111,7 +112,10 @@ GUARD_INTERVAL_LEVEL = 0.80
 #       backtest metrics the rule reads (MASE, MAE) are no longer rounded
 #       (they were rounded to 2-3 decimals), so the paired comparison and
 #       its margin see the real errors (docs/adr/0022).
-AUTO_DISCOVERY_CRITERIA_VERSION = 8
+#   v9 (2026-09-27, 4.13): same rule; the decision also stores, per cutoff,
+#       the MAE of the baseline, TimesFM and the naive, which the forecast
+#       skill badge reads. Bumped so every decision is re-made with it.
+AUTO_DISCOVERY_CRITERIA_VERSION = 9
 
 # --- v4 decision parameters (2.3), chosen from the variant measurement ---
 # 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),
@@ -359,6 +363,7 @@ class AutoDiscoveryEngine:
             cached.metric = decision.metric
             cached.baseline_skipped_cutoffs = decision.baseline_skipped_cutoffs
             cached.horizon = decision.horizon
+            cached.cutoff_errors_json = decision.cutoff_errors_json
             db.commit()
             db.refresh(cached)
             return cached
@@ -425,6 +430,10 @@ class AutoDiscoveryEngine:
         # the margin on the mean changes. Dropping those cutoffs instead would
         # lose pairs and could leave fewer than MIN_PAIRED_CUTOFFS.
         metric_undefined = False
+        # 4.13: per-cutoff MAE of both engines and of the naive the skill
+        # badge compares against (seasonal naive for seasonal series).
+        naive_kind = "naive_estacional" if seasonal else "random_walk"
+        cutoff_rows = []
 
         for cutoff_date in cutoffs:
             try:
@@ -447,6 +456,10 @@ class AutoDiscoveryEngine:
             holt_mases.append(base_metric)
             holt_maes.append(getattr(holt_res.metrics, "mae", None))
             holt_coverages.append(holt_res.interval_coverage)
+            naive_metrics = getattr(holt_res, "seasonal_naive_metrics" if seasonal else "naive_metrics", None)
+            row = {"cutoff": cutoff_date, "base": getattr(holt_res.metrics, "mae", None), "tfm": None,
+                   "naive": getattr(naive_metrics, "mae", None)}
+            cutoff_rows.append(row)
 
             if timesfm_engine is not None:
                 tfm_res = BacktestEngine.run_backtest(
@@ -478,6 +491,7 @@ class AutoDiscoveryEngine:
                     continue
                 tfm_mases.append(tfm_metric)
                 tfm_maes.append(getattr(tfm_res.metrics, "mae", None))
+                row["tfm"] = getattr(tfm_res.metrics, "mae", None)
                 tfm_coverages.append(tfm_res.interval_coverage)
                 paired_holt_mases.append(base_metric)
                 paired_holt_maes.append(getattr(holt_res.metrics, "mae", None))
@@ -520,6 +534,7 @@ class AutoDiscoveryEngine:
             metric=metric,
             baseline_skipped_cutoffs=baseline_skipped,
             horizon=horizon,
+            cutoff_errors_json=json.dumps({"naive": naive_kind, "cutoffs": cutoff_rows}),
         )
 
     @staticmethod

@@ -79,3 +79,47 @@ describe('MetricCards unreliable forecast (2.6)', () => {
     expect(screen.queryByTestId('unreliable-forecast')).not.toBeInTheDocument();
   });
 });
+
+describe('MetricCards forecast skill (4.13)', () => {
+  const base = { ...monthlyForecast, decision_horizon: 12 };
+
+  it('"aporta": green badge, the point forecast stays the main figure', () => {
+    const fc: ForecastResponse = {
+      ...base,
+      skill: { state: 'aporta', reason: 'Le gana al naive estacional en 18 de 24 cutoffs, con un error medio 17% menor', naive: 'naive_estacional', wins: 18, n_pairs: 24 },
+    };
+    render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('skill-badge')).toHaveAttribute('data-state', 'aporta');
+    expect(screen.getByTestId('skill-badge')).toHaveTextContent('Aporta sobre el naive');
+    expect(screen.getByTestId('skill-badge')).toHaveTextContent('18 de 24 cutoffs');
+    expect(screen.queryByTestId('target-range-first')).not.toBeInTheDocument();
+    expect(screen.getByText('110.00')).toBeInTheDocument();
+  });
+
+  it('"no aporta": the range becomes the main figure and the point is secondary, with the warning', () => {
+    const fc: ForecastResponse = {
+      ...base,
+      skill: { state: 'no_aporta', reason: 'No aporta más que el random walk (igual que el último dato): le gana en 3 de 8 cutoffs', naive: 'random_walk', wins: 3, n_pairs: 8 },
+    };
+    render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
+    const card = screen.getByTestId('target-range-first');
+    expect(card).toHaveTextContent('[95.00 — 120.00]');
+    expect(card).toHaveTextContent('Punto central 110.00');
+    expect(card).toHaveTextContent("El pronóstico puntual no supera a 'igual que el último dato'");
+    expect(screen.getByTestId('skill-badge')).toHaveAttribute('data-state', 'no_aporta');
+  });
+
+  it('"no aporta" against the seasonal naive names that naive', () => {
+    const fc: ForecastResponse = { ...base, skill: { state: 'no_aporta', reason: 'x', naive: 'naive_estacional' } };
+    render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('target-range-first')).toHaveTextContent("igual que el mismo período del ciclo anterior");
+  });
+
+  it('"no evaluado" shows the reason and keeps the normal card', () => {
+    const fc: ForecastResponse = { ...base, skill: { state: 'no_evaluado', reason: 'Historia insuficiente para evaluar (150 de 186 puntos)' } };
+    render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('skill-badge')).toHaveTextContent('No evaluado');
+    expect(screen.getByTestId('skill-badge')).toHaveTextContent('150 de 186 puntos');
+    expect(screen.queryByTestId('target-range-first')).not.toBeInTheDocument();
+  });
+});

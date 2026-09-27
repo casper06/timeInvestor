@@ -741,7 +741,12 @@ Rama: una por ítem, a definir.
   Hecho cuando: hay una propuesta de calibración conformal por categoría,
   medida en cutoffs que no se usaron para calibrar, que no empeora el
   arrepentimiento.
-- [ ] **4.13 Capacidad de pronóstico visible en la UI.** Para cada serie,
+- [x] **4.13 Capacidad de pronóstico visible en la UI.** (rama
+  `feat/forecast-skill-badge`, PR abierto; ADR-0023; criterio v9)
+  - Resultado sobre una copia de la DB: NVDA no aporta (6 de 8, 7%), IPG2211A2N
+    aporta (18 de 24, 17%, 3.0d), DGS10 no aporta (5 de 8, 0,6%), POPTHM
+    aporta (8 de 8, 91%).
+  - Verificado en el navegador en los dos estados. Para cada serie,
   mostrar si el motor le gana al naive en su backtest (random walk o
   estacional, según corresponda) y, cuando no le gana, decirlo
   explícitamente ("para esta serie, el pronóstico no supera a repetir el
@@ -784,6 +789,16 @@ Rama: una por ítem, a definir.
     se guardan en la decisión (`engine_decisions`), con migración como en
     #20, y se sube el criterio a v9 para que las decisiones se re-evalúen y
     los completen.
+
+- [ ] **4.16 Agregar una serie de FRED a mano la carga como acción
+  (bug).** `handleAddMacro` (`App.tsx`) llama a `handleSelectSeries` justo
+  después de `setActiveMacro`, con el estado viejo. Entonces la serie se pide
+  a yfinance y falla con "No se pudo cargar la serie". Además,
+  `loadSeriesAndForecast` no descarta respuestas viejas: dos cargas que se
+  pisan mezclan serie, error y pronóstico. Visto al verificar 4.13
+  (IPG2211A2N).
+  Hecho cuando: agregar una serie de FRED a mano la carga como macro al
+  primer intento, las respuestas viejas se descartan, y hay un test.
 
 ## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
 
