@@ -18,7 +18,11 @@ from backend.services.forecast_engine import (
     HoltWintersForecastEngine,
     TimesFMForecastEngine,
 )
-from tests.test_auto_discovery import _mock_mini_backtest, db_session  # noqa: F401  (fixture)
+from tests.test_auto_discovery import _FAKE_CUTOFFS, _mock_mini_backtest, db_session  # noqa: F401  (fixture)
+
+
+def auto_discovery_cutoffs():
+    return _FAKE_CUTOFFS
 
 
 def _monthly(values, start_year=2000):
@@ -155,9 +159,9 @@ def test_old_seasonal_decision_is_reevaluated_against_holt_winters(db_session, m
 
     decision = AutoDiscoveryEngine.decide(db_session, "OLDSEAS", n_points=500)
 
-    assert auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION == 3
-    assert calls["timesfm"] == 3 and set(calls["baselines"]) == {"HoltWintersForecastEngine"}
-    assert decision.criteria_version == 3
+    assert auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION >= 3  # HW baseline since v3
+    assert calls["timesfm"] == len(auto_discovery_cutoffs()) and set(calls["baselines"]) == {"HoltWintersForecastEngine"}
+    assert decision.criteria_version == auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION
     assert decision.engine_choice == "holt_winters"  # against Holt-Winters, TimesFM no longer wins
 
 

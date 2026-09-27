@@ -173,8 +173,10 @@ def test_engine_selector_reason_reflects_calibration_disqualification(db_session
     assert "Holt ganó MASE" not in res.engine_selection_reason, (
         "must not claim Holt won on MASE when TimesFM's MASE (4.237) was actually lower than Holt's (5.477)"
     )
-    assert "TimesFM tuvo mejor MASE" in res.engine_selection_reason
-    assert "calibra" in res.engine_selection_reason.lower()
+    # v4 (2.3): no coverage guard; a lower mean that isn't a consistent win
+    # (majority of cutoffs + margin) is a tie that goes to the baseline.
+    assert "TimesFM tuvo menor MASE medio" in res.engine_selection_reason
+    assert "no le ganó de forma consistente" in res.engine_selection_reason
 
 
 def test_engine_selector_falls_through_to_default_when_autodiscovery_unavailable(monkeypatch):
@@ -207,7 +209,10 @@ def test_engine_selector_falls_through_to_default_when_autodiscovery_unavailable
 # ---------------------------------------------------------------------------
 
 _FAKE_TIMESFM = object()
-_FAKE_CUTOFFS = ["2024-01-31", "2024-06-30", "2024-11-30"]
+# v4 (2.3) decides on DECISION_N_CUTOFFS (8) cutoffs with >= 7 paired.
+_FAKE_CUTOFFS = ["2023-01-31", "2023-04-30", "2023-07-31", "2023-10-31",
+                 "2024-01-31", "2024-04-30", "2024-07-31", "2024-10-31"]
+_N = len(_FAKE_CUTOFFS)
 
 
 def _mock_mini_backtest(monkeypatch, *, tfm_available, mase_holt=1.0, mase_tfm=0.5,
@@ -268,12 +273,12 @@ def test_unevaluated_decision_reevaluated_once_timesfm_available(db_session, mon
     first = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
     assert first.engine_choice == "holt"
     assert first.mase_timesfm is None
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 3, "timesfm": 0}
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": _N, "timesfm": 0}
 
     state["tfm_available"] = True
     second = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
 
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 6, "timesfm": 3}, "must re-run the mini-backtest, now with TimesFM"
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 2 * _N, "timesfm": _N}, "must re-run the mini-backtest, now with TimesFM"
     assert second.mase_timesfm == 0.5
     assert second.engine_choice == "timesfm"
     stored = AutoDiscoveryEngine.get_cached_decision(db_session, "NEWTICKER")
@@ -289,7 +294,7 @@ def test_unevaluated_decision_not_rerun_while_timesfm_unavailable(db_session, mo
         decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
         assert decision.mase_timesfm is None
 
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 3, "timesfm": 0}, "only the first request may run the mini-backtest"
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": _N, "timesfm": 0}, "only the first request may run the mini-backtest"
 
 
 def test_real_holt_win_respects_regular_ttl(db_session, monkeypatch):
@@ -300,18 +305,18 @@ def test_real_holt_win_respects_regular_ttl(db_session, monkeypatch):
     first = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
     assert first.engine_choice == "holt"
     assert first.mase_timesfm == 1.2
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 3, "timesfm": 3}
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": _N, "timesfm": _N}
 
     for _ in range(3):
         AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 3, "timesfm": 3}, "within the TTL a real Holt win must stay cached"
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": _N, "timesfm": _N}, "within the TTL a real Holt win must stay cached"
 
     cached = AutoDiscoveryEngine.get_cached_decision(db_session, "NEWTICKER")
     cached.evaluated_at = (datetime.now(timezone.utc) - timedelta(days=auto_discovery.DECISION_TTL_DAYS + 1)).replace(tzinfo=None)
     db_session.commit()
 
     AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 6, "timesfm": 6}, "past the TTL it is re-evaluated as before"
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 2 * _N, "timesfm": 2 * _N}, "past the TTL it is re-evaluated as before"
 
 
 def test_no_cutoffs_is_a_failure_not_an_unevaluated_decision(db_session, monkeypatch):
@@ -388,7 +393,7 @@ def test_fallback_cutoff_not_counted_as_timesfm(db_session, monkeypatch):
 
     decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
 
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 3, "timesfm": 3}
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": _N, "timesfm": _N}
     assert decision.mase_timesfm == 0.5, "the fallback cutoff's (Holt) MASE must not be averaged in"
     assert decision.mase_holt == 1.0, "Holt is compared on the same cutoffs TimesFM ran on"
     assert decision.timesfm_failed_cutoffs == 1
@@ -406,13 +411,13 @@ def test_all_cutoffs_fallback_stored_as_failed_not_unevaluated(db_session, monke
 
     decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
     assert decision.mase_timesfm is None
-    assert decision.timesfm_failed_cutoffs == 3
+    assert decision.timesfm_failed_cutoffs == _N
     assert decision.engine_choice == "holt"
     assert decision.mase_holt == 1.0
 
     for _ in range(3):
         AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": 3, "timesfm": 3}, "must wait for the regular TTL"
+    assert {k: v for k, v in calls.items() if k not in ("confidences", "baselines")} == {"holt": _N, "timesfm": _N}, "must wait for the regular TTL"
 
 
 def test_unavailable_timesfm_stores_no_failed_count(db_session, monkeypatch):
@@ -536,7 +541,7 @@ def test_decision_with_old_criteria_version_is_reevaluated(db_session, monkeypat
 
     decision = AutoDiscoveryEngine.decide(db_session, "OLD", n_points=500)
 
-    assert calls["holt"] == 3 and calls["timesfm"] == 3, "must re-run the mini-backtest"
+    assert calls["holt"] == _N and calls["timesfm"] == _N, "must re-run the mini-backtest"
     assert decision.criteria_version == auto_discovery.AUTO_DISCOVERY_CRITERIA_VERSION
     assert decision.engine_choice == "timesfm"
 

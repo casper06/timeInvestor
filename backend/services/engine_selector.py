@@ -280,13 +280,22 @@ class EngineSelector:
             prefix = ""
 
         if decision.mase_timesfm is not None and decision.mase_timesfm < mase_base:
-            # TimesFM had the better (lower) error but was disqualified by the
-            # calibration guard — "X ganó" would be false; say what happened.
-            reason = (
-                f"Auto-evaluado el {date}: TimesFM tuvo mejor {metric} ({decision.mase_timesfm:.3f} vs "
-                f"{base_label} {mase_base:.3f}) pero su intervalo de confianza quedó mal calibrado en el "
-                f"mini-backtest — {base_label} (elegido por calibración, no porque haya ganado en {metric})."
-            )
+            # TimesFM had the lower mean error but didn't win consistently.
+            # Up to v3 that meant the coverage guard; from v4 (2.3) it means it
+            # didn't beat the baseline on a majority of cutoffs by the margin,
+            # so the tie goes to the baseline. "X ganó" would be false either way.
+            if (decision.criteria_version or 1) >= 4:
+                reason = (
+                    f"Auto-evaluado el {date}: TimesFM tuvo menor {metric} medio ({decision.mase_timesfm:.3f} vs "
+                    f"{base_label} {mase_base:.3f}), pero no le ganó de forma consistente (mayoría de cutoffs "
+                    f"y margen mínimo del 10%) — empate, se queda {base_label}."
+                )
+            else:
+                reason = (
+                    f"Auto-evaluado el {date}: TimesFM tuvo mejor {metric} ({decision.mase_timesfm:.3f} vs "
+                    f"{base_label} {mase_base:.3f}) pero su intervalo de confianza quedó mal calibrado en el "
+                    f"mini-backtest — {base_label} (elegido por calibración, no porque haya ganado en {metric})."
+                )
         elif decision.mase_timesfm is None and failed:
             # TimesFM was loaded but fell back to Holt on every cutoff: no real
             # TimesFM error to compare. Not re-evaluated early; regular TTL.

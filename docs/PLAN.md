@@ -92,14 +92,14 @@ Rama: a definir.
   puede no ser de TimesFM no tiene sentido.
   Hecho cuando: el mini-backtest descarta o marca los cutoffs donde TimesFM no
   corrió de verdad, con un test que lo demuestre.
-- [x] **2.2 Medir cuánto oscilan hoy las decisiones** (rama `feat/decision-stability`, PR abierto; resultado en `docs/results/decision_stability_2026-09-26.md`: en acciones y ETFs, una decisión de 3 cutoffs contradice a la de 24 en 34–41% de los casos y cambia 3–4 veces en 12 semanas) (3 cutoffs, gana TimesFM
+- [x] **2.2 Medir cuánto oscilan hoy las decisiones** (PR #32, mergeado; resultado en `docs/results/decision_stability_2026-09-26.md`: en acciones y ETFs, una decisión de 3 cutoffs contradice a la de 24 en 34–41% de los casos y cambia 3–4 veces en 12 semanas) (3 cutoffs, gana TimesFM
   con MASE estrictamente menor, sin margen).
   Hecho cuando: hay una medición reproducible (script + resultado) de cuántas
   decisiones cambian entre corridas o ventanas cercanas.
   Requisito agregado: un mínimo de cutoffs en par (donde TimesFM realmente
   corrió, ver 2.1) para poder elegir TimesFM. Hoy, si TimesFM falla en 2 de 3
   cutoffs, la decisión sale de un solo cutoff.
-- [ ] **2.3 Decisión más robusta:** 5–8 cutoffs, un margen (por ejemplo
+- [x] **2.3 Decisión más robusta:** (rama `feat/robust-decision`, PR abierto; criterio v4 en `docs/results/decision_variants_2026-09-26.md`: 8 cutoffs en ventana reciente, mayoría + margen 10%, ≥ 7 pares, empate → base, histéresis ×2, sin guard. Acciones/ETFs: 88% al motor base y 0 cambios; FRED estacional baja el desacuerdo, FRED SA no) 5–8 cutoffs, un margen (por ejemplo
   `MASE_tfm ≤ 0.95·MASE_holt` o Diebold-Mariano) y que un empate lo gane Holt.
   Hecho cuando: el umbral está elegido a partir de la medición de 2.2, no antes,
   y hay tests del margen y del empate.

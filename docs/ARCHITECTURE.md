@@ -69,17 +69,23 @@ How it works:
 
 1. Take the series' available history (re-fetched via `BacktestEngine`, which
    already knows how to pull FRED vs. yfinance data — reused, not duplicated).
-2. Pick 3 cutoffs spaced over that history, each leaving `MINI_BACKTEST_HORIZON`
-   (30) points for evaluation — mirrors `scripts/benchmark_real_data.py`'s own
-   walk-forward spacing, at a cheaper 3-cutoff scale.
-3. At each cutoff, run **both** Holt and TimesFM (via
-   `BacktestEngine.run_backtest(engine_override=...)`, a new optional parameter
-   that forces a specific engine instance instead of the global default) and
-   record MASE and interval coverage.
-4. TimesFM only wins if it beats Holt's mean MASE **and** its mean interval
-   coverage isn't more than 30 points below Holt's (`MAX_ACCEPTABLE_COVERAGE_GAP_PP`)
-   — winning on MASE at the cost of a catastrophically uncalibrated interval
-   doesn't count as a real win.
+2. Pick `DECISION_N_CUTOFFS` (8) cutoffs evenly spaced over a **recent window
+   by frequency** (`RECENT_WINDOW`: 2 years daily/weekly, 10 years
+   monthly/quarterly), each leaving `MINI_BACKTEST_HORIZON` (30) points for
+   evaluation. Until criterion v3 the cutoffs were spread over the whole
+   history, which put FRED cutoffs in 1989.
+3. At each cutoff, run **both** the baseline and TimesFM (via
+   `BacktestEngine.run_backtest(engine_override=...)`) at the same 80% level.
+   The baseline is Holt with the 1-step MASE, or Holt-Winters with the
+   seasonal MASE for series the 3.0a detector marks seasonal (3.0f).
+4. `decide_robust` (criterion v4, item 2.3): TimesFM only wins if it beats the
+   baseline on a **majority of the paired cutoffs** AND by at least 10% on
+   the mean error, with at least 7 paired cutoffs; anything else is a tie and
+   the baseline stays. On re-evaluation, switching away from the current
+   engine requires twice the margin (hysteresis). The coverage guard was
+   removed in v4 (it changed ≤ 7% of decisions once the TimesFM band was
+   fixed). Measurements: `docs/results/decision_stability_2026-09-26.md` and
+   `docs/results/decision_variants_2026-09-26.md`.
 5. The decision (`engine_choice`, `mase_holt`, `mase_timesfm`, `evaluated_at`,
    `n_points_at_evaluation`) is cached in SQLite (`engine_decisions` table, one
    row per `series_id`) — chosen over a flat file since this project already
@@ -129,6 +135,8 @@ both.
 
 ### Measured cost
 
+(Measured before v4, with 3 cutoffs; v4 uses 8, measured at 2.2–3.0 s per series end to end
+including the data download — see docs/results/decision_variants_2026-09-26.md.)
 A **new** series' first forecast request pays for 3 cutoffs × 2 engines = up
 to 6 backtests (each re-fetching data and running one inference), before the
 real forecast is even served. Measured on this repo's dev machine (CPU,
