@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from typing import List, Dict, Optional, Literal
 
 class TimeSeriesPoint(BaseModel):
@@ -15,6 +15,12 @@ class TimeSeriesData(BaseModel):
     from_cache: bool = Field(default=False, description="Whether the series was served from local in-memory cache")
     cached_at: Optional[str] = Field(default=None, description="ISO timestamp of when the series was cached")
     source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic")
+
+    @computed_field(description="daily | weekly | monthly | quarterly | annual, inferida de las fechas (irregular -> daily). Unidad de los horizontes de esta serie")
+    @property
+    def frequency(self) -> str:
+        from backend.services.horizons import series_frequency
+        return series_frequency([p.timestamp for p in self.points])
 
 class TickerSuggestion(BaseModel):
     symbol: str = Field(..., description="Stock ticker symbol (e.g. NVDA)")
@@ -49,9 +55,9 @@ class ThesisResponse(BaseModel):
 
 class ForecastRequest(BaseModel):
     points: List[TimeSeriesPoint] = Field(..., min_length=2, max_length=10_000, description="Historical time series")
-    horizon: int = Field(default=30, ge=1, le=365, description="Projection horizon in steps (max 365)")
+    horizon: Optional[int] = Field(default=None, ge=1, le=365, description="Horizonte en PASOS de la serie (12 en una mensual = 12 meses). None = el horizonte canónico de su frecuencia (backend/services/horizons.py)")
     confidence: float = Field(default=0.95, ge=0.5, le=0.99, description="Confidence interval level")
-    freq: Optional[str] = Field(default="D", description="Frequency: 'D' for daily, 'M' for monthly")
+    freq: Optional[str] = Field(default=None, description="Solo se usa si la frecuencia no se puede inferir de las fechas ('D', 'W', 'M', 'Q', 'A'); si se puede, mandan las fechas")
     series_id: Optional[str] = Field(default=None, description="Series identifier (ticker or FRED series ID), used by EngineSelector to look up its category. None falls back to the default individual-equity selection path.")
     series_type: Optional[str] = Field(default=None, description="'equity' or 'macro', as in TimeSeriesData.type — used by EngineSelector alongside series_id")
     engine: Optional[Literal["holt_winters"]] = Field(default=None, description="Motor explícito. 'holt_winters' (ETS con estacionalidad) solo para series que el detector marca como estacionales; si no lo son, 422. None = comportamiento por defecto")
@@ -68,6 +74,9 @@ class ForecastResponse(BaseModel):
     fallback_reason: Optional[str] = Field(default=None, description="Detalle legible de la causa del fallback")
     fitted_params: Optional[Dict[str, float]] = Field(default=None, description="Fitted smoothing and damping parameters")
     engine_selection_reason: str = Field(default="", description="Human-readable explanation of why this specific engine was chosen for this series (category, history length, or fallback)")
+    frequency: Optional[str] = Field(default=None, description="Frecuencia de la serie inferida de las fechas: unidad de `horizon` y de `decision_horizon`")
+    horizon: Optional[int] = Field(default=None, description="Pasos proyectados, en la unidad de la serie")
+    decision_horizon: Optional[int] = Field(default=None, description="Horizonte (en la unidad de la serie) en el que se evaluó el motor elegido: mini-backtest de auto-discovery o benchmark del catálogo. None = el motor no salió de una evaluación (default o fallback)")
 
 class FundamentalsMetric(BaseModel):
     ticker: str
@@ -89,7 +98,8 @@ class InterpretationContext(BaseModel):
     active_series_name: str = Field(default="", description="Nombre de la serie activa")
     last_price: float = Field(..., description="Último precio real registrado")
     projected_target: float = Field(..., description="Valor proyectado al horizonte H")
-    horizon: int = Field(default=60, description="Horizonte de días")
+    horizon: int = Field(default=60, description="Horizonte en pasos de la serie (unidad según `frequency`)")
+    frequency: Optional[str] = Field(default=None, description="Frecuencia de la serie (daily, monthly, ...); None = daily, como antes de 4.14")
     confidence: float = Field(default=0.95, description="Nivel de confianza de las bandas")
     lower_bound: float = Field(..., description="Banda inferior proyectada")
     upper_bound: float = Field(..., description="Banda superior proyectada")
@@ -168,6 +178,7 @@ class ForecastSnapshotCreateRequest(BaseModel):
     series_id: str
     cutoff_date: str
     horizon: int = 60
+    frequency: Optional[str] = None
     confidence: float = 0.95
     timestamps: List[str]
     projected_values: List[float]
@@ -181,6 +192,7 @@ class ForecastSnapshotResponse(BaseModel):
     series_id: str
     cutoff_date: str
     horizon: int
+    frequency: Optional[str] = Field(default=None, description="Unidad de `horizon`; None en snapshots guardados antes de 4.14 (unidad no registrada)")
     confidence: float
     timestamps: List[str]
     projected_values: List[float]
@@ -235,7 +247,7 @@ class ThesisDetailResponse(BaseModel):
 class BacktestRequest(BaseModel):
     series_id: str
     cutoff_date: str
-    horizon: int = Field(default=60, ge=5, le=365)
+    horizon: int = Field(default=60, ge=1, le=365, description="Pasos de la serie a evaluar (unidad según la frecuencia de la serie)")
     confidence: float = Field(default=0.95, ge=0.5, le=0.99)
     engine: Optional[Literal["holt_winters"]] = Field(default=None, description="Motor explícito. 'holt_winters' (ETS con estacionalidad) solo para series que el detector marca como estacionales; si no lo son, 422. None = comportamiento por defecto")
 
@@ -262,6 +274,7 @@ class BacktestResponse(BaseModel):
     series_id: str
     cutoff_date: str
     horizon: int
+    frequency: Optional[str] = Field(default=None, description="Frecuencia de la serie inferida de las fechas: unidad de `horizon`")
     historical_dates: List[str]
     historical_values: List[float]
     future_actual_dates: List[str]

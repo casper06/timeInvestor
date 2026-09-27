@@ -88,6 +88,12 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
     return isNormalized ? (val / sBase) * 100 : val;
   });
 
+  // Each series keeps its own frequency (4.14): on the union of dates a
+  // monthly series only has values on its own dates. spanGaps joins a series'
+  // consecutive observations without creating points in between, and
+  // non-daily series show a marker on each real observation.
+  const markerRadius = (d: TimeSeriesData | null) => (d?.frequency && d.frequency !== 'daily' ? 2.5 : 0);
+
   const chartData = {
     labels: recentDates,
     datasets: [
@@ -98,7 +104,8 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
         backgroundColor: '#38bdf8',
         yAxisID: isNormalized ? 'y' : 'yPrimary',
         borderWidth: 2,
-        pointRadius: 0,
+        spanGaps: true,
+        pointRadius: markerRadius(primarySeriesData),
         pointHoverRadius: 4,
         tension: 0.1,
       },
@@ -111,7 +118,8 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
               backgroundColor: '#f59e0b',
               yAxisID: isNormalized ? 'y' : 'ySecondary',
               borderWidth: 2,
-              pointRadius: 0,
+              spanGaps: true,
+              pointRadius: markerRadius(secondaryData),
               pointHoverRadius: 4,
               tension: 0.1,
             },

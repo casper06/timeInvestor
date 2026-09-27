@@ -169,7 +169,8 @@ class DampedHoltForecastEngine(BaseForecastEngine):
         )
 
     def _generate_future_timestamps(self, last_ts: str, horizon: int, freq: str) -> List[str]:
-        """Generates consecutive future timestamps starting from the day/month after last_ts."""
+        """Generates consecutive future timestamps after last_ts: business days
+        ('D'), weeks ('W'), months ('M'), quarters ('Q') or years ('A')."""
         try:
             if len(last_ts) >= 10:
                 dt = datetime.strptime(last_ts[:10], "%Y-%m-%d")
@@ -181,14 +182,11 @@ class DampedHoltForecastEngine(BaseForecastEngine):
         res: List[str] = []
         cur = dt
         
-        if freq.upper() == "M":
+        months_per_step = {"M": 1, "Q": 3, "A": 12}.get(freq.upper())
+        if months_per_step:
             for _ in range(horizon):
-                month = cur.month + 1
-                year = cur.year
-                if month > 12:
-                    month = 1
-                    year += 1
-                cur = datetime(year, month, min(cur.day, 28))
+                total = cur.month - 1 + months_per_step
+                cur = datetime(cur.year + total // 12, total % 12 + 1, min(cur.day, 28))
                 res.append(cur.strftime("%Y-%m-%d"))
         elif freq.upper() == "W":
             for _ in range(horizon):

@@ -303,6 +303,7 @@ class AutoDiscoveryEngine:
             cached.baseline_engine = decision.baseline_engine
             cached.metric = decision.metric
             cached.baseline_skipped_cutoffs = decision.baseline_skipped_cutoffs
+            cached.horizon = decision.horizon
             db.commit()
             db.refresh(cached)
             return cached
@@ -436,6 +437,7 @@ class AutoDiscoveryEngine:
             baseline_engine=baseline_name,
             metric=metric,
             baseline_skipped_cutoffs=baseline_skipped,
+            horizon=MINI_BACKTEST_HORIZON,
         )
 
     @staticmethod

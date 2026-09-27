@@ -90,7 +90,7 @@ describe('BacktestPanel', () => {
 
   it('asks for a shorter horizon when it exceeds TimesFM\'s maximum', async () => {
     await runWith(backtestResult({ is_fallback: true, fallback_kind: 'horizon_exceeded' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('horizonte de 128 días o menos');
+    expect(screen.getByRole('alert')).toHaveTextContent('horizonte de 128 pasos de la serie o menos');
   });
 
   it('shows no fallback notice when TimesFM really ran, and lists backend warnings', async () => {
@@ -127,5 +127,33 @@ describe('BacktestPanel engine choice', () => {
 
     expect(spy.mock.calls[0][4]).toBeUndefined();
     expect(screen.getByTestId('backtest-engine-badge')).toHaveTextContent('timesfm-2.5-200m (cpu)');
+  });
+});
+
+describe('BacktestPanel horizon in the series unit (4.14)', () => {
+  const monthly: api.TimeSeriesData = {
+    id: 'INDPRO',
+    name: 'Industrial Production',
+    type: 'macro',
+    unit: 'Index',
+    source: 'live',
+    frequency: 'monthly',
+    points: Array.from({ length: 120 }, (_, i) => ({
+      timestamp: `${2016 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}-01`,
+      value: 100 + i,
+    })),
+  };
+
+  it('evaluates a monthly series in months, 12 by default', async () => {
+    const spy = vi.spyOn(api, 'runBacktest').mockResolvedValue(backtestResult({ series_id: 'INDPRO', frequency: 'monthly' }));
+    render(<BacktestPanel seriesData={monthly} activeSeriesId="INDPRO" />);
+    for (const label of ['3m', '6m', '12m', '24m']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+    // Default cutoff leaves the 12 months to evaluate.
+    expect(screen.getByText(/Futuro a evaluar: 12 meses/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Ejecutar Reality Check/ }));
+    await screen.findByText(/El modelo supera al benchmark naive/);
+    expect(spy).toHaveBeenCalledWith('INDPRO', '2024-12-01', 12, 0.95, undefined);
   });
 });

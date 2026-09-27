@@ -11,6 +11,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { interpretSituation } from '../services/api';
+import { annualizedGrowth, projectionYears, seriesFrequency } from '../utils/horizon';
 import { LLMProviderBadge } from './LLMProviderBadge';
 import type {
   InterpretationContext,
@@ -58,11 +59,9 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
   const projectedTarget = forecast?.values[forecast.values.length - 1] || lastPrice;
   const lowerBound = forecast?.lower_bound[forecast.lower_bound.length - 1] || 0;
   const upperBound = forecast?.upper_bound[forecast.upper_bound.length - 1] || 0;
-  const years = horizon / 365.25;
-  const cagr =
-    years > 0 && lastPrice > 0 && projectedTarget > 0
-      ? (Math.pow(projectedTarget / lastPrice, 1 / years) - 1) * 100
-      : 0;
+  const frequency = seriesFrequency(seriesData?.frequency);
+  const lastTs = seriesData?.points[seriesData.points.length - 1]?.timestamp;
+  const cagr = annualizedGrowth(lastPrice, projectedTarget, projectionYears(lastTs, forecast?.timestamps, horizon, frequency));
 
   // Build Capex summary
   const capexSummary: Record<string, number> = {};
@@ -82,6 +81,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
         last_price: lastPrice,
         projected_target: projectedTarget,
         horizon,
+        frequency,
         confidence,
         lower_bound: lowerBound,
         upper_bound: upperBound,

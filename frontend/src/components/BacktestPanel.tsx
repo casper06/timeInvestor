@@ -14,6 +14,7 @@ import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { Play, RotateCcw, Award, CheckCircle, Sliders, AlertTriangle, Info } from 'lucide-react';
 import { runBacktest } from '../services/api';
+import { CANONICAL_HORIZON, HORIZON_OPTIONS, horizonButton, horizonLabel, seriesFrequency } from '../utils/horizon';
 import type { BacktestResponse, TimeSeriesData } from '../services/api';
 import { ExplainerPanel } from './ExplainerPanel';
 
@@ -33,7 +34,7 @@ const FALLBACK_ACTION: Record<string, string> = {
   not_loaded:
     'Esperar no lo arregla: para evaluar TimesFM hay que instalarlo en el servidor ' +
     '(requirements-timesfm.txt y sus pesos) con USE_REAL_TIMESFM=true.',
-  horizon_exceeded: 'Esperar no lo arregla: elegí un horizonte de 128 días o menos.',
+  horizon_exceeded: 'Esperar no lo arregla: elegí un horizonte de 128 pasos de la serie o menos.',
   inference_error:
     'Puede haber sido puntual (por ejemplo, falta de memoria): reintentá. Si se repite con esta ' +
     'misma serie, hay que intervenir; el error completo está en el log del servidor.',
@@ -43,7 +44,8 @@ const FALLBACK_ACTION_UNKNOWN =
 
 export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, activeSeriesId, onResult }) => {
   const [cutoffIndex, setCutoffIndex] = useState<number>(0);
-  const [horizon, setHorizon] = useState<number>(60);
+  // The user's horizon choice, tied to the frequency it was made for.
+  const [horizonChoice, setHorizonChoice] = useState<{ frequency: string; h: number } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<BacktestResponse | null>(null);
   // Holt-Winters is chosen explicitly here; it isn't part of the automatic
@@ -51,10 +53,21 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
   const [useHoltWinters, setUseHoltWinters] = useState<boolean>(false);
 
   const points = seriesData?.points || [];
+  const frequency = seriesFrequency(seriesData?.frequency);
+  // Horizons in the series' unit (4.14). Daily keeps its own options (up to
+  // 120 days); other frequencies use the shared ones.
+  const horizonOptions = frequency === 'daily' ? [30, 60, 90, 120] : HORIZON_OPTIONS[frequency];
 
-  // Default cutoff date to ~4 months before the end
+  // A choice made on a series of another frequency doesn't carry over.
+  const horizon =
+    horizonChoice && horizonChoice.frequency === frequency ? horizonChoice.h : CANONICAL_HORIZON[frequency];
+
+  // Default cutoff date: daily series ~4 months (80 trading days) before the
+  // end; other frequencies leave the canonical horizon to evaluate.
   useEffect(() => {
-    if (points.length > 80) {
+    if (frequency !== 'daily' && points.length > 30) {
+      setCutoffIndex(Math.max(20, points.length - 1 - CANONICAL_HORIZON[frequency]));
+    } else if (points.length > 80) {
       const defaultIdx = Math.max(30, points.length - 80);
       setCutoffIndex(defaultIdx);
     } else if (points.length > 30) {
@@ -274,15 +287,15 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           {/* Horizon Selector */}
           <div className="flex items-center space-x-1 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1">
             <span className="text-slate-500">Horizonte H:</span>
-            {[30, 60, 90, 120].map((h) => (
+            {horizonOptions.map((h) => (
               <button
                 key={h}
-                onClick={() => setHorizon(h)}
+                onClick={() => setHorizonChoice({ frequency, h })}
                 className={`px-1.5 py-0.5 rounded font-mono ${
                   horizon === h ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {h}d
+                {horizonButton(h, frequency)}
               </button>
             ))}
           </div>
@@ -311,7 +324,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
               Fecha de Corte (T_cutoff): <strong className="text-cyan-300">{selectedDate}</strong>
             </span>
             <span className="text-slate-500">
-              Datos previos: {cutoffIndex} • Futuro a evaluar: {points.length - 1 - cutoffIndex} días
+              Datos previos: {cutoffIndex} • Futuro a evaluar: {horizonLabel(points.length - 1 - cutoffIndex, frequency)}
             </span>
           </div>
 

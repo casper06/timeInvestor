@@ -104,6 +104,13 @@ SEASONAL_FRED_CATALOG = {
 }
 DIVERSIFIED_ETF_CATALOG = {"SPY", "QQQ", "XLE", "XLK"}
 
+# Horizon (steps of the series) each catalog's evidence was measured at, shown
+# as ForecastResponse.decision_horizon (4.14): seasonal FRED from the 3.0d
+# benchmark (scripts/seasonal_benchmark.py, H = 12 months); ETFs from the
+# original benchmark (scripts/benchmark_real_data.py, 30 days).
+SEASONAL_CATALOG_HORIZON = 12
+ETF_CATALOG_HORIZON = 30
+
 # Below this many points, Holt's MLE fit has too few residuals for sigma to be
 # a trustworthy variance estimate (not a TimesFM-vs-Holt accuracy question — the
 # benchmark found no history-length threshold where TimesFM actually wins; see
@@ -151,7 +158,7 @@ class EngineSelector:
         if clean_id and clean_id in SEASONAL_FRED_CATALOG:
             entry = SEASONAL_FRED_CATALOG[clean_id]
             if entry.engine == "timesfm":
-                return EngineSelector._run_with_timesfm_preference(
+                return EngineSelector._evaluated_at(SEASONAL_CATALOG_HORIZON, EngineSelector._run_with_timesfm_preference(
                     points,
                     horizon=horizon,
                     confidence=confidence,
@@ -160,17 +167,17 @@ class EngineSelector:
                         f"Serie FRED estacional ({clean_id}) — TimesFM por catálogo, evidencia "
                         f"{entry.strength}: {entry.evidence} (ver {entry.result_ref})."
                     ),
-                )
-            return EngineSelector._run_holt_winters_or_holt(
+                ))
+            return EngineSelector._evaluated_at(SEASONAL_CATALOG_HORIZON, EngineSelector._run_holt_winters_or_holt(
                 points, horizon=horizon, confidence=confidence, freq=freq,
                 reason_if_ok=(
                     f"Serie FRED estacional ({clean_id}) — Holt-Winters por catálogo: "
                     f"{entry.evidence} (ver {entry.result_ref})."
                 ),
-            )
+            ))
 
         if clean_id and clean_id in DIVERSIFIED_ETF_CATALOG:
-            return EngineSelector._run_holt(
+            return EngineSelector._evaluated_at(ETF_CATALOG_HORIZON, EngineSelector._run_holt(
                 points,
                 horizon=horizon,
                 confidence=confidence,
@@ -181,7 +188,7 @@ class EngineSelector:
                     f"real (0/4 series), pese a la hipótesis inicial de que series "
                     f"diversificadas favorecerían a TimesFM."
                 ),
-            )
+            ))
 
         if db is not None and clean_id and n_points >= AUTO_DISCOVERY_MIN_HISTORY:
             auto_result = EngineSelector._try_auto_discovery(
@@ -230,12 +237,20 @@ class EngineSelector:
         both curated catalogs. Returns None if auto-discovery couldn't produce
         a decision (e.g. the mini-backtest itself failed) — the caller then
         falls through to the existing cold-start/default path unchanged."""
-        from backend.services.auto_discovery import AutoDiscoveryEngine
+        from backend.services.auto_discovery import MINI_BACKTEST_HORIZON, AutoDiscoveryEngine
 
         is_macro = series_type == "macro"
         decision = AutoDiscoveryEngine.decide(db, clean_id, n_points, is_macro=is_macro)
         if decision is None:
             return None
+        # NULL = a row from before the column: every criterion so far used 30.
+        decided_at = decision.horizon or MINI_BACKTEST_HORIZON
+        return EngineSelector._evaluated_at(decided_at, EngineSelector._from_decision(
+            decision, points, horizon, confidence, freq))
+
+    @staticmethod
+    def _from_decision(decision, points, horizon, confidence, freq) -> ForecastResponse:
+        """Runs the engine an auto-discovery decision chose, with its reason."""
 
         # What TimesFM was compared against: Holt, or Holt-Winters with the
         # seasonal MASE for seasonal series (criterion v3). NULL = legacy Holt.
@@ -320,6 +335,14 @@ class EngineSelector:
             )
         res.engine_selection_reason = f"{prefix} {reason}" if prefix else reason
         return EngineSelector._append(res, dropped_note)
+
+    @staticmethod
+    def _evaluated_at(decision_horizon: int, res: ForecastResponse) -> ForecastResponse:
+        """Records the horizon the chosen engine was evaluated at — unless the
+        answer is a fallback, whose engine wasn't the evaluated choice."""
+        if not res.is_fallback:
+            res.decision_horizon = decision_horizon
+        return res
 
     @staticmethod
     def _append(res: ForecastResponse, note: str) -> ForecastResponse:

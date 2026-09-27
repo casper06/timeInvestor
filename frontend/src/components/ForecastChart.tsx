@@ -13,6 +13,7 @@ import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { KeyRound } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
+import { HORIZON_OPTIONS, horizonButton, horizonTag, seriesFrequency } from '../utils/horizon';
 import { FredInfoTooltip } from './FredInfoTooltip';
 
 ChartJS.register(
@@ -90,12 +91,25 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
 }) => {
   const hasData = !!seriesData && seriesData.points.length > 0;
 
-  // Slice historical points based on period if desired
+  const frequency = seriesFrequency(seriesData?.frequency);
+
+  // Slice historical points based on period if desired. Daily series by
+  // trading-day counts (as before 4.14); other frequencies by calendar dates —
+  // 252 points of a monthly series would be 21 years, not one.
   let historicalPoints = hasData ? seriesData.points : [];
-  if (period === '1mo') historicalPoints = historicalPoints.slice(-22);
-  else if (period === '6mo') historicalPoints = historicalPoints.slice(-130);
-  else if (period === '1y') historicalPoints = historicalPoints.slice(-252);
-  else if (period === '2y') historicalPoints = historicalPoints.slice(-504);
+  const PERIOD_DAYS: Record<string, [number, number]> = {
+    '1mo': [22, 31], '6mo': [130, 183], '1y': [252, 366], '2y': [504, 731],
+  };
+  if (PERIOD_DAYS[period]) {
+    const [tradingDays, calendarDays] = PERIOD_DAYS[period];
+    if (frequency === 'daily') {
+      historicalPoints = historicalPoints.slice(-tradingDays);
+    } else if (historicalPoints.length > 0) {
+      const lastMs = Date.parse(historicalPoints[historicalPoints.length - 1].timestamp.slice(0, 10));
+      const fromMs = lastMs - calendarDays * 24 * 3600 * 1000;
+      historicalPoints = historicalPoints.filter((p) => Date.parse(p.timestamp.slice(0, 10)) >= fromMs);
+    }
+  }
 
   // Normalization logic: base = 100 on first visible point
   const baseValue = historicalPoints[0]?.value || 1.0;
@@ -302,7 +316,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           {/* Horizon Selector */}
           <div className="flex items-center space-x-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-0.5 text-slate-300">
             <span className="text-slate-500 text-[11px]">H:</span>
-            {[30, 60, 90, 180].map((h) => (
+            {HORIZON_OPTIONS[frequency].map((h) => (
               <button
                 key={h}
                 onClick={() => onChangeHorizon(h)}
@@ -310,7 +324,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
                   horizon === h ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {h}d
+                {horizonButton(h, frequency)}
               </button>
             ))}
           </div>
@@ -401,7 +415,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
             <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>
             {forecast && (
               <span>
-                Proyección +{horizon}d: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
+                Proyección +{horizonTag(horizon, frequency)}: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
               </span>
             )}
           </div>

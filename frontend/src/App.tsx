@@ -15,6 +15,7 @@ import { DualAxisChart } from './components/DualAxisChart';
 import { ThesisAlertBanner } from './components/ThesisAlertBanner';
 import { PortfolioRiskView } from './components/PortfolioRiskView';
 import { exportMarkdownReport } from './utils/exportReport';
+import { CANONICAL_HORIZON, seriesFrequency } from './utils/horizon';
 import { AlertTriangle } from 'lucide-react';
 
 import {
@@ -73,7 +74,12 @@ export const App: React.FC = () => {
   const [lastInterpretation, setLastInterpretation] = useState<InterpretationResponse | null>(null);
 
   // Forecast & View Controls
-  const [horizon, setHorizon] = useState<number>(60);
+  // Horizon in steps of the series, one per frequency (4.14): 12 on a monthly
+  // series is 12 months. Switching between a daily and a monthly series keeps
+  // each one's choice; the default is the canonical horizon of its frequency.
+  const [horizonByFreq, setHorizonByFreq] = useState<Record<string, number>>({ ...CANONICAL_HORIZON });
+  const frequency = seriesFrequency(seriesData?.frequency);
+  const horizon = horizonByFreq[frequency];
   const [confidence, setConfidence] = useState<number>(0.95);
   const [period, setPeriod] = useState<string>('1y');
   const [isNormalized, setIsNormalized] = useState<boolean>(false);
@@ -135,7 +141,7 @@ export const App: React.FC = () => {
       // Select first ticker by default
       const defaultId = resp.tickers[0]?.symbol || 'NVDA';
       setSelectedSeriesId(defaultId);
-      await loadSeriesAndForecast(defaultId, 'equity', period, horizon, confidence);
+      await loadSeriesAndForecast(defaultId, 'equity', period, confidence);
     } catch (err) {
       console.error('Error analyzing thesis:', err);
       alert(err instanceof Error ? err.message : 'Error al analizar la tesis');
@@ -155,7 +161,6 @@ export const App: React.FC = () => {
     id: string,
     type: string,
     p: string,
-    h: number,
     conf: number
   ) => {
     setChartLoading(true);
@@ -171,7 +176,8 @@ export const App: React.FC = () => {
       setForecast(null);
 
       if (data.points.length > 2) {
-        const fc = await fetchForecast(data.points, h, conf, 'D', data.id, data.type);
+        const h = horizonByFreq[seriesFrequency(data.frequency)];
+        const fc = await fetchForecast(data.points, h, conf, data.id, data.type);
         setForecast(fc);
       }
     } catch (err) {
@@ -188,15 +194,15 @@ export const App: React.FC = () => {
   const handleSelectSeries = (id: string) => {
     setSelectedSeriesId(id);
     const isMacro = activeMacro.some((m) => m.series_id === id);
-    loadSeriesAndForecast(id, isMacro ? 'macro' : 'equity', period, horizon, confidence);
+    loadSeriesAndForecast(id, isMacro ? 'macro' : 'equity', period, confidence);
   };
 
   // Re-forecast on horizon change
   const handleChangeHorizon = (newHorizon: number) => {
-    setHorizon(newHorizon);
+    setHorizonByFreq((prev) => ({ ...prev, [frequency]: newHorizon }));
     if (seriesData && seriesData.points.length > 2) {
       setChartLoading(true);
-      fetchForecast(seriesData.points, newHorizon, confidence, 'D', seriesData.id, seriesData.type)
+      fetchForecast(seriesData.points, newHorizon, confidence, seriesData.id, seriesData.type)
         .then((fc) => setForecast(fc))
         .catch((e) => console.error(e))
         .finally(() => setChartLoading(false));
@@ -208,7 +214,7 @@ export const App: React.FC = () => {
     setConfidence(newConf);
     if (seriesData && seriesData.points.length > 2) {
       setChartLoading(true);
-      fetchForecast(seriesData.points, horizon, newConf, 'D', seriesData.id, seriesData.type)
+      fetchForecast(seriesData.points, horizon, newConf, seriesData.id, seriesData.type)
         .then((fc) => setForecast(fc))
         .catch((e) => console.error(e))
         .finally(() => setChartLoading(false));
@@ -219,7 +225,7 @@ export const App: React.FC = () => {
   const handleChangePeriod = (newPeriod: string) => {
     setPeriod(newPeriod);
     const isMacro = activeMacro.some((m) => m.series_id === selectedSeriesId);
-    loadSeriesAndForecast(selectedSeriesId, isMacro ? 'macro' : 'equity', newPeriod, horizon, confidence);
+    loadSeriesAndForecast(selectedSeriesId, isMacro ? 'macro' : 'equity', newPeriod, confidence);
   };
 
   // Add ticker manually

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Gauge, ArrowUpRight, ArrowDownRight, Minus, Activity, ShieldAlert, Compass } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
+import { horizonLabel, seriesFrequency } from '../utils/horizon';
 
 interface StatisticalTelemetryProps {
   seriesData: TimeSeriesData | null;
@@ -101,7 +102,7 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
             ${lastPrice.toFixed(2)} → ${target.toFixed(2)}
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            Desviación porcentual proyectada a <strong>{horizon} días</strong> frente al último cierre real registrado.
+            Desviación porcentual proyectada a <strong>{horizonLabel(horizon, seriesFrequency(seriesData.frequency))}</strong> frente al último cierre real registrado.
           </p>
         </div>
 

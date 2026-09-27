@@ -87,13 +87,23 @@ How it works:
    fixed). Measurements: `docs/results/decision_stability_2026-09-26.md` and
    `docs/results/decision_variants_2026-09-26.md`.
 5. The decision (`engine_choice`, `mase_holt`, `mase_timesfm`, `evaluated_at`,
-   `n_points_at_evaluation`) is cached in SQLite (`engine_decisions` table, one
+   `n_points_at_evaluation`, and since 4.14 the `horizon` it evaluated) is cached in SQLite (`engine_decisions` table, one
    row per `series_id`) — chosen over a flat file since this project already
    uses SQLAlchemy/SQLite for theses/snapshots/notes, and a per-series decision
    with fields that need querying/updating fits that pattern better than
    reading-and-rewriting a JSON blob.
 6. Every later request for the same series is a single indexed lookup — no
    inference re-run — until the decision goes stale.
+
+**Horizon units (4.14).** A horizon is a number of steps of the series, and
+the frequency comes from the dates (`backend/services/horizons.py`, mirrored
+in `frontend/src/utils/horizon.ts`), never from the series type: 12 on a
+monthly series is 12 months, 60 on a daily one is 60 business days. The UI
+default is a canonical horizon per frequency (daily 60, weekly 13, monthly 12,
+quarterly 4). `ForecastResponse.decision_horizon` says at which horizon the
+chosen engine was evaluated (the mini-backtest's, or the catalog benchmark's),
+and the UI notes it when it differs from the one requested. Criterion v4 still
+evaluates at `MINI_BACKTEST_HORIZON` (30 steps) for every frequency.
 
 **Invalidation** (any one of these triggers re-evaluation):
 - More than `DECISION_TTL_DAYS` (30) since `evaluated_at` — a regime shift

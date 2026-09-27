@@ -13,6 +13,9 @@ export interface TimeSeriesData {
   from_cache?: boolean;
   cached_at?: string | null;
   source_detail?: string;
+  /** daily | weekly | monthly | quarterly | annual, inferred by the backend
+   * from the dates: the unit of this series' horizons (utils/horizon.ts). */
+  frequency?: string;
 }
 
 export interface TickerSuggestion {
@@ -55,6 +58,13 @@ export interface ForecastResponse {
   interval_level?: number | null;
   fitted_params?: Record<string, number>;
   engine_selection_reason?: string;
+  /** Unit of `horizon` and `decision_horizon`. */
+  frequency?: string | null;
+  /** Steps projected, in the series' unit. */
+  horizon?: number | null;
+  /** Horizon the chosen engine was evaluated at (auto-discovery or catalog
+   * benchmark); null = not chosen by an evaluation. */
+  decision_horizon?: number | null;
 }
 
 export interface FundamentalsMetric {
@@ -75,6 +85,7 @@ export interface InterpretationContext {
   last_price: number;
   projected_target: number;
   horizon: number;
+  frequency?: string;
   confidence: number;
   lower_bound: number;
   upper_bound: number;
@@ -214,11 +225,12 @@ export async function fetchFundamentals(tickers: string[]): Promise<Fundamentals
   return data.metrics;
 }
 
+/** `horizon` is in steps of the series (12 on a monthly series = 12 months);
+ * the backend infers the frequency from the points' dates. */
 export async function fetchForecast(
   points: TimeSeriesPoint[],
   horizon = 60,
   confidence = 0.95,
-  freq = 'D',
   seriesId?: string,
   seriesType?: string
 ): Promise<ForecastResponse> {
@@ -229,7 +241,6 @@ export async function fetchForecast(
       points,
       horizon,
       confidence,
-      freq,
       series_id: seriesId,
       series_type: seriesType,
     }),
@@ -268,6 +279,8 @@ export interface ForecastSnapshotResponse {
   series_id: string;
   cutoff_date: string;
   horizon: number;
+  /** Unit of `horizon`; null on snapshots saved before 4.14 (not recorded). */
+  frequency?: string | null;
   confidence: number;
   timestamps: string[];
   projected_values: number[];
@@ -341,6 +354,8 @@ export interface BacktestResponse {
   series_id: string;
   cutoff_date: string;
   horizon: number;
+  /** Unit of `horizon`, inferred from the series' dates. */
+  frequency?: string | null;
   historical_dates: string[];
   historical_values: number[];
   future_actual_dates: string[];
@@ -445,6 +460,7 @@ export async function addSnapshot(
     series_id: string;
     cutoff_date: string;
     horizon: number;
+    frequency?: string;
     confidence: number;
     timestamps: string[];
     projected_values: number[];
