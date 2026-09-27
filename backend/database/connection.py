@@ -41,6 +41,8 @@ _ADDED_COLUMNS = [
     ("engine_decisions", "baseline_engine", "VARCHAR(20)"),
     ("engine_decisions", "metric", "VARCHAR(20)"),
     ("engine_decisions", "baseline_skipped_cutoffs", "INTEGER"),
+    ("engine_decisions", "horizon", "INTEGER"),
+    ("forecast_snapshots", "frequency", "VARCHAR(20)"),
 ]
 
 

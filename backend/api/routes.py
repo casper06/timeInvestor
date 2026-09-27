@@ -52,6 +52,7 @@ from backend.services.llm_router import get_llm_client
 from backend.services.engine_selector import EngineSelector
 from backend.services.forecast_engine import HoltWintersForecastEngine, NotSeasonalError
 from backend.services.backtest_engine import BacktestEngine
+from backend.services.horizons import canonical_horizon, resolve_frequency
 from backend.services.correlation_engine import CorrelationEngine
 from backend.services.portfolio_engine import PortfolioEngine
 from backend.services.risk_engine import RiskEngine
@@ -199,12 +200,17 @@ def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
     Generates time series projection and confidence intervals.
     Returns TimesFM-compliant structure: { timestamps, values, lower_bound, upper_bound }.
     """
+    # Horizon in the series' own unit (4.14): the frequency comes from the
+    # dates; `freq` only matters when the dates can't tell.
+    frequency, freq = resolve_frequency([p.timestamp for p in payload.points], payload.freq)
+    horizon = payload.horizon or canonical_horizon(frequency)
+
     if payload.engine == "holt_winters":
         # Explicit engine: bypasses EngineSelector on purpose (Holt-Winters is
         # not part of the selector yet, item 3.0d).
         try:
             result = HoltWintersForecastEngine().forecast(
-                payload.points, horizon=payload.horizon, confidence=payload.confidence, freq=payload.freq or "M",
+                payload.points, horizon=horizon, confidence=payload.confidence, freq=freq,
             )
         except NotSeasonalError as e:
             raise HTTPException(status_code=422, detail=str(e))
@@ -215,6 +221,7 @@ def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
             f"Motor pedido explícitamente en el request (engine=holt_winters), sin pasar por el "
             f"selector: estacionalidad detectada con período {int(result.fitted_params['seasonal_period'])}."
         )
+        result.frequency, result.horizon = frequency, horizon
         return result
 
     try:
@@ -222,11 +229,12 @@ def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
             points=payload.points,
             series_id=payload.series_id,
             series_type=payload.series_type,
-            horizon=payload.horizon,
+            horizon=horizon,
             confidence=payload.confidence,
-            freq=payload.freq or "D",
+            freq=freq,
             db=db,
         )
+        result.frequency, result.horizon = frequency, horizon
         return result
     except Exception as e:
         logger.error(f"Error computing forecast: {e}", exc_info=True)
@@ -379,6 +387,7 @@ def add_forecast_snapshot(
         series_id=payload.series_id.upper(),
         cutoff_date=payload.cutoff_date,
         horizon=payload.horizon,
+        frequency=payload.frequency,
         confidence=payload.confidence,
         timestamps_json=json.dumps(payload.timestamps),
         projected_values_json=json.dumps(payload.projected_values),
@@ -396,6 +405,7 @@ def add_forecast_snapshot(
         series_id=snap.series_id,
         cutoff_date=snap.cutoff_date,
         horizon=snap.horizon,
+        frequency=snap.frequency,
         confidence=snap.confidence,
         timestamps=json.loads(snap.timestamps_json),
         projected_values=json.loads(snap.projected_values_json),
@@ -444,6 +454,7 @@ def _format_thesis_detail(t: ThesisModel) -> ThesisDetailResponse:
             series_id=s.series_id,
             cutoff_date=s.cutoff_date,
             horizon=s.horizon,
+            frequency=s.frequency,
             confidence=s.confidence,
             timestamps=json.loads(s.timestamps_json or "[]"),
             projected_values=json.loads(s.projected_values_json or "[]"),

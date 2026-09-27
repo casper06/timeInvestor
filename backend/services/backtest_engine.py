@@ -9,6 +9,7 @@ from backend.schemas.models import (
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.forecast_engine import BaseForecastEngine, get_forecast_engine
+from backend.services.horizons import resolve_frequency
 from backend.services.seasonality import detect_seasonality, seasonal_naive_forecast, seasonal_scale
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,9 @@ class BacktestEngine:
 
         # 3. Run forecast engine on training data
         engine = engine_override if engine_override is not None else get_forecast_engine()
-        freq = "M" if data.type == "macro" else "D"
+        # From the dates, not the series type: FRED has daily series (DGS10).
+        # The type is only the fallback when the dates can't tell.
+        frequency, freq = resolve_frequency([p.timestamp for p in sorted_points], "M" if data.type == "macro" else "D")
         forecast_res = engine.forecast(
             train_points,
             horizon=eval_horizon,
@@ -221,6 +224,7 @@ class BacktestEngine:
             series_id=clean_id,
             cutoff_date=cutoff_date,
             horizon=eval_horizon,
+            frequency=frequency,
             historical_dates=[p.timestamp for p in display_train],
             historical_values=[p.value for p in display_train],
             future_actual_dates=[p.timestamp for p in actual_eval_points],

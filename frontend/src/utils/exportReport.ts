@@ -8,6 +8,7 @@ import type {
   CorrelationMatrixResponse,
   PortfolioOptimizeResponse,
 } from '../services/api';
+import { horizonLabel, seriesFrequency } from './horizon';
 
 export interface ReportData {
   thesis: ThesisResponse | null;
@@ -67,7 +68,7 @@ export function generateMarkdownReport(data: ReportData): string {
   addSection(
     `Telemetría y Proyección Temporal (${data.seriesData?.id || 'Activo Central'})`,
     `- **Último Precio Real:** $${lastPrice.toFixed(2)} ${data.seriesData?.unit || 'USD'}\n` +
-      `- **Precio Objetivo Proyectado (+${data.horizon} días):** $${target.toFixed(2)} (${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%)\n` +
+      `- **Precio Objetivo Proyectado (+${horizonLabel(data.horizon, seriesFrequency(data.seriesData?.frequency))}):** $${target.toFixed(2)} (${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%)\n` +
       `- **Banda de Confianza (${Math.round(data.confidence * 100)}% CI):** [$${lb.toFixed(2)} — $${ub.toFixed(2)}]\n` +
       `- **Motor Predictivo:** ${data.forecast?.model_name || 'TimesFM'}` +
       (data.forecast?.engine_selection_reason ? ` — ${data.forecast.engine_selection_reason}` : '') +
@@ -100,7 +101,7 @@ export function generateMarkdownReport(data: ReportData): string {
     addSection(
       'Reality Check (Backtest Histórico)',
       `**Veredicto:** ${bt.verdict}\n\n` +
-        `- **Fecha de corte evaluada:** ${bt.cutoff_date} (horizonte: ${bt.horizon} días)\n` +
+        `- **Fecha de corte evaluada:** ${bt.cutoff_date} (horizonte: ${horizonLabel(bt.horizon, seriesFrequency(bt.frequency))})\n` +
         `- **Acierto direccional:** ${bt.metrics.directional_accuracy.toFixed(1)}%\n` +
         `- **MAPE:** ${bt.metrics.mape.toFixed(2)}% • **MAE:** ${bt.metrics.mae.toFixed(2)}\n` +
         (bt.interval_coverage !== undefined ? `- **Cobertura del intervalo:** ${bt.interval_coverage.toFixed(1)}%\n` : '') +

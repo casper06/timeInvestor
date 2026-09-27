@@ -487,7 +487,7 @@ def test_migration_adds_column_to_existing_database(tmp_path):
     assert migrate_added_columns(engine) == [
         "engine_decisions.timesfm_failed_cutoffs", "engine_decisions.criteria_version",
         "engine_decisions.baseline_engine", "engine_decisions.metric",
-        "engine_decisions.baseline_skipped_cutoffs",
+        "engine_decisions.baseline_skipped_cutoffs", "engine_decisions.horizon",
     ]
     assert migrate_added_columns(engine) == [], "must be idempotent"
 
@@ -495,6 +495,7 @@ def test_migration_adds_column_to_existing_database(tmp_path):
     row = AutoDiscoveryEngine.get_cached_decision(session, "OLD")
     assert row.mase_holt == 0.9 and row.mase_timesfm == 1.1
     assert row.timesfm_failed_cutoffs is None
+    assert row.horizon is None  # legacy: MINI_BACKTEST_HORIZON (30), see EngineSelector
     session.close()
 
 

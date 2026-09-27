@@ -44,6 +44,9 @@ class ForecastSnapshotModel(Base):
     series_id = Column(String(50), nullable=False)
     cutoff_date = Column(String(50), nullable=False)
     horizon = Column(Integer, default=60, nullable=False)
+    # Unit of `horizon` (daily, monthly, ...). NULL on snapshots from before
+    # 4.14, when every horizon was requested as days whatever the series.
+    frequency = Column(String(20), nullable=True)
     confidence = Column(Float, default=0.95, nullable=False)
     timestamps_json = Column(Text, nullable=False, default="[]")
     projected_values_json = Column(Text, nullable=False, default="[]")
@@ -95,6 +98,9 @@ class EngineDecisionModel(Base):
     baseline_engine = Column(String(20), nullable=True)
     metric = Column(String(20), nullable=True)
     baseline_skipped_cutoffs = Column(Integer, nullable=True)
+    # Horizon (steps of the series) the mini-backtest evaluated. NULL on rows
+    # from before this column: MINI_BACKTEST_HORIZON, 30 since v1.
+    horizon = Column(Integer, nullable=True)
 
 
 class ClaudeCliUsageModel(Base):

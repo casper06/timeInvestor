@@ -7,7 +7,7 @@ guard) and varies ONLY the evaluation horizon, per frequency. Same metrics as
 scripts/decision_variants.py, plus how many practically independent
 (non-overlapping) evaluation windows each horizon leaves.
 
-    python scripts/horizon_variants.py --replay data/snapshots/holt_coverage_2026-09-26.json --out results.json [--series A,B]
+    python scripts/horizon_variants.py --replay data/snapshots/holt_coverage_2026-09-26.json --out results.json [--series A,B] [--horizons "monthly=12,6"]
 """
 import argparse
 import hashlib
@@ -112,7 +112,11 @@ def main():
     ap.add_argument("--replay", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--series", default="")
+    ap.add_argument("--horizons", default="", help="p. ej. monthly=12,6,3;daily=60 (reemplaza HORIZONS)")
     args = ap.parse_args()
+    for part in filter(None, args.horizons.split(";")):
+        kind, hs = part.split("=")
+        HORIZONS[kind] = [int(h) for h in hs.split(",")]
     from backend.services.forecast_engine import TimesFMForecastEngine
     if not TimesFMForecastEngine.is_available():
         print("ERROR: TimesFM no disponible; no se simula.", file=sys.stderr)

@@ -117,6 +117,13 @@ Rama: a definir.
   4.14: sin horizonte en las unidades de la serie en la UI, no se puede
   evaluar "en el horizonte que se muestra". Re-medir después de 4.14 con
   `scripts/horizon_variants.py`.
+  Re-medido en el horizonte canónico (4.14,
+  `docs/results/horizon_units_2026-09-27.md`):
+  - 12 meses reproduce #34 y empeora FRED SA (18,5% → 34,2%);
+  - 6 meses mejora las dos categorías FRED en la muestra (estacional 19,0%, SA 8,9%);
+  - 3 meses oscila en SA.
+  **Pendiente de decisión del usuario:** qué horizonte canónico mensual usar,
+  y si se sube el criterio (v5) a decidir en él.
 - [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
@@ -425,7 +432,17 @@ Rama: una por ítem, a definir.
       (no hay key).
   Hecho cuando: hay una recomendación de cuál integrar primero para el caso
   "consumo eléctrico por IA" de la Fase 5, con una llamada real a cada una.
-- [ ] **4.14 Horizonte en las unidades de la serie (UI/API), alta prioridad.**
+- [x] **4.14 Horizonte en las unidades de la serie (UI/API), alta prioridad.**
+  (rama `fix/horizon-units`, PR abierto; `docs/results/horizon_units_2026-09-27.md`)
+  - La frecuencia sale de las fechas (`backend/services/horizons.py`).
+  - Horizontes por frecuencia: diaria 30/60/90/180, semanal 4/13/26,
+    mensual 3/6/12/24, trimestral 2/4/8. Canónicos: 60, 13, 12 y 4.
+  - Etiquetas, fechas y CAGR en la unidad real.
+  - `decision_horizon` y la nota "motor elegido evaluando a N".
+  - Snapshots con su frecuencia.
+  - El gráfico dual respeta la frecuencia de cada serie.
+  - El backtest toma la frecuencia de las fechas (DGS10 es diaria).
+  - El criterio de auto-discovery **no** cambió de versión (ver 2.3b).
   La UI pide siempre 30/60/90/180 pasos con `freq='D'` (`App.tsx`), también
   para series mensuales. Verificado con INDPRO: el pedido por defecto
   devuelve 60 pasos **mensuales** (una banda de 5 años, [84; 127]),

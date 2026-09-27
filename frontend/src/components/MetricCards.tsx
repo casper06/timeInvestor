@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TrendingUp, ShieldAlert, Target, ChevronDown, ChevronUp, BookOpen, Sparkles } from 'lucide-react';
 import type { ThesisResponse, ForecastResponse, TimeSeriesData } from '../services/api';
 import { LLMProviderBadge } from './LLMProviderBadge';
+import { annualizedGrowth, horizonLabel, horizonTag, projectionYears, seriesFrequency } from '../utils/horizon';
 
 interface MetricCardsProps {
   thesisData: ThesisResponse | null;
@@ -28,11 +29,17 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   const lowerTarget = forecast?.lower_bound[forecast.lower_bound.length - 1] || 0;
   const upperTarget = forecast?.upper_bound[forecast.upper_bound.length - 1] || 0;
 
-  // Annualized CAGR projection
-  const years = horizon / 365.25;
-  const cagr = years > 0 && lastHist > 0 && targetVal > 0
-    ? ((Math.pow(targetVal / lastHist, 1 / years) - 1) * 100)
-    : 0;
+  // Annualized CAGR over the projection's real span (its dates), so 60
+  // business days count as ~84 calendar days and 12 months as one year.
+  const frequency = seriesFrequency(seriesData?.frequency);
+  const lastTs = seriesData?.points[seriesData.points.length - 1]?.timestamp;
+  const cagr = annualizedGrowth(lastHist, targetVal, projectionYears(lastTs, forecast?.timestamps, horizon, frequency));
+  // The engine was chosen evaluating another horizon: say so (4.14).
+  const decisionHorizon = forecast?.decision_horizon;
+  const decisionNote =
+    decisionHorizon != null && decisionHorizon !== (forecast?.horizon ?? horizon)
+      ? `Motor elegido evaluando a ${horizonLabel(decisionHorizon, frequency)}`
+      : null;
 
   return (
     <div className="space-y-4">
@@ -41,7 +48,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
         {/* Card 1: Target Projection */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-md">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Objetivo +{horizon}d</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Objetivo +{horizonTag(horizon, frequency)}</span>
             <Target className="h-4 w-4 text-cyan-400" />
           </div>
           <div className="text-xl font-bold font-mono text-slate-100">
@@ -63,7 +70,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             {cagr >= 0 ? '+' : ''}{cagr.toFixed(1)}%
           </div>
           <div className="text-[11px] text-slate-500 font-mono mt-1">
-            Horizonte proyectivo {horizon} días
+            Horizonte proyectivo {horizonLabel(horizon, frequency)}
           </div>
         </div>
 
@@ -96,6 +103,11 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
           >
             {forecast?.engine_selection_reason || 'Residuos estocásticos'}
           </div>
+          {decisionNote && (
+            <div className="text-[11px] text-amber-400/90 font-mono mt-1" data-testid="decision-horizon-note">
+              {decisionNote}
+            </div>
+          )}
         </div>
       </div>
 

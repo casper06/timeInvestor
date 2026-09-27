@@ -19,6 +19,7 @@ import {
   addSnapshot,
   addResearchNote,
 } from '../services/api';
+import { horizonTag } from '../utils/horizon';
 import type {
   ThesisSummaryItem,
   ThesisDetailResponse,
@@ -117,6 +118,7 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
           series_id: activeSeriesId,
           cutoff_date: lastTs,
           horizon,
+          frequency: seriesData.frequency,
           confidence,
           timestamps: forecast.timestamps,
           projected_values: forecast.values,
@@ -452,7 +454,7 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
                         <span>Corte: {s.cutoff_date}</span>
                       </div>
                       <div className="text-slate-300">
-                        Objetivo +{s.horizon}d: ${s.projected_values[s.projected_values.length - 1]?.toFixed(2)} [
+                        Objetivo +{horizonTag(s.horizon, s.frequency)}: ${s.projected_values[s.projected_values.length - 1]?.toFixed(2)} [
                         {s.lower_bound[s.lower_bound.length - 1]?.toFixed(1)} —{' '}
                         {s.upper_bound[s.upper_bound.length - 1]?.toFixed(1)}]
                       </div>

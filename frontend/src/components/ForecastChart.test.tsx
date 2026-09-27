@@ -207,3 +207,58 @@ describe('ForecastChart interval level', () => {
     expect(screen.queryByTestId('interval-level-note')).not.toBeInTheDocument();
   });
 });
+
+describe('ForecastChart horizon in the series unit (4.14)', () => {
+  const monthly: TimeSeriesData = {
+    id: 'INDPRO',
+    name: 'Industrial Production',
+    type: 'macro',
+    unit: 'Index',
+    frequency: 'monthly',
+    points: Array.from({ length: 36 }, (_, i) => ({
+      timestamp: `${2023 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}-01`,
+      value: 100 + i,
+    })),
+    source: 'live',
+  };
+  const forecast = {
+    timestamps: Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, '0')}-01`),
+    values: Array.from({ length: 12 }, (_, i) => 136 + i),
+    lower_bound: Array.from({ length: 12 }, (_, i) => 130 + i),
+    upper_bound: Array.from({ length: 12 }, (_, i) => 142 + i),
+    model_name: 'damped-holt-mle',
+    frequency: 'monthly',
+    horizon: 12,
+  };
+
+  it('offers monthly horizons and labels the projection in months', () => {
+    const onChangeHorizon = vi.fn();
+    render(
+      <ForecastChart
+        {...baseProps}
+        horizon={12}
+        onChangeHorizon={onChangeHorizon}
+        forecast={forecast}
+        seriesData={monthly}
+        selectedSeriesId="INDPRO"
+        allSeriesList={allSeriesList}
+      />
+    );
+    for (const label of ['3m', '6m', '12m', '24m']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: '60d' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Proyección \+12 meses/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '6m' }));
+    expect(onChangeHorizon).toHaveBeenCalledWith(6);
+  });
+
+  it('keeps the daily horizons for daily series', () => {
+    render(
+      <ForecastChart {...baseProps} seriesData={{ ...cegSeriesData, frequency: 'daily' }} selectedSeriesId="CEG" allSeriesList={allSeriesList} />
+    );
+    for (const label of ['30d', '60d', '90d', '180d']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+  });
+});

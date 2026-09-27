@@ -11,6 +11,7 @@ import httpx
 
 from backend.config import settings
 from backend.services.llm_availability import mark_account_rejected
+from backend.services.horizons import format_horizon
 from backend.schemas.models import (
     ThesisResponse,
     TickerSuggestion,
@@ -457,7 +458,7 @@ class GeminiLLMClient(BaseLLMClient):
                 f"- Tesis: {ctx.thesis}\n"
                 f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
                 f"- Último precio real: {ctx.last_price}\n"
-                f"- Objetivo proyectado (+{ctx.horizon}d): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
+                f"- Objetivo proyectado (+{format_horizon(ctx.horizon, ctx.frequency or 'daily')}): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
                 f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound} - {ctx.upper_bound}]\n"
                 f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
                 f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
@@ -1121,7 +1122,7 @@ class GeminiCliLLMClient(BaseLLMClient):
             f"- Tesis: {ctx.thesis}\n"
             f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
             f"- Último precio real: {ctx.last_price}\n"
-            f"- Objetivo proyectado (+{ctx.horizon}d): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
+            f"- Objetivo proyectado (+{format_horizon(ctx.horizon, ctx.frequency or 'daily')}): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
             f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound} - {ctx.upper_bound}]\n"
             f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
             f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
@@ -1388,7 +1389,7 @@ class ClaudeCliLLMClient(BaseLLMClient):
             f"- Tesis: {ctx.thesis}\n"
             f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
             f"- Último precio real: {ctx.last_price}\n"
-            f"- Objetivo proyectado (+{ctx.horizon}d): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
+            f"- Objetivo proyectado (+{format_horizon(ctx.horizon, ctx.frequency or 'daily')}): {ctx.projected_target} (CAGR: {ctx.cagr:.1f}%)\n"
             f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound} - {ctx.upper_bound}]\n"
             f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
             f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
@@ -1680,7 +1681,7 @@ class MockLLMClient(BaseLLMClient):
         what_data_says = (
             f"La curva proyectiva para **{ctx.active_series_id}** ({ctx.active_series_name or 'Activo analizado'}) "
             f"señala una {direction} del {pct_delta:+.1f}% hacia un precio objetivo de ${ctx.projected_target:.2f} "
-            f"en un horizonte de {ctx.horizon} días (CAGR anualizado implícito del {ctx.cagr:+.1f}%). "
+            f"en un horizonte de {format_horizon(ctx.horizon, ctx.frequency or 'daily')} (CAGR anualizado implícito del {ctx.cagr:+.1f}%). "
             f"El cono de incertidumbre al {int(ctx.confidence * 100)}% abarca el intervalo [{ctx.lower_bound:.2f}, {ctx.upper_bound:.2f}], "
             f"lo que representa una dispersión del {cone_pct:.1f}% respecto al objetivo central, "
             f"denotando una volatilidad {'moderada' if cone_pct < 25 else 'elevada y sensible a anuncios de Capex'}."
