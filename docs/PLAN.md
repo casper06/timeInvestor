@@ -122,8 +122,23 @@ Rama: a definir.
   - 12 meses reproduce #34 y empeora FRED SA (18,5% → 34,2%);
   - 6 meses mejora las dos categorías FRED en la muestra (estacional 19,0%, SA 8,9%);
   - 3 meses oscila en SA.
-  **Pendiente de decisión del usuario:** qué horizonte canónico mensual usar,
-  y si se sube el criterio (v5) a decidir en él.
+  **Decisión del usuario (2026-09-27): el canónico mensual es 12 meses.** Es el
+  horizonte de uso (ciclo estacional completo, comparación interanual); no
+  se elige por cuál da menos desacuerdo. Si v5 decide en él se resuelve con
+  2.3c.
+- [ ] **2.3c Arrepentimiento como métrica.** Medido
+  (`docs/results/decision_regret_2026-09-27.md`, rama `feat/decision-regret`,
+  PR abierto): **v5 no se implementó**.
+  - Métrica: error relativo extra del motor elegido frente al mejor, en los
+    cutoffs de la grilla que no se usaron para decidir.
+  - Criterio pre-registrado (media ≤ v4 + 2 pp y p90 ≤ v4 + 5 pp): lo
+    cumplen FRED estacional, Acciones y ETFs; **falla FRED SA**, con p90 de
+    137,4 contra el límite de 104,3.
+  - La media de SA a 30 está dominada por una explosión de Holt en UNRATE
+    (2020-04, ver 2.6), y serie por serie las dos SA mejoran a 12. Un
+    criterio nuevo tendría que fijarse ahora y validarse con otro snapshot.
+  - UNRATE a 12 no es un empate: depende del régimen (Holt 10 / TimesFM 14
+    cutoffs; medianas 1,43 y 1,51; solo 4 de 24 cutoffs dentro de ±10%).
 - [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
@@ -150,6 +165,15 @@ Rama: a definir.
   Decisión explícita: el sesgo positivo (el precio real terminó por encima del
   centro, cada vez más con el horizonte) **NO se corrige**. Sale de una muestra
   de ~5 años mayormente alcista, y agregar drift sería ajustarse a ese régimen.
+- [ ] **2.6 Holt explota tras un shock de nivel (propuesto).** En el
+  mini-backtest de UNRATE, con el cutoff 2020-04-01 y 30 meses, el MASE de
+  Holt es 1.715.969: la tendencia amortiguada en escala log, estimada sobre
+  el salto del COVID, extrapola una exponencial. A 12 meses el mismo tramo
+  da 105,7. Pasaría en producción si se proyecta a horizonte largo justo
+  después de un salto.
+  Hecho cuando: hay un test con un salto de nivel sintético, y una salvaguarda
+  (límite al crecimiento implícito, o fallback con aviso) medida sobre el
+  snapshot.
 
 ## Fase 3 — Experimento TimesFM-3
 
@@ -433,7 +457,7 @@ Rama: una por ítem, a definir.
   Hecho cuando: hay una recomendación de cuál integrar primero para el caso
   "consumo eléctrico por IA" de la Fase 5, con una llamada real a cada una.
 - [x] **4.14 Horizonte en las unidades de la serie (UI/API), alta prioridad.**
-  (rama `fix/horizon-units`, PR abierto; `docs/results/horizon_units_2026-09-27.md`)
+  (PR #35, mergeado; `docs/results/horizon_units_2026-09-27.md`)
   - La frecuencia sale de las fechas (`backend/services/horizons.py`).
   - Horizontes por frecuencia: diaria 30/60/90/180, semanal 4/13/26,
     mensual 3/6/12/24, trimestral 2/4/8. Canónicos: 60, 13, 12 y 4.
