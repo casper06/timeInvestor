@@ -1,221 +1,322 @@
-# Engine Selection Architecture
+# Arquitectura
 
-## EngineSelector decision flow
+Cómo está armado TimeInvestor hoy (`main` @ `16b6782`, 2026-09-27). Cada
+diagrama describe el código real y nombra los archivos donde vive cada
+parte. Las decisiones de diseño y sus motivos están en [`docs/adr/`](adr/);
+el trabajo pendiente, en [`docs/PLAN.md`](PLAN.md).
 
-How `EngineSelector.select()` picks an engine for one specific forecast
-request, given a series' identity, type, and available history:
+## 1. Visión general
+
+```mermaid
+flowchart LR
+    subgraph FE["Frontend: React 19 + Vite (frontend/src/)"]
+        APP["App.tsx y components/<br/>services/api.ts<br/>utils/horizon.ts, utils/exportReport.ts"]
+    end
+
+    subgraph API["API: FastAPI (backend/api/routes.py, prefijo /api)"]
+        RT["/thesis, /interpret"]
+        RD["/data/market, /data/macro,<br/>/data/fundamentals, /catalog/*"]
+        RF["/forecast"]
+        RQ["/backtest, /correlation,<br/>/portfolio/optimize, /portfolio/risk,<br/>/portfolio/rebalance-backtest"]
+        RP["/theses (CRUD),<br/>/theses/{id}/snapshots, /theses/{id}/notes"]
+        RC["/health, /config/llm-providers,<br/>/config/llm-provider"]
+    end
+
+    subgraph SV["Servicios (backend/services/)"]
+        LLM["llm_router.py<br/>llm_availability.py"]
+        DF["data_fetcher.py<br/>caché en memoria con TTL"]
+        SEL["engine_selector.py<br/>auto_discovery.py"]
+        ENG["forecast_engine.py<br/>Holt, Holt-Winters, TimesFM"]
+        AUX["seasonality.py, horizons.py,<br/>reliability.py"]
+        QNT["backtest_engine.py, correlation_engine.py,<br/>portfolio_engine.py, risk_engine.py,<br/>rebalance_engine.py"]
+    end
+
+    subgraph EXT["Fuentes externas"]
+        YF["yfinance"]
+        FRED["FRED API"]
+        LLMX["Gemini API, OpenAI, Ollama,<br/>Gemini CLI, Claude Code CLI"]
+    end
+
+    DB[("SQLite (backend/database/)<br/>theses, forecast_snapshots, research_notes,<br/>engine_decisions, claude_cli_usage")]
+
+    APP --> RT & RD & RF & RQ & RP & RC
+    RT --> LLM
+    RC --> LLM
+    RD --> DF
+    RF --> SEL
+    RF --> AUX
+    RQ --> QNT
+    RP --> DB
+    SEL --> ENG
+    SEL --> DB
+    SEL --> QNT
+    QNT --> DF
+    QNT --> ENG
+    ENG --> AUX
+    LLM --> LLMX
+    LLM --> DB
+    DF --> YF
+    DF --> FRED
+```
+
+- `SEL --> QNT`: el auto-discovery corre el mini-backtest con
+  `BacktestEngine`, no con una copia propia.
+- `LLM --> DB`: `ClaudeCliLLMClient` acumula el costo equivalente por día y
+  modelo en `claude_cli_usage`.
+- `MockLLMClient` (heurística local, sin red) es el proveedor de respaldo de
+  todos los demás.
+
+## 2. Flujo de una tesis
+
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant UI as App.tsx
+    participant API as API /api
+    participant LLM as llm_router
+    participant DF as data_fetcher
+    participant SEL as EngineSelector
+
+    Note over UI: Al abrir, carga la última tesis guardada (GET /theses)<br/>o una tesis por defecto con force_mock: nunca gasta un LLM real sin pedido del usuario
+    U->>UI: escribe la tesis y pulsa "Analizar Tesis"
+    UI->>API: POST /thesis
+    API->>LLM: get_llm_client().parse_thesis(texto)
+    LLM-->>API: tickers, macro_series, rationales,<br/>provider_used, fallback_reason, fallback_category
+    API-->>UI: ThesisResponse
+    UI->>API: GET /data/fundamentals (tickers)
+    UI->>API: GET /data/market (primer ticker) o /data/macro
+    API->>DF: get_history o get_series
+    DF-->>UI: TimeSeriesData (source, from_cache, frequency)
+    UI->>API: POST /forecast (points, horizonte de la frecuencia, series_id, series_type)
+    API->>SEL: EngineSelector.select(...)
+    SEL-->>API: ForecastResponse
+    API-->>UI: valores, banda, model_name, engine_selection_reason,<br/>frequency, horizon, decision_horizon, reliable
+    Note over UI: MetricCards, ForecastChart, StatisticalTelemetry
+    U->>UI: "Interpretar" en el copiloto
+    UI->>API: POST /interpret (InterpretationContext)
+    API->>LLM: interpret_situation (incluye el aviso "no confiable" si lo hay)
+    LLM-->>UI: InterpretationResponse
+    Note over UI: Pestañas a pedido: backtest (/backtest), correlación (/correlation),<br/>gráfico dual (/data/*), asignación y riesgo (/portfolio/*)
+```
+
+Archivos: `frontend/src/App.tsx` (`handleAnalyzeThesis`,
+`loadSeriesAndForecast`), `backend/api/routes.py`,
+`backend/services/llm_router.py`, `backend/services/data_fetcher.py`,
+`backend/services/engine_selector.py`.
+
+## 3. Selección de motor
+
+`EngineSelector.select()` (`backend/services/engine_selector.py`) elige el
+motor **por serie**. El endpoint (`routes.generate_forecast`) resuelve antes
+la frecuencia y el horizonte, y después marca la confiabilidad.
 
 ```mermaid
 flowchart TD
-    A["Forecast request:\nseries_id, series_type, points, db session"] --> B{"series_id in\nSEASONAL_FRED_CATALOG?"}
-    B -- yes --> C{"USE_REAL_TIMESFM\nand weights loaded?"}
-    C -- yes --> D["TimesFM (o Holt-Winters, según la entrada)\nreason: motor + solidez de la evidencia\n(firme / probable, con su p)"]
-    C -- no --> E["Plan B: Holt-Winters si el detector\nla marca estacional (si HW falla, Holt con motivo);\nHolt si no es estacional"]
-
-    B -- no --> F{"series_id in\nDIVERSIFIED_ETF_CATALOG?"}
-    F -- yes --> G["Holt\nreason: 'Índice/ETF — TimesFM no le ganó\na Holt en el benchmark (0/4)'"]
-
-    F -- no --> M{"db session given AND\nlen(points) >= 90?"}
-    M -- yes --> N["AutoDiscoveryEngine.decide()\n(Variant B, see below)"]
-    N --> O{"cached decision\nfound/produced?"}
-    O -- yes --> P["Holt or TimesFM per the\ncached mini-backtest MASE winner\nreason: 'Auto-evaluado el {fecha}: X ganó\nMASE {x} vs Y {y}'"]
-    O -- no (mini-backtest\nfailed or unavailable) --> H
-
-    M -- no --> H{"len(points) <\nLOW_CONFIDENCE_HISTORY_THRESHOLD (90)?"}
-    H -- yes --> I["Holt + fitted_params.low_confidence=1\nreason: 'Historia insuficiente — ningún\numbral corto favoreció a TimesFM'"]
-
-    H -- no --> J["Holt (default)\nreason: 'Acción individual,\nhistoria suficiente — Holt (default)'"]
-
-    D --> K["ForecastResponse\n(model_name, engine_selection_reason)"]
-    E --> K
-    G --> K
-    P --> K
-    I --> K
-    J --> K
+    REQ["POST /api/forecast"] --> FQ["resolve_frequency(fechas)<br/>horizonte = el pedido o el canónico"]
+    FQ --> EXP{"engine = holt_winters<br/>en el request?"}
+    EXP -- sí --> HWX["HoltWintersForecastEngine directo<br/>serie no estacional: 422"]
+    EXP -- no --> S1{"series_id en<br/>SEASONAL_FRED_CATALOG?"}
+    S1 -- "sí, entrada timesfm" --> TP["_run_with_timesfm_preference"]
+    S1 -- "sí, entrada holt_winters" --> HWO["_run_holt_winters_or_holt<br/>si Holt-Winters falla: Holt con el motivo"]
+    S1 -- no --> S2{"series_id en<br/>DIVERSIFIED_ETF_CATALOG?"}
+    S2 -- sí --> H1["Holt"]
+    S2 -- no --> S3{"hay sesión de DB<br/>y 90 puntos o más?"}
+    S3 -- sí --> AD["AutoDiscoveryEngine.decide()<br/>ver sección 4"]
+    AD -- "elige timesfm" --> TP
+    AD -- "elige holt_winters" --> HWO
+    AD -- "elige holt" --> H2["Holt"]
+    AD -- "sin decisión" --> S4
+    S3 -- no --> S4{"menos de 90 puntos?"}
+    S4 -- sí --> H3["Holt con low_confidence"]
+    S4 -- no --> H4["Holt (default)"]
+    TP --> TQ{"USE_REAL_TIMESFM<br/>y TimesFM corrió<br/>sin caer a Holt?"}
+    TQ -- sí --> TFM["TimesFM<br/>banda p10-p90, interval_level 0,80"]
+    TQ -- no --> PB{"Plan B: el detector<br/>la marca estacional?"}
+    PB -- sí --> HWB["Holt-Winters<br/>si falla: Holt"]
+    PB -- no --> HB["Holt"]
+    HWX & HWO & H1 & H2 & H3 & H4 & TFM & HWB & HB --> REL["_mark_reliability: X mayor que 2<br/>da reliable = false, sin tocar números"]
+    REL --> RESP["ForecastResponse"]
 ```
 
-## Current state: Variant A — curated catalogs (implemented)
+- **`decision_horizon`**: cuando el motor sale de una evaluación, la
+  respuesta dice a qué horizonte se evaluó. Catálogo estacional, 12
+  (`scripts/seasonal_benchmark.py`); catálogo de ETFs, 30
+  (`scripts/benchmark_real_data.py`); auto-discovery, el `horizon` de la
+  decisión. Las respuestas de plan B no lo llevan (`is_fallback = true`).
+- **Catálogos** (`SEASONAL_FRED_CATALOG`, `DIVERSIFIED_ETF_CATALOG`): se
+  consultan primero. Cada entrada estacional trae su motor, la solidez de la
+  evidencia (test de signo pareado y Bonferroni, 3.0c+d) y la referencia al
+  resultado.
+- **Auto-discovery** (`backend/services/auto_discovery.py`): cubre cualquier
+  serie fuera de los catálogos con 90 puntos o más. El mini-backtest
+  (criterio v4) toma 8 cutoffs repartidos en una ventana reciente según la
+  frecuencia (`RECENT_WINDOW`: 504 puntos en diarias, 104 en semanales, 120
+  en mensuales, 40 en trimestrales), cada uno con `MINI_BACKTEST_HORIZON` (30)
+  puntos de evaluación, y corre en cada cutoff el motor base y TimesFM con
+  `BacktestEngine.run_backtest(engine_override=...)`, los dos al 80%.
+  - Motor base: Holt con MASE a un paso, o Holt-Winters con MASE estacional
+    si la serie es estacional.
+  - Los cutoffs donde TimesFM cayó a Holt se descartan para los dos motores
+    y se cuentan en `timesfm_failed_cutoffs`.
+  - Si el base rechaza un cutoff, se cuenta en `baseline_skipped_cutoffs`.
 
-`backend/services/engine_selector.py`'s `EngineSelector` picks Holt vs TimesFM
-per series using **explicit, hand-curated catalogs** (`SEASONAL_FRED_CATALOG`,
-`DIVERSIFIED_ETF_CATALOG`), each backed by a one-time walk-forward benchmark
-over real data (`scripts/benchmark_real_data.py`). See that module's docstring
-for the full results table and rationale per category.
-
-This is cheap (one inference per forecast request, same as before) but has two
-structural limitations:
-
-1. **Coverage gap**: any series not in a curated catalog and not obviously
-   "individual equity" (e.g. a new ETF, a foreign index, a commodity) gets no
-   evidence-based routing — it silently falls into the default (Holt).
-2. **Staleness**: the catalogs reflect one benchmark run on one snapshot of
-   market/macro data. Regime changes (e.g. TimesFM's foundation-model training
-   distribution drifting relative to markets over years) require re-running
-   the benchmark script and manually updating the catalogs — there's no
-   feedback loop that keeps the routing current on its own.
-
-## Variant B (implemented): real-time per-series mini-backtest, cached
-
-`backend/services/auto_discovery.py`'s `AutoDiscoveryEngine` implements what
-this section originally only proposed. Any series outside both curated
-catalogs, with enough history (`n_points >= 90`, same threshold as the
-cold-start check), gets its own evidence instead of silently defaulting to
-Holt without ever being measured — this was the scaling problem with
-Variant A alone: a series Gemini brings back that was never part of the
-original benchmark round (e.g. `IPG3344S`, a semiconductor manufacturing
-FRED series) got no evidence-based routing at all before this existed.
-
-How it works:
-
-1. Take the series' available history (re-fetched via `BacktestEngine`, which
-   already knows how to pull FRED vs. yfinance data — reused, not duplicated).
-2. Pick `DECISION_N_CUTOFFS` (8) cutoffs evenly spaced over a **recent window
-   by frequency** (`RECENT_WINDOW`: 2 years daily/weekly, 10 years
-   monthly/quarterly), each leaving `MINI_BACKTEST_HORIZON` (30) points for
-   evaluation. Until criterion v3 the cutoffs were spread over the whole
-   history, which put FRED cutoffs in 1989.
-3. At each cutoff, run **both** the baseline and TimesFM (via
-   `BacktestEngine.run_backtest(engine_override=...)`) at the same 80% level.
-   The baseline is Holt with the 1-step MASE, or Holt-Winters with the
-   seasonal MASE for series the 3.0a detector marks seasonal (3.0f).
-4. `decide_robust` (criterion v4, item 2.3): TimesFM only wins if it beats the
-   baseline on a **majority of the paired cutoffs** AND by at least 10% on
-   the mean error, with at least 7 paired cutoffs; anything else is a tie and
-   the baseline stays. On re-evaluation, switching away from the current
-   engine requires twice the margin (hysteresis). The coverage guard was
-   removed in v4 (it changed ≤ 7% of decisions once the TimesFM band was
-   fixed). Measurements: `docs/results/decision_stability_2026-09-26.md` and
-   `docs/results/decision_variants_2026-09-26.md`.
-5. The decision (`engine_choice`, `mase_holt`, `mase_timesfm`, `evaluated_at`,
-   `n_points_at_evaluation`, and since 4.14 the `horizon` it evaluated) is cached in SQLite (`engine_decisions` table, one
-   row per `series_id`) — chosen over a flat file since this project already
-   uses SQLAlchemy/SQLite for theses/snapshots/notes, and a per-series decision
-   with fields that need querying/updating fits that pattern better than
-   reading-and-rewriting a JSON blob.
-6. Every later request for the same series is a single indexed lookup — no
-   inference re-run — until the decision goes stale.
-
-**Horizon units (4.14).** A horizon is a number of steps of the series, and
-the frequency comes from the dates (`backend/services/horizons.py`, mirrored
-in `frontend/src/utils/horizon.ts`), never from the series type: 12 on a
-monthly series is 12 months, 60 on a daily one is 60 business days. The UI
-default is a canonical horizon per frequency (daily 60, weekly 13, monthly 12,
-quarterly 4). `ForecastResponse.decision_horizon` says at which horizon the
-chosen engine was evaluated (the mini-backtest's, or the catalog benchmark's),
-and the UI notes it when it differs from the one requested. Criterion v4 still
-evaluates at `MINI_BACKTEST_HORIZON` (30 steps) for every frequency.
-
-**Invalidation** (any one of these triggers re-evaluation):
-- More than `DECISION_TTL_DAYS` (30) since `evaluated_at` — a regime shift
-  shouldn't be locked in forever from one measurement.
-- The series has grown by `STALE_GROWTH_FRACTION` (20%) or more new points
-  since `n_points_at_evaluation` — e.g. a daily equity accumulating ~21 new
-  trading days/month eventually has enough new signal to be worth re-checking
-  independent of the calendar.
-- The decision was taken **without TimesFM** (`mase_timesfm IS NULL`) and
-  TimesFM is available now. "TimesFM never ran" is not "Holt won": Holt wasn't
-  compared against anything, so it's re-evaluated right away instead of waiting
-  out the TTL. While TimesFM is still unavailable the cached decision is served
-  as-is (re-running would be Holt-only again). The check is
-  `TimesFMForecastEngine.is_available()`: it doesn't touch the model with
-  `USE_REAL_TIMESFM=false`, and otherwise loads it at most once per process
-  (a failed load is never retried), so asking on every request is cheap.
-  No schema change: `mase_timesfm` was already nullable and `NULL` already
-  meant exactly this, so existing databases keep working as they are.
-
-**TimesFM falling back inside the mini-backtest.** A loaded TimesFM can still
-fail on a given cutoff; `TimesFMForecastEngine.forecast()` then answers with
-Holt, and `BacktestResponse.is_fallback` says so. That cutoff is dropped for
-both engines (the comparison stays paired over the same cutoffs) and counted
-in `engine_decisions.timesfm_failed_cutoffs`. If it fails on every cutoff,
-`mase_timesfm` stays `NULL` but `timesfm_failed_cutoffs > 0`: that is not
-"no evaluado", so it waits for the regular TTL instead of re-running on every
-request. The column was added later; `init_db()` adds it to existing databases
-(`migrate_added_columns`), and old rows read as `NULL` with the old meaning.
-
-A failed mini-backtest (e.g. a data-provider hiccup) is caught and logged, and
-`decide()` returns `None` (or a stale cached decision if one exists) rather
-than raising — the actual `/forecast` request that triggered it must not break
-just because the auto-discovery side-quest failed.
-
-The curated catalogs (`SEASONAL_FRED_CATALOG`, `DIVERSIFIED_ETF_CATALOG`) are
-checked FIRST and remain a fast, free shortcut for the series already measured
-in the original benchmark round — auto-discovery only runs for series outside
-both.
-
-### Measured cost
-
-(Measured before v4, with 3 cutoffs; v4 uses 8, measured at 2.2–3.0 s per series end to end
-including the data download — see docs/results/decision_variants_2026-09-26.md.)
-A **new** series' first forecast request pays for 3 cutoffs × 2 engines = up
-to 6 backtests (each re-fetching data and running one inference), before the
-real forecast is even served. Measured on this repo's dev machine (CPU,
-`USE_REAL_TIMESFM=true`, real fetched data):
-
-| Series | Call | Latency |
-|---|---|---|
-| JNJ (equity) | 1st (triggers mini-backtest) | ~4.3 s |
-| JNJ (equity) | 2nd (cached decision) | ~0.13 s |
-| IPG3344S (FRED, uncatalogued) | 1st (triggers mini-backtest) | ~3.4 s |
-| IPG3344S (FRED, uncatalogued) | 2nd (cached decision) | ~0.02 s |
-| XOM (equity) | 1st (triggers mini-backtest) | ~4.2 s |
-
-So: **~3-20x slower on the first request for a genuinely new series**, back to
-normal (a single engine call, same as before this feature) on every request
-after — this matches the "mitigation" this section originally proposed before
-implementation (cache the decision, not the forecast; only trigger the
-expensive path for series outside the cheap catalogs) rather than the more
-elaborate async/background variant, which was judged unnecessary complexity
-for a cost this localized (one slow request per series, ever, per TTL window).
-
-## General architecture
-
-The main blocks, for someone new to the codebase — not exhaustive at the file
-level, just enough to place where a change would live:
+### Regla v4 (`decide_robust`)
 
 ```mermaid
-graph TD
-    subgraph Frontend["Frontend (React 19 + Vite, frontend/src/)"]
-        UI["App.tsx + components/\n(ForecastChart, MetricCards, ThesisCopilot,\nBacktestPanel, CorrelationHeatmap, ...)"]
-    end
-
-    subgraph API["API (FastAPI, backend/api/routes.py)"]
-        R1["/thesis, /interpret"]
-        R2["/data/market, /data/macro,\n/data/fundamentals, /catalog/*"]
-        R3["/forecast"]
-        R4["/backtest, /correlation,\n/portfolio/*, /rebalance/backtest"]
-        R5["/theses (CRUD), /notes, /snapshots"]
-    end
-
-    subgraph Services["Services (backend/services/)"]
-        S1["llm_router.py\n(Gemini / OpenAI / Ollama / Mock,\nretry + fallback classification)"]
-        S2["data_fetcher.py\n(MarketDataFetcher, FREDDataFetcher,\nin-memory TTL cache)"]
-        S3["engine_selector.py\n(Holt vs TimesFM per series)"]
-        S4["forecast_engine.py\n(DampedHoltForecastEngine,\nTimesFMForecastEngine)"]
-        S5["backtest_engine.py, correlation_engine.py,\nportfolio_engine.py, risk_engine.py,\nrebalance_engine.py"]
-    end
-
-    subgraph External["External sources"]
-        X1["yfinance\n(equities/ETFs)"]
-        X2["FRED API\n(macro series + metadata)"]
-        X3["Gemini / OpenAI / Ollama\n(LLM providers)"]
-    end
-
-    DB[("SQLite\nbackend/database/\n(theses, snapshots, notes)")]
-
-    UI --> R1 & R2 & R3 & R4 & R5
-
-    R1 --> S1
-    R2 --> S2
-    R3 --> S3
-    R4 --> S5
-    R5 --> DB
-
-    S3 --> S4
-    S5 --> S2
-    S5 --> S4
-
-    S1 --> X3
-    S2 --> X1
-    S2 --> X2
+flowchart TD
+    P{"7 cutoffs en par o más?"} -- no --> BASE["motor base"]
+    P -- sí --> INC{"decisión vigente del mismo criterio<br/>(incumbente)?"}
+    INC -- "no hay" --> W1{"TimesFM gana la mayoría de los pares<br/>Y su error medio es al menos<br/>10% menor que el del base?"}
+    W1 -- sí --> TF["timesfm"]
+    W1 -- "no: empate" --> BASE
+    INC -- "el base" --> W2{"lo mismo, pero con margen 20%<br/>(histéresis x2)"}
+    W2 -- sí --> TF
+    W2 -- no --> BASE
+    INC -- "timesfm" --> W3{"el base gana la mayoría<br/>Y su error medio es al menos<br/>20% menor?"}
+    W3 -- sí --> BASE
+    W3 -- no --> TF
 ```
+
+- `DECISION_ALPHA = None`: es mayoría simple, no test de signo.
+- `USE_COVERAGE_GUARD = False`: desde v4 no hay guard de cobertura.
+- Mediciones: `docs/results/decision_stability_2026-09-26.md` y
+  `docs/results/decision_variants_2026-09-26.md`.
+
+## 4. Ciclo de vida de una fila de `engine_decisions`
+
+Una fila por `series_id`, en `backend/database/models.py`
+(`EngineDecisionModel`). Las columnas agregadas después se crean en bases
+existentes con `migrate_added_columns` (`backend/database/connection.py`);
+las filas viejas las leen como `NULL`, con su significado original.
+
+```mermaid
+stateDiagram-v2
+    [*] --> SinFila
+    SinFila --> MiniBacktest: decide() con 90 puntos o más
+    MiniBacktest --> Evaluada: TimesFM corrió en algún cutoff
+    MiniBacktest --> NoEvaluado: TimesFM no disponible
+    MiniBacktest --> TFMFallo: TimesFM cargado pero cayó a Holt en todos
+    MiniBacktest --> SinFila: error (sin fila previa: decide() devuelve None)
+    Evaluada --> Vieja: versión, TTL o crecimiento
+    NoEvaluado --> Vieja: TimesFM disponible ahora, o versión, TTL o crecimiento
+    TFMFallo --> Vieja: versión, TTL o crecimiento
+    Vieja --> MiniBacktest: re-evaluación
+    Vieja --> Vieja: error del mini-backtest (se sirve la fila vieja)
+
+    state "Evaluada<br/>mase_timesfm con valor" as Evaluada
+    state "No evaluado<br/>mase_timesfm NULL, sin cutoffs fallidos" as NoEvaluado
+    state "TimesFM falló en todos<br/>mase_timesfm NULL, timesfm_failed_cutoffs mayor que 0" as TFMFallo
+    state "Vieja (_is_stale)" as Vieja
+```
+
+`_is_stale` marca una fila como vieja por cualquiera de estas razones:
+- **Versión del criterio**: `criteria_version` (NULL = 1) es menor que
+  `AUTO_DISCOVERY_CRITERIA_VERSION` (4). Hubo versiones 1 a 4: v2 en 3.0e
+  (banda de TimesFM y nivel común de comparación), v3 en 3.0f (base
+  Holt-Winters en series estacionales), v4 en 2.3.
+- **TTL**: pasaron más de `DECISION_TTL_DAYS` (30) desde `evaluated_at`.
+- **Crecimiento**: la serie creció `STALE_GROWTH_FRACTION` (20%) o más en
+  puntos.
+- **No evaluado**: `mase_timesfm` es NULL sin cutoffs fallidos y TimesFM
+  está disponible ahora.
+
+Al re-evaluar, el `engine_choice` anterior solo actúa como incumbente (con
+histéresis) si la fila es de la versión vigente; si es de una versión
+anterior, se decide de cero. La fila guarda además `baseline_engine`,
+`metric`, `baseline_skipped_cutoffs` y, desde 4.14, `horizon` (NULL = 30).
+
+## 5. Horizonte y unidades
+
+```mermaid
+flowchart TD
+    PTS["fechas de la serie"] --> INF["infer_frequency<br/>mediana de la distancia entre fechas<br/>(backend/services/seasonality.py)"]
+    INF --> FREQ["daily, weekly, monthly, quarterly, annual<br/>irregular se trata como daily<br/>(horizons.series_frequency)"]
+    FREQ --> TSD["TimeSeriesData.frequency<br/>(campo calculado en el backend)"]
+    FREQ --> CODE["FREQ_CODE: D, W, M, Q, A<br/>fechas futuras en esa unidad<br/>(_generate_future_timestamps)"]
+    TSD --> UIH["UI: opciones y horizonte canónico<br/>de la frecuencia (utils/horizon.ts)<br/>diaria 30/60/90/180, canónico 60<br/>semanal 4/13/26, canónico 13<br/>mensual 3/6/12/24, canónico 12<br/>trimestral 2/4/8, canónico 4"]
+    UIH --> REQ["POST /forecast con horizonte en pasos<br/>(sin horizonte: el canónico)"]
+    REQ --> CODE
+    CODE --> OUT["ForecastResponse: frequency, horizon, decision_horizon"]
+    OUT --> LBL["Etiquetas: +60d, +12 meses, 60 días hábiles<br/>CAGR con las fechas reales de la proyección<br/>Nota: motor elegido evaluando a N unidad,<br/>si decision_horizon difiere del pedido"]
+```
+
+- Un horizonte es una cantidad de **pasos de la serie**. La frecuencia sale
+  de las fechas, nunca del tipo de serie: FRED también tiene series diarias,
+  como DGS10.
+- `backend/services/horizons.py` y `frontend/src/utils/horizon.ts` son
+  espejos: hay que mantenerlos iguales.
+- El auto-discovery todavía decide a 30 pasos en todas las frecuencias
+  (criterio v4). El horizonte canónico mensual es 12 por uso (ciclo
+  estacional completo, comparación interanual), no por una métrica.
+- Los snapshots guardan su `frequency`; los anteriores a 4.14 se muestran
+  como "N pasos".
+
+## 6. Procedencia de los datos
+
+```mermaid
+flowchart TD
+    REQ["get_history (yfinance) o get_series (FRED)"] --> C{"en caché<br/>(CACHE_TTL_SECONDS)?"}
+    C -- sí --> CL["copia con el source ORIGINAL,<br/>from_cache = true, cached_at"]
+    C -- no --> FETCH{"la fuente respondió?"}
+    FETCH -- sí --> LIVE["source = live,<br/>from_cache = false"]
+    FETCH -- no --> SYN{"ALLOW_SYNTHETIC_DATA?<br/>(default false)"}
+    SYN -- no --> ERR["ValueError: /data/* responde 404<br/>con la causa real"]
+    SYN -- sí --> FAKE["serie sintética:<br/>source = synthetic, source_detail"]
+    CL & LIVE & FAKE --> USE["TimeSeriesData"]
+    USE --> Q{"endpoint cuantitativo?<br/>backtest, correlación,<br/>portfolio optimize, risk, rebalance"}
+    Q -- "sí y source = synthetic" --> R422["ValueError 'sintética': 422"]
+    Q -- no --> OK["se usa; la UI deshabilita las pestañas<br/>cuantitativas si la serie activa es sintética"]
+```
+
+- `source` (de dónde vino el dato) y `from_cache` (si se sirvió desde la
+  caché) son campos **separados**. Antes, un hit de caché pisaba `source`
+  con `"cached"`, y un dato sintético podía pasar los guards.
+- Archivos: `backend/services/data_fetcher.py`; los guards están en
+  `backtest_engine.py`, `correlation_engine.py`, `portfolio_engine.py`,
+  `risk_engine.py` y `rebalance_engine.py`; el mapeo a 422, en
+  `backend/api/routes.py`; las pestañas, en `frontend/src/App.tsx`
+  (`isSyntheticActive`) y `components/Header.tsx`.
+
+## 7. Workflow de desarrollo
+
+```mermaid
+flowchart TD
+    B["rama por ítem de PLAN.md<br/>(feat/, fix/, docs/, chore/)"] --> PRE{"el ítem mide algo<br/>para decidir?"}
+    PRE -- sí --> REG["pre-registrar el criterio con fecha<br/>(PLAN.md y bitácora) ANTES de medir"]
+    PRE -- no --> CODE
+    REG --> CODE["cambios + tests"]
+    CODE --> T["pytest -q (DB temporal de tests/conftest.py)<br/>vitest, tsc"]
+    T --> V["verificación con datos reales sobre una COPIA de la DB<br/>(DATABASE_URL explícito; la DB real no se toca)"]
+    V --> PR["push + PR, sin mergear"]
+    PR --> BIT["bitácora (.bitacora/RONDAS.md, ignorada por git):<br/>salida real de pytest, qué quedó sin verificar, decisiones"]
+    BIT --> OK{"el usuario escribe<br/>ok #N en el chat?"}
+    OK -- no --> ESP["no se mergea"]
+    OK -- sí --> M["gh pr merge N --merge<br/>verificar mergedAt"]
+    M --> MAIN["pull de main + pytest -q en main"]
+    MAIN --> DEL["borrar la rama: remota, y local con -d"]
+```
+
+Las reglas completas están en `CONTEXT.md`, sección 4.
+
+## Costo medido del auto-discovery
+
+- **Con v4**: 2,2 a 3,0 s por serie de punta a punta, descarga de datos
+  incluida (`docs/results/decision_variants_2026-09-26.md`). El primer
+  pedido de una serie nueva paga 8 cutoffs × 2 motores = hasta 16 backtests
+  antes de servir el pronóstico.
+- **Antes de v4**, con 3 cutoffs, en la máquina de desarrollo (CPU,
+  `USE_REAL_TIMESFM=true`, datos reales):
+
+| Serie | Pedido | Latencia |
+|---|---|---|
+| JNJ (acción) | 1.º (dispara el mini-backtest) | ~4,3 s |
+| JNJ (acción) | 2.º (decisión en caché) | ~0,13 s |
+| IPG3344S (FRED, fuera de catálogo) | 1.º | ~3,4 s |
+| IPG3344S (FRED, fuera de catálogo) | 2.º | ~0,02 s |
+| XOM (acción) | 1.º | ~4,2 s |
+
+- **Los pedidos siguientes** leen una fila de SQLite hasta que la decisión
+  queda vieja.
+- **Un mini-backtest que falla** (por ejemplo, una caída del proveedor de
+  datos) se registra en el log y no rompe el `/forecast` que lo disparó:
+  `decide()` devuelve la fila vieja si existe, o `None`.
