@@ -138,3 +138,21 @@ describe('generateMarkdownReport section numbering', () => {
     expect(md).toContain('Acción individual, historia suficiente — Holt (default).');
   });
 });
+
+describe('generateMarkdownReport — unreliable forecast (2.6)', () => {
+  it('carries the warning next to the projection', () => {
+    const md = generateMarkdownReport({
+      ...baseData,
+      forecast: {
+        timestamps: ['2026-01-01'],
+        values: [20855.32],
+        lower_bound: [2107.73],
+        upper_bound: [84853.43],
+        model_name: 'damped-holt-mle',
+        reliable: false,
+        reliability_warning: 'Pronóstico no confiable: a 12 meses proyecta 20,855.32.',
+      },
+    });
+    expect(md).toContain('⚠ Pronóstico no confiable: a 12 meses proyecta 20,855.32.');
+  });
+});

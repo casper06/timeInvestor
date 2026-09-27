@@ -70,6 +70,9 @@ export function generateMarkdownReport(data: ReportData): string {
     `- **Último Precio Real:** $${lastPrice.toFixed(2)} ${data.seriesData?.unit || 'USD'}\n` +
       `- **Precio Objetivo Proyectado (+${horizonLabel(data.horizon, seriesFrequency(data.seriesData?.frequency))}):** $${target.toFixed(2)} (${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%)\n` +
       `- **Banda de Confianza (${Math.round(data.confidence * 100)}% CI):** [$${lb.toFixed(2)} — $${ub.toFixed(2)}]\n` +
+      (data.forecast?.reliable === false
+        ? `- **⚠ ${data.forecast.reliability_warning || 'Pronóstico no confiable.'}**\n`
+        : '') +
       `- **Motor Predictivo:** ${data.forecast?.model_name || 'TimesFM'}` +
       (data.forecast?.engine_selection_reason ? ` — ${data.forecast.engine_selection_reason}` : '') +
       `\n\n`

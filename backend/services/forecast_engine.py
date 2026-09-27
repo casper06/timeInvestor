@@ -98,6 +98,13 @@ class DampedHoltForecastEngine(BaseForecastEngine):
         if sigma2 <= 0 or np.isnan(sigma2):
             sigma2 = 1e-4
         sigma = np.sqrt(sigma2)
+        # Final filter state, for diagnostics only (scripts/holt_explosion.py);
+        # nothing reads it to forecast.
+        self.last_state = {
+            "alpha": float(alpha), "beta": float(beta), "phi": float(phi), "sigma2": sigma2,
+            "level": float(level), "trend": float(trend), "use_log": bool(use_log),
+            "last_residual": float(residuals[-1]) if residuals else 0.0,
+        }
 
         # Confidence z-score (two-tailed)
         alpha_conf = 1.0 - confidence

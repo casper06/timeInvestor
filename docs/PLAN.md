@@ -127,8 +127,7 @@ Rama: a definir.
   se elige por cuál da menos desacuerdo. Si v5 decide en él se resuelve con
   2.3c.
 - [ ] **2.3c Arrepentimiento como métrica.** Medido
-  (`docs/results/decision_regret_2026-09-27.md`, rama `feat/decision-regret`,
-  PR abierto): **v5 no se implementó**.
+  (`docs/results/decision_regret_2026-09-27.md`, PR #36, mergeado): **v5 no se implementó**.
   - Métrica: error relativo extra del motor elegido frente al mejor, en los
     cutoffs de la grilla que no se usaron para decidir.
   - Criterio pre-registrado (media ≤ v4 + 2 pp y p90 ≤ v4 + 5 pp): lo
@@ -139,6 +138,41 @@ Rama: a definir.
     criterio nuevo tendría que fijarse ahora y validarse con otro snapshot.
   - UNRATE a 12 no es un empate: depende del régimen (Holt 10 / TimesFM 14
     cutoffs; medianas 1,43 y 1,51; solo 4 de 24 cutoffs dentro de ±10%).
+
+  **v5 queda en v4 por ahora.** Criterio para re-evaluarla, PRE-REGISTRADO el
+  2026-09-27 11:41, antes de que exista el snapshot de 3.5. Se evalúa SOLO con las
+  series nuevas de 3.5, nunca con `holt_coverage_2026-09-26.json`.
+  - **Qué se compara.** v4 (30 pasos en todas las frecuencias) contra v5
+    (canónico de cada frecuencia: diaria 60, semanal 13, mensual 12,
+    trimestral 4). La regla es la misma (`decide_robust`).
+  - **Protocolo.** El de `scripts/horizon_variants.py`: grilla de 24
+    cutoffs, 400 subconjuntos de 8 con la semilla `"{sid}-2.3b-{h}"`, y el
+    arrepentimiento en los cutoffs no usados para decidir.
+  - **Por serie, no agregado.** Para cada serie s y cada versión, A_s es la
+    media de sus 400 arrepentimientos acotados.
+  - **Cota del arrepentimiento: 100 pp por decisión**, es decir min(r, 1,0).
+    100 pp significa que el motor elegido tuvo el doble de error que el
+    mejor. Para decidir, eso ya es un fracaso total: pasado ese punto no hay
+    diferencia que importe, y una sola corrida que explota (UNRATE 2020-04,
+    2.6) no puede dominar la media. Se prefiere a winsorizar al p99 porque
+    esa cota dependería de los mismos datos que se miden y de cuántas
+    decisiones tenga cada serie. Se prefiere a limitar el MASE porque su
+    escala cambia con el horizonte (lo normal a 30 meses es 10-25), así que
+    una cota fija recortaría valores normales en un horizonte y no en otro.
+  - **Mejora o empate** de una serie: A_s(v5) ≤ A_s(v4) + 2 pp. Los 2 pp son
+    el orden del ruido de semilla visto en 2.3b.
+  - **Empeora de forma catastrófica:** A_s(v5) − A_s(v4) > 25 pp. En
+    promedio, la decisión le costaría a esa serie un cuarto de error más que
+    con v4 (un cuarto de "fracaso total"). Es más que la diferencia típica
+    entre TimesFM y Holt (10-30%), así que no puede ser ruido ni un empate
+    mal resuelto.
+  - **Regla de adopción.** v5 se adopta si, en CADA categoría con ≥ 3
+    series, mejora o empata en la mayoría estricta de sus series (más de la
+    mitad) y ninguna serie de ninguna categoría empeora de forma
+    catastrófica. Una categoría con < 3 series se reporta pero no decide.
+    Si no hay ninguna categoría con ≥ 3 series, v5 no se adopta.
+  - **Qué se reporta.** Por serie: A_s(v4), A_s(v5), la diferencia y el
+    veredicto. Por categoría: el conteo. Todo tal como salga.
 - [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
@@ -165,15 +199,27 @@ Rama: a definir.
   Decisión explícita: el sesgo positivo (el precio real terminó por encima del
   centro, cada vez más con el horizonte) **NO se corrige**. Sale de una muestra
   de ~5 años mayormente alcista, y agregar drift sería ajustarse a ese régimen.
-- [ ] **2.6 Holt explota tras un shock de nivel (propuesto).** En el
-  mini-backtest de UNRATE, con el cutoff 2020-04-01 y 30 meses, el MASE de
-  Holt es 1.715.969: la tendencia amortiguada en escala log, estimada sobre
-  el salto del COVID, extrapola una exponencial. A 12 meses el mismo tramo
-  da 105,7. Pasaría en producción si se proyecta a horizonte largo justo
-  después de un salto.
-  Hecho cuando: hay un test con un salto de nivel sintético, y una salvaguarda
-  (límite al crecimiento implícito, o fallback con aviso) medida sobre el
-  snapshot.
+- [ ] **2.6 Holt explota tras un salto de nivel.** (rama `fix/holt-explosion`,
+  PR abierto; `docs/results/holt_explosion_2026-09-27.md`)
+  - Diagnóstico: cuando el último dato es el salto, el ajuste SSE lleva α y β
+    a ~0,99 y 0,89, y el salto pasa a la tendencia. UNRATE ≤ 2020-04 da
+    20.860% a 12 meses; INDPRO ≤ 2020-04, −40%; HOUSTNSA ≤ 1988-04, ×2,8.
+  - En producción llegaba sin aviso: Holt por plan B sin TimesFM, o elegido
+    por auto-discovery (INDPRO).
+  - **Hecho:** marca "no confiable" (X > 2) para cualquier motor, sin tocar
+    los números. 0 falsos positivos en 2.358 corridas normales, y marca las 6
+    explosiones conocidas.
+  - **Pendiente de decisión:** la estimación robusta.
+    - A (recorte en nivel y tendencia): descartada.
+    - C (recorte solo en la tendencia): MASE igual o mejor en todo y menor
+      arrepentimiento en SA, pero falla la cláusula de cobertura en FRED SA
+      (+3,5 / +5,5 pp, con 2 series). Medirla con las series de 3.5.
+- [ ] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
+  `/api/backtest` no recibe `is_macro`, y `BacktestEngine` busca en yfinance
+  cualquier serie que no esté en `FREDDataFetcher.SERIES_CATALOG` (UNRATE,
+  verificado en 2.6).
+  Hecho cuando: la ruta sabe si la serie es de FRED (tipo en el request, o
+  el catálogo de la tesis) y hay un test.
 
 ## Fase 3 — Experimento TimesFM-3
 
@@ -313,6 +359,8 @@ verificada.
   pareados y test de signo contra el naive (mismo arnés que 3.0d), con el
   resultado en `docs/results/`, incluido "ningún motor le gana al naive"
   donde pase.
+  Incluye re-evaluar v5 con el criterio pre-registrado en 2.3c, sobre las
+  series nuevas de este ítem.
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
 incluso si la hipótesis no se sostiene.
@@ -535,7 +583,7 @@ Preguntas abiertas antes de planificar ítems:
 
 ## Orden de trabajo acordado (2026-09-26)
 
-2.2 → 2.3 → 4.14 → 2.3b → 3.5 → 4.13 → 4.11 → 3.4 (4.14 y 2.3b agregados el 2026-09-27). Primero la confiabilidad del
+2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 → 3.5 (con la re-evaluación de v5) → 4.13 → 4.11 → 3.4 (4.14, 2.3b, 2.3c y 2.6 agregados el 2026-09-27; hechos: 2.2, 2.3, 4.14, 2.3b medido y 2.3c medido). Primero la confiabilidad del
 pronóstico de FRED (cuánto oscilan y qué tan robustas son las decisiones, en
 qué categorías se le gana al naive, y mostrarlo); después, anclar los IDs y
 los vintages. El prompt (4.10) y la Fase 5 van después.

@@ -43,6 +43,18 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Implausible forecast (2.6): said, never hidden or trimmed. */}
+      {forecast?.reliable === false && (
+        <div
+          role="alert"
+          data-testid="unreliable-forecast"
+          className="flex items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-200"
+        >
+          <ShieldAlert className="h-4 w-4 flex-shrink-0 text-rose-400 mt-0.5" />
+          <span>{forecast.reliability_warning || 'Pronóstico no confiable.'}</span>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Card 1: Target Projection */}

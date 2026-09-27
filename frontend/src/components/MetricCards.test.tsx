@@ -60,3 +60,22 @@ describe('MetricCards in the series unit (4.14)', () => {
     expect(screen.getByText('Horizonte proyectivo 60 días hábiles')).toBeInTheDocument();
   });
 });
+
+describe('MetricCards unreliable forecast (2.6)', () => {
+  it('shows the warning when the backend marks the forecast unreliable, with the numbers untouched', () => {
+    const fc: ForecastResponse = {
+      ...monthlyForecast,
+      values: [...Array(11).fill(1000), 20855.32],
+      reliable: false,
+      reliability_warning: 'Pronóstico no confiable: a 12 meses proyecta 20,855.32 (×1,409.1 el último valor).',
+    };
+    render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('unreliable-forecast')).toHaveTextContent('Pronóstico no confiable');
+    expect(screen.getByText('20855.32')).toBeInTheDocument();
+  });
+
+  it('shows nothing when the forecast is reliable', () => {
+    render(<MetricCards thesisData={null} forecast={{ ...monthlyForecast, reliable: true }} seriesData={monthly} horizon={12} confidence={0.95} />);
+    expect(screen.queryByTestId('unreliable-forecast')).not.toBeInTheDocument();
+  });
+});
