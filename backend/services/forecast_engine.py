@@ -151,9 +151,10 @@ class DampedHoltForecastEngine(BaseForecastEngine):
                 if not allow_negative:
                     lb = max(0.0, lb)
 
-            future_vals.append(round(pred_val, 2))
-            lower_bounds.append(round(lb, 2))
-            upper_bounds.append(round(ub, 2))
+            # Full precision (2.11): rounding is presentation, done by the UI.
+            future_vals.append(float(pred_val))
+            lower_bounds.append(float(lb))
+            upper_bounds.append(float(ub))
 
         # Extrapolate timestamps
         last_ts_str = sorted_points[-1].timestamp
@@ -303,9 +304,9 @@ class HoltWintersForecastEngine(BaseForecastEngine):
         timestamps = DampedHoltForecastEngine()._generate_future_timestamps(sorted_points[-1].timestamp, horizon, freq)
         return ForecastResponse(
             timestamps=timestamps,
-            values=[round(float(v), 2) for v in values],
-            lower_bound=[round(float(v), 2) for v in lower],
-            upper_bound=[round(float(v), 2) for v in upper],
+            values=[float(v) for v in values],
+            lower_bound=[float(v) for v in lower],
+            upper_bound=[float(v) for v in upper],
             model_name=f"holt-winters-ets(A,Ad,A) m={m}",
             interval_level=confidence,
             fitted_params=fitted,
@@ -482,7 +483,7 @@ class TimesFMForecastEngine(BaseForecastEngine):
                     inputs=[context_vals],
                 )
 
-                pred_values = [round(float(v), 2) for v in point_forecast[0][:horizon]]
+                pred_values = [float(v) for v in point_forecast[0][:horizon]]
 
                 # The model's quantile head only exposes deciles (p10..p90), not a
                 # genuine 95% interval. Reporting p10/p90 AS 95% would fabricate a
@@ -494,16 +495,16 @@ class TimesFMForecastEngine(BaseForecastEngine):
                 # [mean, p90] until 2026-09-26).
                 if quantile_forecast is not None and quantile_forecast.shape[-1] >= 2:
                     lo_col, hi_col = self._quantile_columns(quantile_forecast.shape[-1])
-                    lower_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, lo_col]]
-                    upper_b = [round(float(v), 2) for v in quantile_forecast[0, :horizon, hi_col]]
+                    lower_b = [float(v) for v in quantile_forecast[0, :horizon, lo_col]]
+                    upper_b = [float(v) for v in quantile_forecast[0, :horizon, hi_col]]
                     reported_interval_pct = round((self.BAND_HIGH_Q - self.BAND_LOW_Q) * 100.0, 1)
                 else:
                     # No quantile head available at all — approximate from recent
                     # realized volatility, same spirit as the historical fallback
                     # this replaces, and label it honestly as approximate.
                     spread = np.std(context_vals[-30:]) * np.sqrt(np.arange(1, horizon + 1)) * 0.5
-                    lower_b = [round(float(p - s), 2) for p, s in zip(pred_values, spread)]
-                    upper_b = [round(float(p + s), 2) for p, s in zip(pred_values, spread)]
+                    lower_b = [float(p - s) for p, s in zip(pred_values, spread)]
+                    upper_b = [float(p + s) for p, s in zip(pred_values, spread)]
                     reported_interval_pct = None
 
                 last_ts = points[-1].timestamp

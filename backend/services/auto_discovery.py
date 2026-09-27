@@ -107,7 +107,11 @@ GUARD_INTERVAL_LEVEL = 0.80
 #       precision (no rounding to 2 decimals on load). Decisions computed on
 #       rounded data are re-decided: on NFCI the regret of v5 vs v4 changed
 #       enough to flip (docs/adr/0021).
-AUTO_DISCOVERY_CRITERIA_VERSION = 7
+#   v8 (2026-09-27, 2.11): same rule; the engines' forecasts and the
+#       backtest metrics the rule reads (MASE, MAE) are no longer rounded
+#       (they were rounded to 2-3 decimals), so the paired comparison and
+#       its margin see the real errors (docs/adr/0022).
+AUTO_DISCOVERY_CRITERIA_VERSION = 8
 
 # --- v4 decision parameters (2.3), chosen from the variant measurement ---
 # 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),
