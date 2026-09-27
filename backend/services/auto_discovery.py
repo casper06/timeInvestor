@@ -185,12 +185,13 @@ def decide_robust(baseline_name: str, base_errors: list, tfm_errors: list,
     return choice, info
 
 
-def recent_cutoff_indices(n: int, n_cutoffs: int, window: int) -> list:
+def recent_cutoff_indices(n: int, n_cutoffs: int, window: int, horizon: int = None) -> list:
     """0-based indices of `n_cutoffs` cutoffs evenly spaced over the most
     recent `window` points (never before MIN training), each leaving
-    MINI_BACKTEST_HORIZON points after it."""
-    min_train = max(30, MINI_BACKTEST_HORIZON * 2)
-    last = n - 1 - MINI_BACKTEST_HORIZON
+    `horizon` points after it (default MINI_BACKTEST_HORIZON)."""
+    horizon = MINI_BACKTEST_HORIZON if horizon is None else horizon
+    min_train = max(30, horizon * 2)
+    last = n - 1 - horizon
     first = max(min_train - 1, n - window)
     if last < first:
         return []

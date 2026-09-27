@@ -145,3 +145,15 @@ def test_mini_backtest_clear_win_is_timesfm(db_session, monkeypatch):  # noqa: F
     _mock_mini_backtest(monkeypatch, tfm_available=True, mase_holt=1.0, mase_tfm=0.7)
     d = AutoDiscoveryEngine.decide(db_session, "CLEAR", n_points=500)
     assert d.engine_choice == "timesfm" and d.criteria_version == 4
+
+
+# --- 2.3b: optional horizon for recent_cutoff_indices (not wired into v4) -----------
+
+def test_recent_cutoffs_default_horizon_unchanged():
+    assert recent_cutoff_indices(498, 8, 120) == recent_cutoff_indices(498, 8, 120, horizon=ad.MINI_BACKTEST_HORIZON)
+
+
+def test_recent_cutoffs_respect_an_explicit_horizon():
+    idx = recent_cutoff_indices(498, 8, 120, horizon=12)
+    assert max(idx) == 498 - 1 - 12
+    assert min(idx) >= 498 - 120
