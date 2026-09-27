@@ -214,6 +214,37 @@ Rama: a definir.
     - C (recorte solo en la tendencia): MASE igual o mejor en todo y menor
       arrepentimiento en SA, pero falla la cláusula de cobertura en FRED SA
       (+3,5 / +5,5 pp, con 2 series). Medirla con las series de 3.5.
+  **Criterio para adoptar C, PRE-REGISTRADO el 2026-09-27 12:13**, antes de que exista
+  el snapshot de 3.5. Se evalúa SOLO con las series nuevas de 3.5, nunca con
+  `holt_coverage_2026-09-26.json`.
+  - **Qué se compara.** El Holt actual contra C (`make_robust_holt("trend")`,
+    k = 2) como motor base, en las series donde el base es Holt (no
+    estacionales). En las estacionales el base es Holt-Winters: C no aplica.
+  - **Horizontes.** El canónico de cada frecuencia y el del criterio vigente
+    del auto-discovery (30 mientras siga v4). Hay que cumplir en los dos.
+  - **Protocolo.** El de 2.3c: grilla de 24, 400 subconjuntos de 8 con la
+    semilla `"{sid}-2.3b-{h}"`, y el arrepentimiento acotado a 100 pp en
+    los cutoffs no usados. Cortes "normales" y "de salto" como en 2.6
+    (último paso > 4 σ robustos).
+  - **Por serie**, en los cortes normales:
+    - arrepentimiento: C empata o mejora si A_s(C) ≤ A_s(actual) + 2 pp;
+    - error: MASE(C) ≤ 1,02 × MASE(actual);
+    - cobertura, medida como distancia al nominal:
+      |cob(C) − 80| ≤ |cob(actual) − 80| + 2 pp.
+  - **Cambio respecto de 2.6, dicho explícitamente:** la cobertura pasa de
+    "±2 pp respecto de la actual" a "distancia al nominal", porque acercarse
+    al 80% no es empeorar. Se escribió después de ver el resultado de 2.6,
+    pero sobre ese snapshot C **seguiría fallando** en FRED SA: a 12, 9,6 pp
+    contra el límite de 8,1; a 30, 5,6 contra 2,1. No está hecho a la medida
+    del resultado.
+  - **Empeora de forma catastrófica:** A_s(C) − A_s(actual) > 25 pp, o C
+    marca "no confiable" (X > 2) en algún corte normal donde el Holt actual
+    no marca.
+  - **Regla de adopción.** C reemplaza a Holt si, en cada categoría con ≥ 3
+    series no estacionales, la mayoría estricta cumple las tres condiciones
+    por serie, en los dos horizontes, y ninguna serie empeora de forma
+    catastrófica. Una categoría con < 3 series se reporta pero no decide; si
+    no hay ninguna con ≥ 3, C no se adopta.
 - [ ] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
   `/api/backtest` no recibe `is_macro`, y `BacktestEngine` busca en yfinance
   cualquier serie que no esté en `FREDDataFetcher.SERIES_CATALOG` (UNRATE,
