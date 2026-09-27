@@ -173,6 +173,17 @@ Rama: a definir.
     Si no hay ninguna categoría con ≥ 3 series, v5 no se adopta.
   - **Qué se reporta.** Por serie: A_s(v4), A_s(v5), la diferencia y el
     veredicto. Por categoría: el conteo. Todo tal como salga.
+- [ ] **2.9 Redondeo en la carga de datos.** `data_fetcher.py` redondea a 2
+  decimales al cargar (líneas 91, 174, 196, 236, 342 y 456, la última en la
+  serie sintética). En índices como NFCI o STLFSI4 eso descarta información
+  antes de los motores y genera empates artificiales (visto en 3.5).
+  - Los datos se guardan y se procesan con la precisión de la fuente; se
+    redondea solo al mostrarlos.
+  - Hay que evaluar el impacto en la caché existente y en los resultados
+    versionados (probablemente los cambia) y documentar cuáles cambian.
+  Hecho cuando: el fetcher conserva la precisión de la fuente, la UI
+  redondea al mostrar, hay tests, y hay una lista de los resultados
+  versionados afectados (re-corridos o marcados).
 - [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
@@ -676,6 +687,12 @@ Rama: una por ítem, a definir.
   Hecho cuando: la UI elige horizonte y `freq` según la frecuencia detectada
   de la serie (por ejemplo, 3/6/12/24 meses para mensuales), las tarjetas y
   el gráfico muestran la unidad correcta, y hay tests.
+- [ ] **4.15 Calibración empírica de los intervalos por categoría (conformal),
+  baja prioridad.** En 3.5, Holt cubre de más en diarias y semanales (94-98%
+  contra 80%) y TimesFM cubre de menos en mensuales (70-79% contra 80%).
+  Hecho cuando: hay una propuesta de calibración conformal por categoría,
+  medida en cutoffs que no se usaron para calibrar, que no empeora el
+  arrepentimiento.
 - [ ] **4.13 Capacidad de pronóstico visible en la UI.** Para cada serie,
   mostrar si el motor le gana al naive en su backtest (random walk o
   estacional, según corresponda) y, cuando no le gana, decirlo
@@ -797,8 +814,19 @@ implementación.
   - Hecho cuando: `AUTO_DISCOVERY_CRITERIA_VERSION = 5`, la decisión y el
     `decision_horizon` salen en el canónico, hay tests y una verificación
     sobre una copia de la DB.
-- [ ] **2.8 `decide_robust` lanza `ZeroDivisionError` si el error medio del
-  base es exactamente 0.** Divide por él para `rel_gap`, que es solo un
+- [x] **2.8 `decide_robust` lanza `ZeroDivisionError` si el error medio del
+  base es exactamente 0.** (rama `fix/decide-robust-zero-error`, PR abierto)
+  - Ahora: si el error del base es 0, gana el base; si los dos son 0, es
+    empate → base, también contra un incumbente TimesFM.
+  - Da lo mismo que producción hacía por accidente (el motor base), pero sin
+    excepción y con la decisión cacheada. En el benchmark de 3.5, DFEDTARU
+    da un resultado idéntico con 0 fallas (antes, 30).
+  - El texto del motivo dice "empataron" cuando los errores medios son
+    iguales.
+  - Hallazgo aparte, sin tocar: en DFEDTARU el MASE vale ~2,5 millones. El
+    MAE naive dentro de la muestra es 0 en los tramos planos y el backtest
+    divide por él + 1e-8.
+  - Detalle original: Divide por él para `rel_gap`, que es solo un
   dato informativo. Se vio en DFEDTARU (3.5): Holt acierta exacto los
   tramos planos de una tasa en escalones. En producción `decide()` atrapa
   la excepción y la serie cae al default sin decisión.
@@ -809,7 +837,7 @@ implementación.
 
 ## Orden de trabajo acordado (2026-09-26, actualizado el 2026-09-27)
 
-**3.5 → 2.3d (v5) → 2.8 → 4.13 → 4.11 → 3.4.** 2.7 está hecho.
+**2.8 → 2.3d (v5) → 2.9 → 4.13 → 4.11 → 3.4** (actualizado el 2026-09-27). 2.7 y 3.5 están hechos.
 
 Historia del orden: 2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 (hechos o medidos
 el 2026-09-26/27). 2.7 se agregó el 2026-09-27 y va primero porque bloquea
