@@ -127,8 +127,7 @@ Rama: a definir.
   se elige por cuál da menos desacuerdo. Si v5 decide en él se resuelve con
   2.3c.
 - [ ] **2.3c Arrepentimiento como métrica.** Medido
-  (`docs/results/decision_regret_2026-09-27.md`, rama `feat/decision-regret`,
-  PR abierto): **v5 no se implementó**.
+  (`docs/results/decision_regret_2026-09-27.md`, PR #36, mergeado): **v5 no se implementó**.
   - Métrica: error relativo extra del motor elegido frente al mejor, en los
     cutoffs de la grilla que no se usaron para decidir.
   - Criterio pre-registrado (media ≤ v4 + 2 pp y p90 ≤ v4 + 5 pp): lo
@@ -139,6 +138,41 @@ Rama: a definir.
     criterio nuevo tendría que fijarse ahora y validarse con otro snapshot.
   - UNRATE a 12 no es un empate: depende del régimen (Holt 10 / TimesFM 14
     cutoffs; medianas 1,43 y 1,51; solo 4 de 24 cutoffs dentro de ±10%).
+
+  **v5 queda en v4 por ahora.** Criterio para re-evaluarla, PRE-REGISTRADO el
+  2026-09-27 11:41, antes de que exista el snapshot de 3.5. Se evalúa SOLO con las
+  series nuevas de 3.5, nunca con `holt_coverage_2026-09-26.json`.
+  - **Qué se compara.** v4 (30 pasos en todas las frecuencias) contra v5
+    (canónico de cada frecuencia: diaria 60, semanal 13, mensual 12,
+    trimestral 4). La regla es la misma (`decide_robust`).
+  - **Protocolo.** El de `scripts/horizon_variants.py`: grilla de 24
+    cutoffs, 400 subconjuntos de 8 con la semilla `"{sid}-2.3b-{h}"`, y el
+    arrepentimiento en los cutoffs no usados para decidir.
+  - **Por serie, no agregado.** Para cada serie s y cada versión, A_s es la
+    media de sus 400 arrepentimientos acotados.
+  - **Cota del arrepentimiento: 100 pp por decisión**, es decir min(r, 1,0).
+    100 pp significa que el motor elegido tuvo el doble de error que el
+    mejor. Para decidir, eso ya es un fracaso total: pasado ese punto no hay
+    diferencia que importe, y una sola corrida que explota (UNRATE 2020-04,
+    2.6) no puede dominar la media. Se prefiere a winsorizar al p99 porque
+    esa cota dependería de los mismos datos que se miden y de cuántas
+    decisiones tenga cada serie. Se prefiere a limitar el MASE porque su
+    escala cambia con el horizonte (lo normal a 30 meses es 10-25), así que
+    una cota fija recortaría valores normales en un horizonte y no en otro.
+  - **Mejora o empate** de una serie: A_s(v5) ≤ A_s(v4) + 2 pp. Los 2 pp son
+    el orden del ruido de semilla visto en 2.3b.
+  - **Empeora de forma catastrófica:** A_s(v5) − A_s(v4) > 25 pp. En
+    promedio, la decisión le costaría a esa serie un cuarto de error más que
+    con v4 (un cuarto de "fracaso total"). Es más que la diferencia típica
+    entre TimesFM y Holt (10-30%), así que no puede ser ruido ni un empate
+    mal resuelto.
+  - **Regla de adopción.** v5 se adopta si, en CADA categoría con ≥ 3
+    series, mejora o empata en la mayoría estricta de sus series (más de la
+    mitad) y ninguna serie de ninguna categoría empeora de forma
+    catastrófica. Una categoría con < 3 series se reporta pero no decide.
+    Si no hay ninguna categoría con ≥ 3 series, v5 no se adopta.
+  - **Qué se reporta.** Por serie: A_s(v4), A_s(v5), la diferencia y el
+    veredicto. Por categoría: el conteo. Todo tal como salga.
 - [x] **2.4 Lockfile de dependencias.** (PR #24, mergeado: `uv pip compile --universal`; `requirements-timesfm.txt` fuera del lock, instalado con `-c requirements.lock`) Los rangos de #19 permiten versiones que
   el smoke test no probó: un venv limpio instala pandas 3.0.6, yfinance 1.7.0 y
   fastapi 0.141, contra las verificadas 3.0.1, 1.2 y 0.136. Evaluar
@@ -313,6 +347,8 @@ verificada.
   pareados y test de signo contra el naive (mismo arnés que 3.0d), con el
   resultado en `docs/results/`, incluido "ningún motor le gana al naive"
   donde pase.
+  Incluye re-evaluar v5 con el criterio pre-registrado en 2.3c, sobre las
+  series nuevas de este ítem.
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
 incluso si la hipótesis no se sostiene.
@@ -535,7 +571,7 @@ Preguntas abiertas antes de planificar ítems:
 
 ## Orden de trabajo acordado (2026-09-26)
 
-2.2 → 2.3 → 4.14 → 2.3b → 3.5 → 4.13 → 4.11 → 3.4 (4.14 y 2.3b agregados el 2026-09-27). Primero la confiabilidad del
+2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 → 3.5 (con la re-evaluación de v5) → 4.13 → 4.11 → 3.4 (4.14, 2.3b, 2.3c y 2.6 agregados el 2026-09-27; hechos: 2.2, 2.3, 4.14, 2.3b medido y 2.3c medido). Primero la confiabilidad del
 pronóstico de FRED (cuánto oscilan y qué tan robustas son las decisiones, en
 qué categorías se le gana al naive, y mostrarlo); después, anclar los IDs y
 los vintages. El prompt (4.10) y la Fase 5 van después.
