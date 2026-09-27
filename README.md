@@ -3,9 +3,34 @@
 Motor cuantitativo y de proyección de tesis de inversión: ingesta datos reales
 de mercado (yfinance) y macro (FRED), proyecta series temporales, hace backtest
 walk-forward contra un benchmark naive, optimiza carteras (Markowitz / Risk
-Parity), simula rebalanceo con costos de transacción, y usa un LLM (Gemini /
-OpenAI / Ollama / motor heurístico local) para traducir una tesis en lenguaje
-natural a una selección de activos.
+Parity), simula rebalanceo con costos de transacción, y usa un LLM (Gemini
+API, Gemini CLI, Claude Code CLI, OpenAI, Ollama o un motor heurístico local)
+para traducir una tesis en lenguaje natural a una selección de activos.
+
+## Visión general
+
+```mermaid
+flowchart LR
+    FE["Frontend<br/>React 19 + Vite<br/>(frontend/src/)"] --> API["API FastAPI<br/>(backend/api/routes.py, /api)"]
+    API --> LLM["llm_router.py<br/>llm_availability.py"]
+    API --> DF["data_fetcher.py"]
+    API --> SEL["engine_selector.py<br/>auto_discovery.py"]
+    API --> QNT["backtest, correlación,<br/>portfolio, riesgo, rebalanceo"]
+    SEL --> ENG["forecast_engine.py<br/>Holt, Holt-Winters, TimesFM"]
+    SEL --> QNT
+    QNT --> DF
+    QNT --> ENG
+    DF --> YF["yfinance"]
+    DF --> FRED["FRED API"]
+    LLM --> LLMX["Gemini API/CLI, Claude Code CLI,<br/>OpenAI, Ollama, Mock local"]
+    API --> DB[("SQLite<br/>tesis, snapshots, notas,<br/>engine_decisions, claude_cli_usage")]
+    SEL --> DB
+```
+
+El detalle de cada flujo (tesis, selección de motor, decisiones cacheadas,
+horizontes, procedencia de datos, workflow) está en
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), y las decisiones de diseño con
+sus motivos en [`docs/adr/`](docs/adr/README.md).
 
 ## Quickstart
 
@@ -90,37 +115,33 @@ La imagen default (`Dockerfile`) es liviana: no instala `torch`/`transformers`.
 Para el motor real de TimesFM (PyTorch + CUDA), ver `Dockerfile.timesfm` y
 `requirements-timesfm.txt`.
 
-## Selección de motor de proyección: Holt vs TimesFM por serie
+## Selección de motor de proyección, por serie
 
-TimeInvestor no usa un único motor de proyección para todo el sistema. En vez
-de un interruptor global (`USE_REAL_TIMESFM=true/false` para todas las
-series), `EngineSelector` (`backend/services/engine_selector.py`) elige el
-motor **por serie individual**, según qué demostró funcionar mejor en un
-benchmark walk-forward con datos reales (`scripts/benchmark_real_data.py`), no
-según qué "debería" andar mejor.
+TimeInvestor no usa un único motor de proyección para todo el sistema.
+`EngineSelector` (`backend/services/engine_selector.py`) elige el motor **por
+serie**, según qué demostró funcionar mejor con datos reales, no según qué
+"debería" andar mejor. En orden:
 
-| Categoría | Motor ganador | Evidencia |
+| Caso | Motor | Evidencia |
 |---|---|---|
-| Series FRED estacionales (`IPG2211A2N`, `RSAFSNA`, `HOUSTNSA`, `MRTSSM4451USN`) | **TimesFM** | Ganó 4/4 series (MASE muy inferior a Holt) |
-| Índices/ETF diversificados (`SPY`, `QQQ`, `XLE`, `XLK`) | **Holt** | TimesFM no ganó en ninguna (0/4) — la hipótesis inicial no se sostuvo |
-| Historia corta / cold-start (contexto de 30/60/90 días) | **Holt** | TimesFM ganó en, como mucho, 1 de 4 tickers en cualquiera de las tres ventanas — nunca alcanzó el umbral en ninguna |
-| Acción individual, historia completa (default) | **Holt** | Comportamiento sin cambios; no es una categoría nueva |
+| Serie FRED estacional del catálogo: `IPG2211A2N`, `HOUSTNSA`, `RSAFSNA` | **TimesFM** (plan B: Holt-Winters) | Contra Holt-Winters, en 24 cutoffs pareados: firme en IPG2211A2N; probable en HOUSTNSA y RSAFSNA ([`seasonal_benchmark`](docs/results/seasonal_benchmark_2026-09-26.md)) |
+| Serie FRED estacional del catálogo: `MRTSSM4451USN` | **Holt-Winters** | TimesFM no le ganó de forma significativa (16 de 24, p = 0,152) |
+| Índice/ETF del catálogo: `SPY`, `QQQ`, `XLE`, `XLK` | **Holt** | TimesFM no ganó en ninguno (0/4) en el benchmark original |
+| Cualquier otra serie con 90 puntos o más | **Auto-discovery** (criterio v4) | Mini-backtest propio: 8 cutoffs recientes; TimesFM gana solo con mayoría de cutoffs y 10% de margen; si no, el motor base (Holt, o Holt-Winters si es estacional). Decisión cacheada en SQLite |
+| Menos de 90 puntos | **Holt** (baja confianza) | Ninguna ventana corta favoreció a TimesFM |
 
-La regla que decide es objetiva y se aplica igual a cualquier categoría futura:
-**una categoría solo enruta a TimesFM si TimesFM ganó (menor MASE promedio) en
-al menos el 50% de sus series representativas** en el benchmark real. Si no
-llega a ese umbral, se queda en Holt — sin excepción por intuición.
+Si TimesFM no puede correr, se pasa al plan B con el motivo: Holt-Winters si
+la serie es estacional, Holt si no.
 
-Cada respuesta de `/api/forecast` incluye `engine_selection_reason`, un texto
-que explica por qué se eligió ese motor para esa serie puntual (visible en el
-frontend junto al nombre del motor activo).
+Cada respuesta de `/api/forecast` incluye:
+- `engine_selection_reason`: por qué se eligió ese motor para esa serie;
+- `decision_horizon`: a qué horizonte se evaluó ese motor;
+- `reliable` / `reliability_warning`: si el pronóstico se mueve más del doble
+  de lo máximo que la serie se movió en ese horizonte, se marca "no
+  confiable", sin recortar ningún número.
 
-Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para:
-- El diagrama de flujo de decisión del `EngineSelector`.
-- El diagrama de arquitectura general del sistema.
-- El detalle completo del benchmark y los números de MASE/cobertura por serie.
-- La Variante B (selección en tiempo real vía mini-backtest por request) y por
-  qué no está implementada todavía — con la estimación de latencia medida.
+El horizonte se pide y se muestra **en la unidad de la serie**: 12 en una
+mensual son 12 meses; 60 en una diaria, 60 días hábiles.
 
 ## Glosario de series FRED
 

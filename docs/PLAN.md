@@ -199,8 +199,9 @@ Rama: a definir.
   Decisión explícita: el sesgo positivo (el precio real terminó por encima del
   centro, cada vez más con el horizonte) **NO se corrige**. Sale de una muestra
   de ~5 años mayormente alcista, y agregar drift sería ajustarse a ese régimen.
-- [ ] **2.6 Holt explota tras un salto de nivel.** (rama `fix/holt-explosion`,
-  PR abierto; `docs/results/holt_explosion_2026-09-27.md`)
+- [ ] **2.6 Holt explota tras un salto de nivel.** (PR #37, mergeado; la
+  marca está hecha y la estimación robusta queda pendiente;
+  `docs/results/holt_explosion_2026-09-27.md`)
   - Diagnóstico: cuando el último dato es el salto, el ajuste SSE lleva α y β
     a ~0,99 y 0,89, y el salto pasa a la tendencia. UNRATE ≤ 2020-04 da
     20.860% a 12 meses; INDPRO ≤ 2020-04, −40%; HOUSTNSA ≤ 1988-04, ×2,8.
@@ -246,6 +247,7 @@ Rama: a definir.
     catastrófica. Una categoría con < 3 series se reporta pero no decide; si
     no hay ninguna con ≥ 3, C no se adopta.
 - [ ] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
+  **Primero en el orden (2026-09-27): bloquea el uso normal.**
   `/api/backtest` no recibe `is_macro`, y `BacktestEngine` busca en yfinance
   cualquier serie que no esté en `FREDDataFetcher.SERIES_CATALOG` (UNRATE,
   verificado en 2.6).
@@ -612,9 +614,70 @@ Preguntas abiertas antes de planificar ítems:
   revisados sobrestiman la precisión) y 4.10 (el prompt tendría que devolver
   drivers y mecanismo, no solo tickers).
 
-## Orden de trabajo acordado (2026-09-26)
+### 5.1 Modo escenario de crash (solo diseño; no implementar sin discutir)
 
-2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 → 3.5 (con la re-evaluación de v5) → 4.13 → 4.11 → 3.4 (4.14, 2.3b, 2.3c y 2.6 agregados el 2026-09-27; hechos: 2.2, 2.3, 4.14, 2.3b medido y 2.3c medido). Primero la confiabilidad del
+**Principio: la app NUNCA muestra una "probabilidad de crash" con fecha.**
+Muestra "qué pasa si" y termómetros.
+
+1. **Switch "condicionar a un crash"** en el análisis de una tesis:
+   - **Repetición histórica** (2008, 2020, 2022) sobre los activos y los
+     drivers de la tesis: retorno acumulado, caída máxima y tiempo de
+     recuperación en cada episodio.
+   - **Monte Carlo del `risk_engine`** (`backend/services/risk_engine.py`,
+     `simulate_bootstrap`, bootstrap por bloques) sorteando **solo** bloques
+     de períodos de crisis, en vez de toda la historia.
+2. **Panel aparte de "condiciones actuales"**: indicadores de fragilidad, cada
+   uno con su valor, su historia y en qué percentil de su propia historia
+   está hoy, sin combinarlos en un número único. IDs verificados con la
+   búsqueda de FRED (`fred/series/search`) el 2026-09-27:
+
+   | Indicador | ID en FRED | Frecuencia | Datos en FRED |
+   |---|---|---|---|
+   | Curva: 10 años menos 2 años | `T10Y2Y` | diaria | 1976-06-01 → 2026-09-25 |
+   | Curva: 10 años menos 3 meses | `T10Y3M` | diaria | 1982-01-04 → 2026-09-25 |
+   | Spread high yield (ICE BofA US HY OAS) | `BAMLH0A0HYM2` | diaria | **solo 2023-09-26 → 2026-09-24** |
+   | VIX | `VIXCLS` | diaria | 1990-01-02 → 2026-09-22 |
+   | Probabilidad de recesión publicada ("Smoothed U.S. Recession Probabilities") | `RECPROUSM156N` | mensual | 1967-06 → 2026-07 |
+   | Regla de Sahm en tiempo real | `SAHMREALTIME` | mensual | 1959-12 → 2026-08 |
+   | Índice de estrés financiero de la Fed de St. Louis | `STLFSI4` | semanal | 1993-12-31 → 2026-09-18 |
+   | Condiciones financieras de la Fed de Chicago | `NFCI` | semanal | 1971-01-08 → 2026-09-18 |
+
+   - La probabilidad de recesión que publica su fuente se muestra como tal
+     (fuente y fecha del dato). No se transforma en una fecha de crash
+     propia.
+   - En FRED, `BAMLH0A0HYM2` empieza en 2023-09-26: no sirve para repetir
+     2008 ni 2020. El motivo del recorte no está verificado. Buscar otra
+     fuente o decirlo en el panel.
+
+**Preguntas abiertas:**
+- **Cómo definir los períodos de crisis sin elegirlos a dedo.** Candidatos
+  con regla objetiva: las recesiones NBER (`USREC`, mensual, desde
+  1854-12-01; verificado en FRED el 2026-09-27), una caída del mercado de
+  más de X% desde el máximo, o un umbral de `STLFSI4`. Cada regla tiene un
+  parámetro elegible: ¿se pre-registra, como los criterios de decisión?
+  2022 no es recesión NBER; ¿cuenta como crisis?
+- **Cómo trasladar un crash a activos que no existían entonces** (por
+  ejemplo, un ETF lanzado en 2015). Opciones: un proxy (índice sectorial) o
+  la beta contra el mercado en la ventana disponible. Riesgo: una beta
+  estimada en calma no representa la de un crash. La UI tiene que decir qué
+  proxy se usó.
+- **Series sin historia suficiente**, como el spread HY en FRED: ¿se omiten,
+  se reemplazan o se aclara en el panel?
+- **Relación con la Fase 5**: ¿el escenario de crash es un caso particular
+  de los "escenarios condicionados a la trayectoria del driver"?
+
+Hecho cuando (del diseño): hay un documento que responde las preguntas
+abiertas, con la lista de indicadores (fuente, frecuencia, historia
+disponible y licencia), discutido con el usuario antes de planificar la
+implementación.
+
+## Orden de trabajo acordado (2026-09-26, actualizado el 2026-09-27)
+
+**2.7 → 3.5 (con la re-evaluación de v5 y de la variante C de Holt) → 4.13 → 4.11 → 3.4.**
+
+Historia del orden: 2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 (hechos o medidos
+el 2026-09-26/27). 2.7 se agregó el 2026-09-27 y va primero porque bloquea
+el uso normal. Primero la confiabilidad del
 pronóstico de FRED (cuánto oscilan y qué tan robustas son las decisiones, en
 qué categorías se le gana al naive, y mostrarlo); después, anclar los IDs y
 los vintages. El prompt (4.10) y la Fase 5 van después.
