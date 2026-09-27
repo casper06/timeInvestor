@@ -198,7 +198,25 @@ Rama: a definir.
       0;
     - el `--replay` de 3.5 exacto requiere el commit `5ee140d`: los
       scripts de medición todavía no toleran MASE `None`.
-- [ ] **2.9 Redondeo en la carga de datos.** `data_fetcher.py` redondea a 2
+- [ ] **2.11 Los motores redondean sus pronósticos a 2 decimales
+  (propuesto).** `forecast_engine.py` hace `round(pred_val, 2)` en los
+  valores y las bandas, y el backtest calcula las métricas sobre esos
+  pronósticos redondeados. En series de magnitud chica (NFCI ≈ −0,5,
+  T10Y2Y) eso es comparable al error. Visto en 2.9.
+  Hecho cuando: los motores devuelven la precisión completa y la UI y los
+  snapshots redondean al mostrar; se mide el efecto como en 2.9.
+- [x] **2.9 Redondeo en la carga de datos.** (rama `fix/no-rounding-on-load`,
+  PR abierto; ADR-0021)
+  - `data_fetcher.py` ya no redondea (las 6 líneas). La UI ya formatea al
+    mostrar; el prompt formatea el último precio con 4 decimales.
+  - Caché de datos: solo en memoria, se vacía al reiniciar; no necesita
+    invalidación.
+  - Decisiones: criterio v7 para re-evaluarlas con los datos precisos.
+  - Impacto, medido con gemelos precisos de los snapshots (mismas fechas):
+    2.5, 3.0d y 3.5 no cambian ningún veredicto. En 3.5, NFCI pasa a
+    "empeora" en v5 y la semanal sigue 4/5.
+  - La afirmación de 3.5 sobre empates en NFCI y STLFSI4 era una
+    inferencia: hubo 0 empates. Quedó corregida. `data_fetcher.py` redondea a 2
   decimales al cargar (líneas 91, 174, 196, 236, 342 y 456, la última en la
   serie sintética). En índices como NFCI o STLFSI4 eso descarta información
   antes de los motores y genera empates artificiales (visto en 3.5).

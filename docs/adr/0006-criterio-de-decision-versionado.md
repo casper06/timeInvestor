@@ -24,6 +24,8 @@ Versiones:
   frecuencia (ADR-0019).
 - v6 (2.10): igual que v5, pero si el MASE no está definido en algún
   cutoff, la serie se decide con MAE en pares (ADR-0020).
+- v7 (2.9): la misma regla, con los datos a la precisión de la fuente
+  (ADR-0021). Cambian las entradas, no la regla.
 
 ## Consecuencias
 

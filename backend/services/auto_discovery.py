@@ -103,7 +103,11 @@ GUARD_INTERVAL_LEVEL = 0.80
 #       that training window), the whole series is decided on the paired MAE
 #       (docs/adr/0020). v5 decisions of such series carried MASE values like
 #       2.5 million (DFEDTARU); bumping the version re-decides every series.
-AUTO_DISCOVERY_CRITERIA_VERSION = 6
+#   v7 (2026-09-27, 2.9): same rule; the data now reaches it at the source's
+#       precision (no rounding to 2 decimals on load). Decisions computed on
+#       rounded data are re-decided: on NFCI the regret of v5 vs v4 changed
+#       enough to flip (docs/adr/0021).
+AUTO_DISCOVERY_CRITERIA_VERSION = 7
 
 # --- v4 decision parameters (2.3), chosen from the variant measurement ---
 # 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),

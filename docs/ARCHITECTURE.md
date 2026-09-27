@@ -149,7 +149,7 @@ flowchart TD
   resultado.
 - **Auto-discovery** (`backend/services/auto_discovery.py`): cubre cualquier
   serie fuera de los catálogos con 90 puntos o más. El mini-backtest
-  (criterio v6) toma 8 cutoffs repartidos en una ventana reciente según la
+  (criterio v7) toma 8 cutoffs repartidos en una ventana reciente según la
   frecuencia (`RECENT_WINDOW`: 504 puntos en diarias, 104 en semanales, 120
   en mensuales, 40 en trimestrales), cada uno con el horizonte canónico de la
   frecuencia (`_decision_horizon`: diaria 60, semanal 13, mensual 12,
@@ -221,10 +221,11 @@ stateDiagram-v2
 
 `_is_stale` marca una fila como vieja por cualquiera de estas razones:
 - **Versión del criterio**: `criteria_version` (NULL = 1) es menor que
-  `AUTO_DISCOVERY_CRITERIA_VERSION` (6). Hubo versiones 1 a 6: v2 en 3.0e
+  `AUTO_DISCOVERY_CRITERIA_VERSION` (7). Hubo versiones 1 a 7: v2 en 3.0e
   (banda de TimesFM y nivel común de comparación), v3 en 3.0f (base
   Holt-Winters en series estacionales), v4 en 2.3, v5 en 2.3d (horizonte
-  canónico) y v6 en 2.10 (MAE en pares cuando el MASE no está definido).
+  canónico), v6 en 2.10 (MAE en pares cuando el MASE no está definido) y v7
+  en 2.9 (datos a la precisión de la fuente).
 - **TTL**: pasaron más de `DECISION_TTL_DAYS` (30) desde `evaluated_at`.
 - **Crecimiento**: la serie creció `STALE_GROWTH_FRACTION` (20%) o más en
   puntos.
@@ -281,6 +282,10 @@ flowchart TD
     Q -- no --> OK["se usa; la UI deshabilita las pestañas<br/>cuantitativas si la serie activa es sintética"]
 ```
 
+- **Precisión (2.9):** los valores se cargan, se guardan en la caché y se
+  procesan con la precisión de la fuente (`data_fetcher.py` no redondea); se
+  redondean solo al mostrarlos en la UI y en el informe. La caché vive solo
+  en memoria (TTL `CACHE_TTL_SECONDS`), así que un reinicio la vacía.
 - `source` (de dónde vino el dato) y `from_cache` (si se sirvió desde la
   caché) son campos **separados**. Antes, un hit de caché pisaba `source`
   con `"cached"`, y un dato sintético podía pasar los guards.
