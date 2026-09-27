@@ -26,6 +26,8 @@ Versiones:
   cutoff, la serie se decide con MAE en pares (ADR-0020).
 - v7 (2.9): la misma regla, con los datos a la precisión de la fuente
   (ADR-0021). Cambian las entradas, no la regla.
+- v8 (2.11): la misma regla, con pronósticos y métricas sin redondear
+  (ADR-0022).
 
 ## Consecuencias
 

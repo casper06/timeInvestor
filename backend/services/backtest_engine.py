@@ -42,7 +42,10 @@ def _mape(actual, pred, level: float):
 
 
 def _r(x, nd):
-    return None if x is None else round(x, nd)
+    """Kept as a no-op pass-through: metrics are returned at full precision
+    (2.11); they are rounded only when displayed. `nd` documents the
+    precision the UI shows."""
+    return None if x is None else float(x)
 
 
 def _mase_s_text(x):
@@ -173,9 +176,9 @@ class BacktestEngine:
         naive_mase = _scaled(naive_mae, in_sample_naive_mae, level)
 
         naive_metrics = BacktestMetrics(
-            mae=round(naive_mae, 2),
+            mae=float(naive_mae),
             mape=_r(naive_mape, 2),
-            smape=round(naive_smape, 2),
+            smape=float(naive_smape),
             mase=_r(naive_mase, 3),
             directional_accuracy=0.0,
             observations_evaluated=eval_horizon,
@@ -208,12 +211,12 @@ class BacktestEngine:
             if snaive_mape is None:
                 snaive_undefined["mape"] = WHY_MAPE
             seasonal_naive_metrics = BacktestMetrics(
-                mae=round(snaive_mae, 2),
+                mae=float(snaive_mae),
                 mape=_r(snaive_mape, 2),
-                smape=round(float(np.mean(2.0 * np.abs(y_actual - y_snaive) / (np.abs(y_actual) + np.abs(y_snaive) + epsilon)) * 100), 2),
+                smape=float(np.mean(2.0 * np.abs(y_actual - y_snaive) / (np.abs(y_actual) + np.abs(y_snaive) + epsilon)) * 100),
                 mase=_r(_scaled(snaive_mae, in_sample_naive_mae, level), 3),
                 mase_seasonal=_r(_scaled(snaive_mae, s_scale, level), 3),
-                directional_accuracy=round(snaive_dir, 1),
+                directional_accuracy=float(snaive_dir),
                 observations_evaluated=eval_horizon,
                 undefined=snaive_undefined,
             )
@@ -282,23 +285,23 @@ class BacktestEngine:
             historical_values=[p.value for p in display_train],
             future_actual_dates=[p.timestamp for p in actual_eval_points],
             future_actual_values=[p.value for p in actual_eval_points],
-            future_predicted_values=[round(float(v), 2) for v in y_pred],
-            future_lower_bound=[round(float(v), 2) for v in lbs],
-            future_upper_bound=[round(float(v), 2) for v in ubs],
+            future_predicted_values=[float(v) for v in y_pred],
+            future_lower_bound=[float(v) for v in lbs],
+            future_upper_bound=[float(v) for v in ubs],
             metrics=BacktestMetrics(
-                mae=round(mae, 2),
+                mae=float(mae),
                 mape=_r(mape, 2),
-                smape=round(smape, 2),
+                smape=float(smape),
                 mase=_r(mase, 3),
                 mase_seasonal=_r(mase_seasonal, 3),
-                directional_accuracy=round(directional_accuracy, 1),
+                directional_accuracy=float(directional_accuracy),
                 observations_evaluated=eval_horizon,
                 undefined=undefined,
             ),
             naive_metrics=naive_metrics,
             seasonal_naive_metrics=seasonal_naive_metrics,
             seasonality=seasonality,
-            interval_coverage=round(interval_coverage, 1),
+            interval_coverage=float(interval_coverage),
             aggregate_direction_correct=aggregate_direction_correct,
             verdict=verdict,
             warnings=warnings,

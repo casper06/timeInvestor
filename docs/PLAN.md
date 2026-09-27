@@ -198,8 +198,13 @@ Rama: a definir.
       0;
     - el `--replay` de 3.5 exacto requiere el commit `5ee140d`: los
       scripts de medición todavía no toleran MASE `None`.
-- [ ] **2.11 Los motores redondean sus pronósticos a 2 decimales
-  (propuesto).** `forecast_engine.py` hace `round(pred_val, 2)` en los
+- [x] **2.11 Los motores redondean sus pronósticos a 2 decimales.** (rama
+  `fix/no-rounding-in-engines`, PR abierto; ADR-0022)
+  - Motores y backtest (pronóstico, bandas y métricas) con precisión
+    completa; el redondeo es solo de presentación.
+  - Criterio v8: con los datos precisos, NFCI da vuelta un cutoff (6-2 →
+    5-3); ninguna de las 8 series medidas cambia de motor.
+  - Detalle original: `forecast_engine.py` hace `round(pred_val, 2)` en los
   valores y las bandas, y el backtest calcula las métricas sobre esos
   pronósticos redondeados. En series de magnitud chica (NFCI ≈ −0,5,
   T10Y2Y) eso es comparable al error. Visto en 2.9.

@@ -117,7 +117,7 @@ def make_robust_holt(mode: str, k: float = HUBER_K):
                     pv, lb, ub = y_hat_h, y_hat_h - z * se_h, y_hat_h + z * se_h
                     if not allow_negative:
                         lb = max(0.0, lb)
-                vals_out.append(round(float(pv), 2)); lo.append(round(float(lb), 2)); hi.append(round(float(ub), 2))
+                vals_out.append(float(pv)); lo.append(float(lb)); hi.append(float(ub))  # like production since 2.11
             return ForecastResponse(
                 timestamps=self._generate_future_timestamps(sp[-1].timestamp, horizon, freq),
                 values=vals_out, lower_bound=lo, upper_bound=hi, interval_level=confidence,
