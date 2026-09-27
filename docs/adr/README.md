@@ -28,4 +28,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0015](0015-pre-registro-de-criterios.md) | Pre-registro de criterios antes de medir | Aceptada | #36, #37 |
 | [0016](0016-claude-cli-haiku-por-defecto.md) | `CLAUDE_CLI_MODEL=haiku` por defecto | Aceptada | #10 |
 | [0017](0017-sin-correccion-de-sesgo-de-holt.md) | No corregir el sesgo positivo de Holt | Aceptada | #26 |
-| [0018](0018-v4-se-mantiene-v5-y-c-con-3-5.md) | v4 se mantiene; v5 y la variante C se evalúan solo con las series de 3.5 | Aceptada; re-evaluación pendiente | #36, #37 |
+| [0018](0018-v4-se-mantiene-v5-y-c-con-3-5.md) | v4 se mantiene; v5 y la variante C se evalúan solo con las series de 3.5 | Re-evaluada en 3.5: v5 adoptada (implementación pendiente, 2.3d); C no | #36, #37 |

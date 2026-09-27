@@ -97,7 +97,8 @@ class _Evaluator:
             out = {"mase": res.metrics.mase, "mase_seasonal": res.metrics.mase_seasonal,
                    "cov": res.interval_coverage, "fallback": bool(res.is_fallback), "refused": False,
                    "level": res.interval_level,
-                   "pred_end": res.future_predicted_values[-1] if res.future_predicted_values else None}
+                   "pred_end": res.future_predicted_values[-1] if res.future_predicted_values else None,
+                   "mae": res.metrics.mae}
         except NotSeasonalError:
             out = {"refused": True}
         finally:

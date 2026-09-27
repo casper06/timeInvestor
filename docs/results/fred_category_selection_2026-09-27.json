@@ -1,0 +1,1139 @@
+{
+ "queried_at": "2026-09-27 15:28",
+ "rule": "ver docstring y docs/PLAN.md 3.5",
+ "active_since": {
+  "daily": "2026-09-01",
+  "weekly": "2026-09-01",
+  "monthly": "2026-06-01",
+  "quarterly": "2026-01-01"
+ },
+ "history_before": {
+  "daily": "2024-09-01",
+  "weekly": "2016-09-01",
+  "monthly": "2006-09-01",
+  "quarterly": "1986-09-01"
+ },
+ "categories": {
+  "mensual_nsa_real": {
+   "spec": {
+    "tags": "monthly;nsa;usa;nation",
+    "freq": "monthly",
+    "topic": "real"
+   },
+   "series": [
+    {
+     "id": "MTSDS133FMS",
+     "title": "Federal Surplus or Deficit [-]",
+     "frequency": "M",
+     "seasonal_adjustment": "NSA",
+     "units": "Mil. of $",
+     "popularity": 68,
+     "observation_start": "1980-10-01",
+     "observation_end": "2026-08-01",
+     "release": "Monthly Treasury Statement",
+     "roots": [
+      32992
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "POPTHM",
+     "title": "Population",
+     "frequency": "M",
+     "seasonal_adjustment": "NSA",
+     "units": "Thous.",
+     "popularity": 65,
+     "observation_start": "1959-01-01",
+     "observation_end": "2026-07-01",
+     "release": "Personal Income and Outlays",
+     "roots": [
+      10
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "MSPNHSUS",
+     "title": "Median Sales Price for New Houses Sold in the United States",
+     "frequency": "M",
+     "seasonal_adjustment": "NSA",
+     "units": "$",
+     "popularity": 61,
+     "observation_start": "1963-01-01",
+     "observation_end": "2026-08-01",
+     "release": "New Residential Sales",
+     "roots": [
+      1
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "UNRATENSA",
+     "title": "Unemployment Rate",
+     "frequency": "M",
+     "seasonal_adjustment": "NSA",
+     "units": "%",
+     "popularity": 54,
+     "observation_start": "1948-01-01",
+     "observation_end": "2026-08-01",
+     "release": "Employment Situation",
+     "roots": [
+      10
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "IMPCH",
+     "title": "U.S. Imports of Goods by Customs Basis from China",
+     "frequency": "M",
+     "seasonal_adjustment": "NSA",
+     "units": "Mil. of $",
+     "popularity": 52,
+     "observation_start": "1985-01-01",
+     "observation_end": "2026-07-01",
+     "release": "U.S. International Trade in Goods and Services",
+     "roots": [
+      32263,
+      32992
+     ],
+     "ya_vista": false
+    }
+   ],
+   "rejected_before_filling": [
+    {
+     "id": "FEDFUNDS",
+     "popularity": 97,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "CSUSHPINSA",
+     "popularity": 83,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000703112",
+     "popularity": 83,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "UMCSENT",
+     "popularity": 83,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "CPIAUCNS",
+     "popularity": 81,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "REAINTRATREARAT10Y",
+     "popularity": 81,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000708111",
+     "popularity": 77,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "TB3MS",
+     "popularity": 77,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "PPIACO",
+     "popularity": 77,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "AAA",
+     "popularity": 76,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "GS10",
+     "popularity": 76,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "BOGMBASE",
+     "popularity": 75,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "RECPROUSM156N",
+     "popularity": 74,
+     "why": "tema fuera de la categoría (raíces [33060])"
+    },
+    {
+     "id": "ACTLISCOUUS",
+     "popularity": 74,
+     "why": "historia corta (desde 2016-07-01)"
+    },
+    {
+     "id": "APU000072610",
+     "popularity": 73,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "CPALTT01USM657N",
+     "popularity": 73,
+     "why": "inactiva (última obs. 2024-03-01)"
+    },
+    {
+     "id": "TOTRESNS",
+     "popularity": 72,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "CUUR0000SA0R",
+     "popularity": 72,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU000074714",
+     "popularity": 71,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "CPIMEDNS",
+     "popularity": 71,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "BAA",
+     "popularity": 71,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "WPUSI012011",
+     "popularity": 70,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU325211325211",
+     "popularity": 70,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "MICH",
+     "popularity": 69,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WTISPLC",
+     "popularity": 69,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000709112",
+     "popularity": 69,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "FIXHAI",
+     "popularity": 68,
+     "why": "historia corta (desde 2025-09-01)"
+    },
+    {
+     "id": "EXPINF1YR",
+     "popularity": 68,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCUOMFGOMFG",
+     "popularity": 68,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "USREC",
+     "popularity": 68,
+     "why": "indicador binario (unidades +1 or 0): enmienda 1"
+    },
+    {
+     "id": "WPU0911",
+     "popularity": 67,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WPU101707",
+     "popularity": 67,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "EXPINF10YR",
+     "popularity": 65,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000FF1101",
+     "popularity": 65,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "TERMCBCCALLNS",
+     "popularity": 65,
+     "why": "inactiva (última obs. 2026-05-01)"
+    },
+    {
+     "id": "PCU33443344",
+     "popularity": 64,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "CUUR0000SEHA",
+     "popularity": 64,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "IRLTLT01USM156N",
+     "popularity": 64,
+     "why": "tema fuera de la categoría (raíces [32263])"
+    },
+    {
+     "id": "T30YIEM",
+     "popularity": 63,
+     "why": "historia corta (desde 2010-02-01)"
+    },
+    {
+     "id": "EXJPUS",
+     "popularity": 63,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "HOSINVUSM495N",
+     "popularity": 62,
+     "why": "historia corta (desde 2025-08-01)"
+    },
+    {
+     "id": "EXPINF2YR",
+     "popularity": 62,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "EXPINF30YR",
+     "popularity": 61,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WPU101",
+     "popularity": 61,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "RTWEXBGS",
+     "popularity": 61,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "APU0000702111",
+     "popularity": 61,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "FRGSHPUSM649NCIS",
+     "popularity": 61,
+     "why": "historia corta (desde 2016-01-01)"
+    },
+    {
+     "id": "MCOILWTICO",
+     "popularity": 60,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "M2NS",
+     "popularity": 60,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "PCU2122212122210",
+     "popularity": 60,
+     "why": "inactiva (última obs. 2017-12-01)"
+    },
+    {
+     "id": "WPU10170674",
+     "popularity": 60,
+     "why": "historia corta (desde 2010-12-01)"
+    },
+    {
+     "id": "PCU484121484121",
+     "popularity": 60,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "CFNAI",
+     "popularity": 60,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "HOSMEDUSM052N",
+     "popularity": 59,
+     "why": "historia corta (desde 2025-08-01)"
+    },
+    {
+     "id": "MBCURRCIR",
+     "popularity": 59,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "REAINTRATREARAT1YE",
+     "popularity": 59,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000717311",
+     "popularity": 59,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "EXCHUS",
+     "popularity": 59,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "WPU081",
+     "popularity": 59,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "CUUR0000SETA01",
+     "popularity": 59,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "RBUSBIS",
+     "popularity": 58,
+     "why": "tema fuera de la categoría (raíces [32263])"
+    },
+    {
+     "id": "MEDDAYONMARUS",
+     "popularity": 58,
+     "why": "historia corta (desde 2016-07-01)"
+    },
+    {
+     "id": "GS1",
+     "popularity": 58,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "TWEXBGSMTH",
+     "popularity": 58,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "CWUR0000SA0",
+     "popularity": 57,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "MPRIME",
+     "popularity": 57,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "TERMCBAUTO48NS",
+     "popularity": 57,
+     "why": "inactiva (última obs. 2026-05-01)"
+    },
+    {
+     "id": "EXPINF5YR",
+     "popularity": 56,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WPU061",
+     "popularity": 56,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "HOSSUPUSM673N",
+     "popularity": 56,
+     "why": "historia corta (desde 2025-08-01)"
+    },
+    {
+     "id": "BORROW",
+     "popularity": 56,
+     "why": "tema fuera de la categoría (raíces [32991, 33060])"
+    },
+    {
+     "id": "T10Y2YM",
+     "popularity": 56,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "WPU1017",
+     "popularity": 56,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU32733273",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU335311335311",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU3364133641",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU325325",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU335313335313",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WPU091405",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000706111",
+     "popularity": 55,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "APU0000FC3101",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "SNDR",
+     "popularity": 54,
+     "why": "historia corta (desde 2021-04-01)"
+    },
+    {
+     "id": "APU0000712311",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU3353133531",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "EXUSUK",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "PCU325311325311",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "IR",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "GS30",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "PCU335311335311P",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "FII10",
+     "popularity": 54,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "CNP16OV",
+     "popularity": 53,
+     "why": "release ya representado (Employment Situation)"
+    },
+    {
+     "id": "WPU0613020T1",
+     "popularity": 53,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCU32221132221102",
+     "popularity": 53,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "INTDSRUSM193N",
+     "popularity": 53,
+     "why": "inactiva (última obs. 2021-08-01)"
+    },
+    {
+     "id": "WPU10",
+     "popularity": 53,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "RIFLPBCIANM60NM",
+     "popularity": 53,
+     "why": "inactiva (última obs. 2026-05-01)"
+    },
+    {
+     "id": "WPU07110224",
+     "popularity": 53,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WPU11",
+     "popularity": 53,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "WPU112",
+     "popularity": 52,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "MHHNGSP",
+     "popularity": 52,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "EXINUS",
+     "popularity": 52,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "APU00007471A",
+     "popularity": 52,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    }
+   ]
+  },
+  "mensual_sa_real": {
+   "spec": {
+    "tags": "monthly;sa;usa;nation",
+    "freq": "monthly",
+    "topic": "real"
+   },
+   "series": [
+    {
+     "id": "UNRATE",
+     "title": "Unemployment Rate",
+     "frequency": "M",
+     "seasonal_adjustment": "SA",
+     "units": "%",
+     "popularity": 96,
+     "observation_start": "1948-01-01",
+     "observation_end": "2026-08-01",
+     "release": "Employment Situation",
+     "roots": [
+      10
+     ],
+     "ya_vista": true
+    },
+    {
+     "id": "PSAVERT",
+     "title": "Personal Saving Rate",
+     "frequency": "M",
+     "seasonal_adjustment": "SAAR",
+     "units": "%",
+     "popularity": 81,
+     "observation_start": "1959-01-01",
+     "observation_end": "2026-07-01",
+     "release": "Personal Income and Outlays",
+     "roots": [
+      32992
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "INDPRO",
+     "title": "Industrial Production: Total Index",
+     "frequency": "M",
+     "seasonal_adjustment": "SA",
+     "units": "Index 2017=100",
+     "popularity": 80,
+     "observation_start": "1919-01-01",
+     "observation_end": "2026-08-01",
+     "release": "G.17 Industrial Production and Capacity Utilization",
+     "roots": [
+      1
+     ],
+     "ya_vista": true
+    },
+    {
+     "id": "HOUST",
+     "title": "New Privately-Owned Housing Units Started: Total Units",
+     "frequency": "M",
+     "seasonal_adjustment": "SAAR",
+     "units": "Thous. of Units",
+     "popularity": 78,
+     "observation_start": "1959-01-01",
+     "observation_end": "2026-08-01",
+     "release": "New Residential Construction",
+     "roots": [
+      1
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "JTSJOL",
+     "title": "Job Openings: Total Nonfarm",
+     "frequency": "M",
+     "seasonal_adjustment": "SA",
+     "units": "Level in Thous.",
+     "popularity": 78,
+     "observation_start": "2000-12-01",
+     "observation_end": "2026-07-01",
+     "release": "Job Openings and Labor Turnover Survey",
+     "roots": [
+      10
+     ],
+     "ya_vista": false
+    }
+   ],
+   "rejected_before_filling": [
+    {
+     "id": "CPIAUCSL",
+     "popularity": 97,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "M2SL",
+     "popularity": 95,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "PAYEMS",
+     "popularity": 85,
+     "why": "release ya representado (Employment Situation)"
+    },
+    {
+     "id": "SAHMREALTIME",
+     "popularity": 84,
+     "why": "tema fuera de la categoría (raíces [33060])"
+    },
+    {
+     "id": "PCEPI",
+     "popularity": 84,
+     "why": "tema fuera de la categoría (raíces [32455, 32992])"
+    },
+    {
+     "id": "CPILFESL",
+     "popularity": 83,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "CIVPART",
+     "popularity": 83,
+     "why": "release ya representado (Employment Situation)"
+    },
+    {
+     "id": "CORESTICKM159SFRBATL",
+     "popularity": 81,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "PCE",
+     "popularity": 80,
+     "why": "release ya representado (Personal Income and Outlays)"
+    },
+    {
+     "id": "PCEPILFE",
+     "popularity": 79,
+     "why": "tema fuera de la categoría (raíces [32455, 32992])"
+    },
+    {
+     "id": "CES0500000003",
+     "popularity": 79,
+     "why": "release ya representado (Employment Situation)"
+    },
+    {
+     "id": "M1SL",
+     "popularity": 79,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    }
+   ]
+  },
+  "trimestral": {
+   "spec": {
+    "tags": "quarterly;usa;nation",
+    "freq": "quarterly",
+    "topic": "national"
+   },
+   "series": [
+    {
+     "id": "GDP",
+     "title": "Gross Domestic Product",
+     "frequency": "Q",
+     "seasonal_adjustment": "SAAR",
+     "units": "Bil. of $",
+     "popularity": 92,
+     "observation_start": "1947-01-01",
+     "observation_end": "2026-04-01",
+     "release": "Gross Domestic Product",
+     "roots": [
+      32992
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "GFDEBTN",
+     "title": "Federal Debt: Total Public Debt",
+     "frequency": "Q",
+     "seasonal_adjustment": "NSA",
+     "units": "Mil. of $",
+     "popularity": 88,
+     "observation_start": "1966-01-01",
+     "observation_end": "2026-01-01",
+     "release": "Treasury Bulletin",
+     "roots": [
+      32992
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "MSPUS",
+     "title": "Median Sales Price of New Houses Sold for the United States",
+     "frequency": "Q",
+     "seasonal_adjustment": "NSA",
+     "units": "$",
+     "popularity": 88,
+     "observation_start": "1963-01-01",
+     "observation_end": "2026-04-01",
+     "release": "New Residential Sales",
+     "roots": [
+      1
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "GFDEGDQ188S",
+     "title": "Federal Debt: Total Public Debt as Percent of Gross Domestic Product",
+     "frequency": "Q",
+     "seasonal_adjustment": "SA",
+     "units": "% of GDP",
+     "popularity": 88,
+     "observation_start": "1966-01-01",
+     "observation_end": "2026-01-01",
+     "release": "Debt to Gross Domestic Product Ratios",
+     "roots": [
+      32992
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "M2V",
+     "title": "Velocity of M2 Money Stock",
+     "frequency": "Q",
+     "seasonal_adjustment": "SA",
+     "units": "Ratio",
+     "popularity": 80,
+     "observation_start": "1959-01-01",
+     "observation_end": "2026-04-01",
+     "release": "Money Velocity",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    }
+   ],
+   "rejected_before_filling": [
+    {
+     "id": "GDPC1",
+     "popularity": 91,
+     "why": "release ya representado (Gross Domestic Product)"
+    },
+    {
+     "id": "DRCCLACBS",
+     "popularity": 81,
+     "why": "historia corta (desde 1991-01-01)"
+    }
+   ]
+  },
+  "semanal": {
+   "spec": {
+    "tags": "weekly;usa;nation",
+    "freq": "weekly",
+    "topic": "national"
+   },
+   "series": [
+    {
+     "id": "MORTGAGE30US",
+     "title": "30-Year Fixed Rate Mortgage Average in the United States",
+     "frequency": "W",
+     "seasonal_adjustment": "NSA",
+     "units": "%",
+     "popularity": 98,
+     "observation_start": "1971-04-02",
+     "observation_end": "2026-09-24",
+     "release": "Primary Mortgage Market Survey",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "WALCL",
+     "title": "Assets: Total Assets: Total Assets (Less Eliminations from Consolidation): Wednesday Level",
+     "frequency": "W",
+     "seasonal_adjustment": "NSA",
+     "units": "Mil. of U.S. $",
+     "popularity": 93,
+     "observation_start": "2002-12-18",
+     "observation_end": "2026-09-23",
+     "release": "H.4.1 Factors Affecting Reserve Balances",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "NFCI",
+     "title": "Chicago Fed National Financial Conditions Index",
+     "frequency": "W",
+     "seasonal_adjustment": "NSA",
+     "units": "Index",
+     "popularity": 82,
+     "observation_start": "1971-01-08",
+     "observation_end": "2026-09-18",
+     "release": "Chicago Fed National Financial Conditions Index",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "STLFSI4",
+     "title": "St. Louis Fed Financial Stress Index",
+     "frequency": "W",
+     "seasonal_adjustment": "NSA",
+     "units": "Index",
+     "popularity": 82,
+     "observation_start": "1993-12-31",
+     "observation_end": "2026-09-18",
+     "release": "St. Louis Fed Financial Stress Index",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "ICSA",
+     "title": "Initial Claims",
+     "frequency": "W",
+     "seasonal_adjustment": "SA",
+     "units": "Number",
+     "popularity": 81,
+     "observation_start": "1967-01-07",
+     "observation_end": "2026-09-19",
+     "release": "Unemployment Insurance Weekly Claims Report",
+     "roots": [
+      10
+     ],
+     "ya_vista": false
+    }
+   ],
+   "rejected_before_filling": [
+    {
+     "id": "WTREGEN",
+     "popularity": 88,
+     "why": "release ya representado (H.4.1 Factors Affecting Reserve Balances)"
+    },
+    {
+     "id": "WM2NS",
+     "popularity": 84,
+     "why": "inactiva (última obs. 2026-08-31)"
+    },
+    {
+     "id": "WRESBAL",
+     "popularity": 82,
+     "why": "release ya representado (H.4.1 Factors Affecting Reserve Balances)"
+    }
+   ]
+  },
+  "financiera_diaria": {
+   "spec": {
+    "tags": "daily;usa;nation",
+    "freq": "daily",
+    "topic": "financial"
+   },
+   "series": [
+    {
+     "id": "BAMLH0A0HYM2",
+     "title": "ICE BofA US High Yield Index Option-Adjusted Spread",
+     "frequency": "D",
+     "seasonal_adjustment": "NSA",
+     "units": "%",
+     "popularity": 100,
+     "observation_start": "2023-09-26",
+     "observation_end": "2026-09-24",
+     "release": "ICE BofA Indices",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "DGS10",
+     "title": "Market Yield on U.S. Treasury Securities at 10-Year Constant Maturity, Quoted on an Investment Basis",
+     "frequency": "D",
+     "seasonal_adjustment": "NSA",
+     "units": "%",
+     "popularity": 99,
+     "observation_start": "1962-01-02",
+     "observation_end": "2026-09-24",
+     "release": "H.15 Selected Interest Rates",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "T10Y2Y",
+     "title": "10-Year Treasury Constant Maturity Minus 2-Year Treasury Constant Maturity",
+     "frequency": "D",
+     "seasonal_adjustment": "NSA",
+     "units": "%",
+     "popularity": 98,
+     "observation_start": "1976-06-01",
+     "observation_end": "2026-09-25",
+     "release": "Interest Rate Spreads",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "VIXCLS",
+     "title": "CBOE Volatility Index: VIX",
+     "frequency": "D",
+     "seasonal_adjustment": "NSA",
+     "units": "Index",
+     "popularity": 86,
+     "observation_start": "1990-01-02",
+     "observation_end": "2026-09-22",
+     "release": "CBOE Market Statistics",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    },
+    {
+     "id": "DFEDTARU",
+     "title": "Federal Funds Target Range - Upper Limit",
+     "frequency": "D",
+     "seasonal_adjustment": "NSA",
+     "units": "%",
+     "popularity": 82,
+     "observation_start": "2008-12-16",
+     "observation_end": "2026-09-27",
+     "release": "FOMC Press Release",
+     "roots": [
+      32991
+     ],
+     "ya_vista": false
+    }
+   ],
+   "rejected_before_filling": [
+    {
+     "id": "RRPONTSYD",
+     "popularity": 92,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "DFII10",
+     "popularity": 92,
+     "why": "release ya representado (H.15 Selected Interest Rates)"
+    },
+    {
+     "id": "T10Y3M",
+     "popularity": 92,
+     "why": "release ya representado (Interest Rate Spreads)"
+    },
+    {
+     "id": "SOFR",
+     "popularity": 91,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "T10YIE",
+     "popularity": 91,
+     "why": "release ya representado (Interest Rate Spreads)"
+    },
+    {
+     "id": "SP500",
+     "popularity": 89,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "DGS30",
+     "popularity": 89,
+     "why": "release ya representado (H.15 Selected Interest Rates)"
+    },
+    {
+     "id": "BAMLC0A0CM",
+     "popularity": 87,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "DGS2",
+     "popularity": 86,
+     "why": "release ya representado (H.15 Selected Interest Rates)"
+    },
+    {
+     "id": "DGS5",
+     "popularity": 86,
+     "why": "release ya representado (H.15 Selected Interest Rates)"
+    },
+    {
+     "id": "DFF",
+     "popularity": 86,
+     "why": "release ya representado (H.15 Selected Interest Rates)"
+    },
+    {
+     "id": "IHLIDXUSTPSOFTDEVE",
+     "popularity": 85,
+     "why": "tema fuera de la categoría (raíces [10])"
+    },
+    {
+     "id": "T5YIE",
+     "popularity": 85,
+     "why": "release ya representado (Interest Rate Spreads)"
+    },
+    {
+     "id": "DCOILWTICO",
+     "popularity": 84,
+     "why": "tema fuera de la categoría (raíces [32455])"
+    },
+    {
+     "id": "BAMLC0A4CBBB",
+     "popularity": 84,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    },
+    {
+     "id": "BAMLH0A0HYM2EY",
+     "popularity": 84,
+     "why": "release ya representado (ICE BofA Indices)"
+    },
+    {
+     "id": "T5YIFR",
+     "popularity": 83,
+     "why": "release ya representado (Interest Rate Spreads)"
+    },
+    {
+     "id": "DGS1",
+     "popularity": 83,
+     "why": "release ya representado (H.15 Selected Interest Rates)"
+    },
+    {
+     "id": "DTWEXBGS",
+     "popularity": 83,
+     "why": "tema fuera de la categoría (raíces [32991])"
+    }
+   ]
+  }
+ }
+}

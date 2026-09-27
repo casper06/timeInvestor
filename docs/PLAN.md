@@ -385,7 +385,15 @@ verificada.
   Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
   donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
   cambia algún veredicto del catálogo.
-- [ ] **3.5 Capacidad de pronóstico por categoría de FRED.** Benchmark de los
+- [x] **3.5 Capacidad de pronóstico por categoría de FRED.** (rama
+  `feat/fred-category-benchmark`, PR abierto;
+  `docs/results/fred_category_benchmark_2026-09-27.md`)
+  - Tiene capacidad solo la mensual NSA (3/5). Mensual SA 1/5, trimestral
+    2/5, semanal 2/5, financiera diaria 0/5.
+  - La hipótesis de las financieras diarias **se sostiene**.
+  - **v5 se adopta** según su criterio: pasa las 4 categorías evaluables,
+    sin casos catastróficos. La trimestral no es evaluable.
+  - **C no se adopta**: falla mensual SA, 2/5. Benchmark de los
   motores contra el naive que corresponda a cada serie (random walk, o
   estacional si el detector de 3.0a la marca así), en estas categorías:
   - economía real mensual NSA;
@@ -402,6 +410,108 @@ verificada.
   donde pase.
   Incluye re-evaluar v5 con el criterio pre-registrado en 2.3c, sobre las
   series nuevas de este ítem.
+
+  **PRE-REGISTRO de 3.5 (2026-09-27, antes de descargar ninguna observación).**
+  Todo lo que sigue queda fijo antes del snapshot. Los resultados se reportan
+  contra esto tal cual.
+
+  - **Categorías:**
+    - mensual de economía real NSA;
+    - mensual de economía real SA;
+    - trimestral;
+    - semanal;
+    - financiera diaria (tasas, spreads, volatilidad).
+  - **Regla de selección** (`scripts/fred_category_select.py`; usa solo
+    metadatos de FRED, sin observaciones). Para cada categoría se recorre la
+    lista de FRED ordenada por `popularity` descendente (al momento de la
+    consulta) para las etiquetas de la categoría (frecuencia + `usa` +
+    `nation`, excluyendo `discontinued`). Se toma cada serie que pasa todos
+    los filtros, hasta 5:
+    - **activa**: última observación desde 2026-09-01 (diarias y semanales),
+      2026-06-01 (mensuales) o 2026-01-01 (trimestrales);
+    - **historia**: primera observación hasta 2024-09-01 (diarias),
+      2016-09-01 (semanales), 2006-09-01 (mensuales) o 1986-09-01
+      (trimestrales);
+    - **tema**, con el árbol de categorías de FRED:
+      - mensuales de economía real: alguna categoría de la serie cuelga de
+        las raíces *Production & Business Activity* (1), *Population,
+        Employment, & Labor Markets* (10) o *National Accounts* (32992), y
+        ninguna de *Prices* (32455) ni de *Money, Banking, & Finance*
+        (32991);
+      - trimestral y semanal: cualquier tema nacional (alguna categoría en
+        las raíces 1, 10, 32992, 32455 o 32991);
+      - financiera diaria: alguna categoría en la raíz 32991 y alguna de las
+        etiquetas `interest rate`, `spread` o `volatility`;
+    - **a lo sumo una serie por release de FRED** dentro de la categoría;
+    - **enmienda 1** (misma fecha, al ver la lista y antes de descargar
+      datos): se excluyen los indicadores binarios (unidades de FRED
+      "+1 or 0"), porque MASE y skill no aplican a una variable 0/1. La
+      primera corrida de la regla había elegido USREC en mensual NSA.
+
+    Las series del snapshot de 2.5 (HOUSTNSA, INDPRO, IPG2211A2N, UNRATE,
+    RSAFSNA) entran solo si la regla las elige, y se marcan "ya vistas".
+  - **Datos:** `FREDDataFetcher().get_series(id)` sin cambios (las 500
+    observaciones más recientes: lo mismo que ve la app). El snapshot se
+    guarda en `data/snapshots/` con sha256 y se reproduce con `--replay`.
+  - **Horizonte canónico** (4.14): diaria 60, semanal 13, mensual 12,
+    trimestral 4. Los cutoffs son la grilla de 24 de `recent_cutoff_indices`
+    dentro de la ventana de v4 (`RECENT_WINDOW`).
+  - **Motores:** Holt, Holt-Winters (solo en las series que el detector de
+    3.0a marca estacionales sobre la serie completa) y TimesFM con pesos
+    reales, todos al 80%. **Si TimesFM no carga o cae a Holt en algún
+    cutoff, la corrida se aborta y se avisa.**
+  - **Naives:** random walk (último valor) para todas las series; además,
+    naive estacional (m = 12 mensual, 4 trimestral) en las estacionales. El
+    **naive de referencia** de una serie es el random walk o, en las
+    estacionales, el que tenga menor MAE medio en la grilla (el más difícil
+    de los dos).
+  - **Métricas por serie y motor m**, en los 24 cutoffs:
+    - MAE de m y del naive de referencia en los H puntos de cada cutoff;
+    - MASE contra el naive = Σ MAE_m / Σ MAE_naive;
+    - skill = 1 − MASE contra el naive (se reporta también contra el random
+      walk y, en estacionales, contra el naive estacional);
+    - cobertura del intervalo contra el nivel nominal que declara cada
+      motor (80%).
+  - **Test y criterio de "hay capacidad de pronóstico":**
+    - por serie y motor: test de signo en pares, unilateral (binomial
+      exacto; los empates no cuentan), sobre los 24 cutoffs: el motor tiene
+      menor MAE que el naive de referencia;
+    - m **le gana al naive** en la serie si p < 0,05 / k y skill > 0, con k
+      el número de motores evaluados en esa serie (2, o 3 si es
+      estacional): corrección de Bonferroni por serie;
+    - una **serie tiene capacidad** si algún motor le gana al naive;
+    - una **categoría tiene capacidad** si la tienen al menos 3 de sus 5
+      series;
+    - como sensibilidad, no decisiva, se reporta Holm sobre todos los pares
+      (serie, motor) de cada categoría.
+  - **Hipótesis "las financieras diarias no le ganan al random walk":**
+    - se sostiene si 0 o 1 de las 5 series tiene capacidad;
+    - se refuta si la tienen 3 o más;
+    - es no concluyente con 2.
+  - **v5 y variante C:** se evalúan con los criterios ya commiteados
+    (`db4fcdb` y `0ba851a`), que no se tocan. Aplicación operativa, fijada
+    ahora:
+    - "categoría" = las 5 de arriba;
+    - una serie donde la grilla de algún horizonte del criterio (30 o el
+      canónico) no llega a 24 cutoffs distintos queda **no evaluable** para
+      ese criterio y no cuenta (por ejemplo, las trimestrales a 30: la
+      ventana de 40 trimestres solo deja 10 cutoffs);
+    - en C, "en los cortes normales" se aplica al arrepentimiento
+      restringiendo los cutoffs no usados a los normales, y al MASE y la
+      cobertura promediando solo los cortes normales.
+
+  **Series elegidas por la regla** (consulta del 2026-09-27 15:28; detalle y
+  rechazos en `docs/results/fred_category_selection_2026-09-27.json`):
+
+  | Categoría | Series (★ = ya vista en 2.5) |
+  |---|---|
+  | Mensual NSA (economía real) | `MTSDS133FMS`, `POPTHM`, `MSPNHSUS`, `UNRATENSA`, `IMPCH` |
+  | Mensual SA (economía real) | ★ `UNRATE`, `PSAVERT`, ★ `INDPRO`, `HOUST`, `JTSJOL` |
+  | Trimestral | `GDP`, `GFDEBTN`, `MSPUS`, `GFDEGDQ188S`, `M2V` |
+  | Semanal | `MORTGAGE30US`, `WALCL`, `NFCI`, `STLFSI4`, `ICSA` |
+  | Financiera diaria | `BAMLH0A0HYM2`, `DGS10`, `T10Y2Y`, `VIXCLS`, `DFEDTARU` |
+
+  UNRATENSA es la versión NSA de UNRATE (ya vista): otro ID, la misma variable.
 
 Hecho cuando: los tres resultados están documentados tal como salieron,
 incluso si la hipótesis no se sostiene.
@@ -679,9 +789,27 @@ abiertas, con la lista de indicadores (fuente, frecuencia, historia
 disponible y licencia), discutido con el usuario antes de planificar la
 implementación.
 
+- [ ] **2.3d Implementar v5 (adoptada en 3.5).** El auto-discovery decide
+  en el horizonte canónico de cada frecuencia: diaria 60, semanal 13,
+  mensual 12. Criterio v5, con `engine_decisions.horizon`. PR aparte.
+  - **Pregunta abierta:** la trimestral (canónico 4) no tuvo evidencia en
+    3.5. ¿Decide también en 4 o se queda en 30?
+  - Hecho cuando: `AUTO_DISCOVERY_CRITERIA_VERSION = 5`, la decisión y el
+    `decision_horizon` salen en el canónico, hay tests y una verificación
+    sobre una copia de la DB.
+- [ ] **2.8 `decide_robust` lanza `ZeroDivisionError` si el error medio del
+  base es exactamente 0.** Divide por él para `rel_gap`, que es solo un
+  dato informativo. Se vio en DFEDTARU (3.5): Holt acierta exacto los
+  tramos planos de una tasa en escalones. En producción `decide()` atrapa
+  la excepción y la serie cae al default sin decisión.
+  Hecho cuando: `rel_gap` tolera el 0, la decisión no cambia, y hay un test
+  con errores 0. De paso, `holdout_regret` (scripts) devuelve 0 cuando el
+  mejor error es 0 y el elegido no; `fred_category_benchmark.capped_regret`
+  lo corrige.
+
 ## Orden de trabajo acordado (2026-09-26, actualizado el 2026-09-27)
 
-**2.7 → 3.5 (con la re-evaluación de v5 y de la variante C de Holt) → 4.13 → 4.11 → 3.4.**
+**3.5 → 2.3d (v5) → 2.8 → 4.13 → 4.11 → 3.4.** 2.7 está hecho.
 
 Historia del orden: 2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 (hechos o medidos
 el 2026-09-26/27). 2.7 se agregó el 2026-09-27 y va primero porque bloquea
