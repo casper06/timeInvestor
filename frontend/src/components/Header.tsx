@@ -23,6 +23,8 @@ interface HeaderProps {
   onChangeView: (view: DashboardView) => void;
   onOpenThesesDrawer: () => void;
   onExportReport: () => void;
+  /** false while there is nothing to export (empty start). */
+  canExport?: boolean;
   isSyntheticActive?: boolean;
   onLLMProviderChanged?: (provider: string) => void;
 }
@@ -34,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onChangeView,
   onOpenThesesDrawer,
   onExportReport,
+  canExport = true,
   isSyntheticActive = false,
   onLLMProviderChanged,
 }) => {
@@ -72,7 +75,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onExportReport}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-medium transition-colors shadow-md shadow-indigo-600/20 cursor-pointer"
+            disabled={!canExport}
+            title={canExport ? undefined : 'Todavía no hay nada para exportar'}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-medium transition-colors shadow-md shadow-indigo-600/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4" />
             <span>Exportar Informe</span>
