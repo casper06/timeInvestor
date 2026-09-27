@@ -154,6 +154,6 @@ describe('BacktestPanel horizon in the series unit (4.14)', () => {
     expect(screen.getByText(/Futuro a evaluar: 12 meses/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Ejecutar Reality Check/ }));
     await screen.findByText(/El modelo supera al benchmark naive/);
-    expect(spy).toHaveBeenCalledWith('INDPRO', '2024-12-01', 12, 0.95, undefined);
+    expect(spy).toHaveBeenCalledWith('INDPRO', '2024-12-01', 12, 0.95, undefined, 'macro');
   });
 });

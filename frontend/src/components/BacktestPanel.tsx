@@ -81,7 +81,9 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
     if (!selectedDate) return;
     setLoading(true);
     try {
-      const res = await runBacktest(activeSeriesId, selectedDate, horizon, 0.95, useHoltWinters ? 'holt_winters' : undefined);
+      const res = await runBacktest(
+        activeSeriesId, selectedDate, horizon, 0.95, useHoltWinters ? 'holt_winters' : undefined, seriesData?.type,
+      );
       setResult(res);
       onResult?.(res);
     } catch (err) {
