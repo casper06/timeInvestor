@@ -141,15 +141,17 @@ def test_backtest_of_a_daily_fred_series_uses_daily_dates(monkeypatch):
 # ---- the decision records the horizon it was evaluated at ----
 
 def test_auto_discovery_decision_records_its_horizon(db_session, monkeypatch):
-    _mock_mini_backtest(monkeypatch, tfm_available=True, mase_holt=1.0, mase_tfm=1.5)
+    """v5 (2.3d): the mini-backtest evaluates at the series' canonical
+    horizon, every backtest gets it, and the decision stores it."""
+    _, calls = _mock_mini_backtest(monkeypatch, tfm_available=True, mase_holt=1.0, mase_tfm=1.5, decision_horizon=60)
     decision = AutoDiscoveryEngine.decide(db_session, "NEWTICKER", n_points=500)
-    assert decision.horizon == auto_discovery.MINI_BACKTEST_HORIZON
+    assert decision.horizon == 60 and set(calls["horizons"]) == {60}
 
     pts = [TimeSeriesPoint(**p) for p in _business_days(300)]
     res = EngineSelector._try_auto_discovery(
         db_session, "NEWTICKER", "equity", pts, len(pts), horizon=60, confidence=0.95, freq="D",
     )
-    assert res.decision_horizon == auto_discovery.MINI_BACKTEST_HORIZON
+    assert res.decision_horizon == 60
 
 
 def test_legacy_decision_without_horizon_reads_as_30(db_session):

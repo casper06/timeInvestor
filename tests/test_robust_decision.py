@@ -144,7 +144,7 @@ def test_mini_backtest_marginal_win_is_a_tie(db_session, monkeypatch):  # noqa: 
 def test_mini_backtest_clear_win_is_timesfm(db_session, monkeypatch):  # noqa: F811
     _mock_mini_backtest(monkeypatch, tfm_available=True, mase_holt=1.0, mase_tfm=0.7)
     d = AutoDiscoveryEngine.decide(db_session, "CLEAR", n_points=500)
-    assert d.engine_choice == "timesfm" and d.criteria_version == 4
+    assert d.engine_choice == "timesfm" and d.criteria_version == ad.AUTO_DISCOVERY_CRITERIA_VERSION
 
 
 # --- 2.3b: optional horizon for recent_cutoff_indices (not wired into v4) -----------
@@ -186,3 +186,46 @@ def test_mini_backtest_with_zero_errors_caches_a_baseline_decision(db_session, m
     decision = AutoDiscoveryEngine.decide(db_session, "STEPS", n_points=500)
     assert decision is not None and decision.engine_choice == "holt"
     assert decision.mase_holt == 0.0 and decision.mase_timesfm == 0.0
+
+
+# ---- 2.3d: criterion v5, decide at the canonical horizon of the frequency ----
+
+def _dates(freq, n):
+    from datetime import date
+    start = date(2000, 1, 3)
+    if freq == "daily":
+        out, d = [], start
+        while len(out) < n:
+            if d.weekday() < 5:
+                out.append(d.isoformat())
+            d += timedelta(days=1)
+        return out
+    if freq == "weekly":
+        return [(start + timedelta(weeks=i)).isoformat() for i in range(n)]
+    step = {"monthly": 1, "quarterly": 3}[freq]
+    return [f"{1960 + (i * step) // 12:04d}-{(i * step) % 12 + 1:02d}-01" for i in range(n)]
+
+
+@pytest.mark.parametrize("freq,expected", [("daily", 60), ("weekly", 13), ("monthly", 12), ("quarterly", 4)])
+def test_v5_decision_horizon_is_the_canonical_one(monkeypatch, freq, expected):
+    pts = [TimeSeriesPoint(timestamp=t, value=100.0 + i) for i, t in enumerate(_dates(freq, 300))]
+    monkeypatch.setattr(AutoDiscoveryEngine, "_load_points", staticmethod(lambda sid, macro: pts))
+    assert AutoDiscoveryEngine._decision_horizon("X", True) == expected
+
+
+def test_v5_cutoffs_leave_the_canonical_horizon(monkeypatch):
+    pts = [TimeSeriesPoint(timestamp=t, value=100.0 + i) for i, t in enumerate(_dates("monthly", 498))]
+    monkeypatch.setattr(AutoDiscoveryEngine, "_load_points", staticmethod(lambda sid, macro: pts))
+    cutoffs = AutoDiscoveryEngine._pick_cutoffs("X", True)
+    assert cutoffs[-1] == pts[498 - 1 - 12].timestamp  # 12 months left to evaluate, not 30
+    assert len(cutoffs) == ad.DECISION_N_CUTOFFS
+
+
+def test_v4_decisions_are_stale_and_redecided_without_incumbent(db_session, monkeypatch):  # noqa: F811
+    assert ad.AUTO_DISCOVERY_CRITERIA_VERSION == 5
+    db_session.add(EngineDecisionModel(series_id="OLDV4", engine_choice="timesfm", mase_holt=1.0, mase_timesfm=0.5,
+                                       n_points_at_evaluation=500, criteria_version=4, horizon=30))
+    db_session.commit()
+    seen = _capture_incumbent(monkeypatch)
+    AutoDiscoveryEngine.decide(db_session, "OLDV4", n_points=500)
+    assert "incumbent" in seen and seen["incumbent"] is None  # v4 row: decided from scratch

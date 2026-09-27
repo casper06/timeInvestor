@@ -806,7 +806,14 @@ abiertas, con la lista de indicadores (fuente, frecuencia, historia
 disponible y licencia), discutido con el usuario antes de planificar la
 implementación.
 
-- [ ] **2.3d Implementar v5 (adoptada en 3.5).** El auto-discovery decide
+- [x] **2.3d Implementar v5 (adoptada en 3.5).** (rama `feat/decision-v5`,
+  sobre `fix/decide-robust-zero-error`; PR abierto; ADR-0019)
+  - **Trimestral: decide en 4 trimestres.** Sin evidencia en 3.5, decidido
+    por uso (30 pasos trimestrales son 7,5 años). Revisar cuando haya más
+    series trimestrales.
+  - Consecuencia: una diaria necesita 180 puntos para tener cutoffs (antes,
+    90).
+  - Detalle original: El auto-discovery decide
   en el horizonte canónico de cada frecuencia: diaria 60, semanal 13,
   mensual 12. Criterio v5, con `engine_decisions.horizon`. PR aparte.
   - **Pregunta abierta:** la trimestral (canónico 4) no tuvo evidencia en

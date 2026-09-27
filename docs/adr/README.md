@@ -20,7 +20,7 @@ reemplace y se actualiza el estado de la anterior.
 | [0007](0007-regla-v4.md) | Regla v4: ventana reciente, mayoría + margen, empate → base, histéresis, sin guard | Aceptada | #33 |
 | [0008](0008-holt-winters-plan-b-estacional.md) | Holt-Winters (statsmodels `ETSModel`) como base y plan B estacional | Aceptada | #27, #30 |
 | [0009](0009-banda-timesfm-80.md) | Banda de TimesFM al 80%, cuantiles buscados por valor | Aceptada | #29 |
-| [0010](0010-horizonte-canonico-por-frecuencia.md) | Horizonte en la unidad de la serie; canónico por frecuencia (mensual = 12 por uso) | Aceptada | #35, #36 |
+| [0010](0010-horizonte-canonico-por-frecuencia.md) | Horizonte en la unidad de la serie; canónico por frecuencia (mensual = 12 por uso) | Aceptada; desde v5 también para decidir (0019) | #35, #36 |
 | [0011](0011-timesfm-fijado.md) | `timesfm` fijado en 3.0.2 | Aceptada | #14 |
 | [0012](0012-lockfile-con-uv.md) | Lockfile con uv | Aceptada | #24 |
 | [0013](0013-marca-no-confiable.md) | Marca "no confiable" sin recortar los números | Aceptada | #37 |
@@ -28,4 +28,5 @@ reemplace y se actualiza el estado de la anterior.
 | [0015](0015-pre-registro-de-criterios.md) | Pre-registro de criterios antes de medir | Aceptada | #36, #37 |
 | [0016](0016-claude-cli-haiku-por-defecto.md) | `CLAUDE_CLI_MODEL=haiku` por defecto | Aceptada | #10 |
 | [0017](0017-sin-correccion-de-sesgo-de-holt.md) | No corregir el sesgo positivo de Holt | Aceptada | #26 |
-| [0018](0018-v4-se-mantiene-v5-y-c-con-3-5.md) | v4 se mantiene; v5 y la variante C se evalúan solo con las series de 3.5 | Re-evaluada en 3.5: v5 adoptada (implementación pendiente, 2.3d); C no | #36, #37 |
+| [0018](0018-v4-se-mantiene-v5-y-c-con-3-5.md) | v4 se mantiene; v5 y la variante C se evalúan solo con las series de 3.5 | Reemplazada por 0019 en lo que toca a v5; C no se adopta | #36, #37 |
+| [0019](0019-v5-decidir-en-el-horizonte-canonico.md) | Criterio v5: decidir en el horizonte canónico (trimestral 4 por uso); C no se adopta | Aceptada | #40 y 2.3d |

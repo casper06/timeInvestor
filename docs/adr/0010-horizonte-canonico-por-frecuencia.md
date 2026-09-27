@@ -25,8 +25,9 @@ fechas diarias (`docs/results/horizon_units_2026-09-27.md`).
 
 ## Consecuencias
 
-- El auto-discovery sigue decidiendo a 30 pasos (v4): decidir en el
-  canónico (v5) no se adoptó (ADR-0018).
+- Al principio el auto-discovery siguió decidiendo a 30 pasos (v4). Desde
+  el criterio v5 decide en este mismo canónico (ADR-0019), con la
+  trimestral en 4 decidida por uso, sin evidencia de 3.5.
 - Los snapshots anteriores a 4.14 no tienen unidad registrada y se muestran
   como "N pasos".
 - El CAGR diario cambió: antes anualizaba días hábiles como días corridos.

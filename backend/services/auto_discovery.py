@@ -58,6 +58,9 @@ MIN_HISTORY_FOR_AUTODISCOVERY = 90
 # Mini-backtest parameters: short horizon, few cutoffs — enough for a
 # reasonable per-series signal without being as expensive as the original
 # 5-cutoff full benchmark (scripts/benchmark_real_data.py).
+# Up to criterion v4 every frequency was evaluated at 30 steps. Kept for the
+# scripts that reproduce 2.2/2.3 and as the meaning of a NULL
+# engine_decisions.horizon; from v5 the horizon is _decision_horizon().
 MINI_BACKTEST_HORIZON = 30
 MINI_BACKTEST_N_CUTOFFS = 3
 
@@ -89,7 +92,13 @@ GUARD_INTERVAL_LEVEL = 0.80
 #       recent window by frequency, majority of paired cutoffs + 10% margin,
 #       >= 7 pairs, tie -> baseline, hysteresis on re-evaluation, no
 #       coverage guard. Measured in docs/results/decision_variants_2026-09-26.md.
-AUTO_DISCOVERY_CRITERIA_VERSION = 4
+#   v5 (2026-09-27, 2.3d): same rule, but the mini-backtest evaluates at the
+#       canonical horizon of the series' frequency (backend/services/horizons.py:
+#       daily 60, weekly 13, monthly 12, quarterly 4) instead of 30 steps for
+#       every frequency. Adopted by its pre-registered criterion (db4fcdb) on
+#       the 3.5 series (docs/results/fred_category_benchmark_2026-09-27.md);
+#       quarterly had no evidence there and was decided by use (docs/adr/0019).
+AUTO_DISCOVERY_CRITERIA_VERSION = 5
 
 # --- v4 decision parameters (2.3), chosen from the variant measurement ---
 # 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),
@@ -272,8 +281,10 @@ class AutoDiscoveryEngine:
         cold-start path in that case).
 
         Measured cost with criterion v4 (DECISION_N_CUTOFFS = 8 cutoffs x 2
-        engines): 2.2-3.0 s per new series end to end, data download included
-        (docs/results/decision_variants_2026-09-26.md). Every later call for
+        engines, 30 steps): 2.2-3.0 s per new series end to end, data
+        download included (docs/results/decision_variants_2026-09-26.md).
+        v5 changes only the horizon (daily 60 steps doubles the forecast
+        length; monthly 12 shortens it); not re-measured separately. Every later call for
         the same series (until the decision goes stale) is a single indexed
         SQLite lookup — no measurable added latency.
         """
@@ -334,6 +345,8 @@ class AutoDiscoveryEngine:
         cutoffs and a 10% margin on the mean error, a tie goes to the
         baseline, switching away from the `incumbent` needs twice the margin,
         and there is no coverage guard (USE_COVERAGE_GUARD = False).
+        From criterion v5 every backtest uses the canonical horizon of the
+        series' frequency (_decision_horizon), stored in the decision.
         """
         # Seasonal series (3.0a detector, on the full fetched history) are
         # compared against Holt-Winters with the seasonal MASE: against plain
@@ -353,6 +366,7 @@ class AutoDiscoveryEngine:
         # per cutoff as BacktestResponse.is_fallback, handled in the loop.
         timesfm_engine = _available_timesfm_engine()
 
+        horizon = AutoDiscoveryEngine._decision_horizon(series_id, is_macro)
         cutoffs = AutoDiscoveryEngine._pick_cutoffs(series_id, is_macro)
         if not cutoffs:
             # Raised instead of caching mean([]) = NaN as a "holt" decision: that
@@ -372,7 +386,7 @@ class AutoDiscoveryEngine:
         for cutoff_date in cutoffs:
             try:
                 holt_res = BacktestEngine.run_backtest(
-                    series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
+                    series_id=series_id, cutoff_date=cutoff_date, horizon=horizon,
                     confidence=GUARD_INTERVAL_LEVEL, is_macro=is_macro, engine_override=baseline_engine,
                 )
             except NotSeasonalError:
@@ -389,7 +403,7 @@ class AutoDiscoveryEngine:
 
             if timesfm_engine is not None:
                 tfm_res = BacktestEngine.run_backtest(
-                    series_id=series_id, cutoff_date=cutoff_date, horizon=MINI_BACKTEST_HORIZON,
+                    series_id=series_id, cutoff_date=cutoff_date, horizon=horizon,
                     confidence=GUARD_INTERVAL_LEVEL, is_macro=is_macro, engine_override=timesfm_engine,
                 )
                 if tfm_res.is_fallback:
@@ -450,7 +464,7 @@ class AutoDiscoveryEngine:
             baseline_engine=baseline_name,
             metric=metric,
             baseline_skipped_cutoffs=baseline_skipped,
-            horizon=MINI_BACKTEST_HORIZON,
+            horizon=horizon,
         )
 
     @staticmethod
@@ -471,12 +485,21 @@ class AutoDiscoveryEngine:
         return detect_seasonality(AutoDiscoveryEngine._load_points(series_id, is_macro)).is_seasonal
 
     @staticmethod
+    def _decision_horizon(series_id: str, is_macro: bool) -> int:
+        """Horizon the mini-backtest evaluates at (criterion v5): the canonical
+        horizon of the series' frequency, inferred from its dates."""
+        from backend.services.horizons import canonical_horizon, series_frequency
+        points = AutoDiscoveryEngine._load_points(series_id, is_macro)
+        return canonical_horizon(series_frequency([p.timestamp for p in points]))
+
+    @staticmethod
     def _pick_cutoffs(series_id: str, is_macro: bool) -> list:
         """DECISION_N_CUTOFFS cutoff dates evenly spaced over the series' recent
-        window (RECENT_WINDOW by frequency), each leaving MINI_BACKTEST_HORIZON
-        points for evaluation (criterion v4)."""
+        window (RECENT_WINDOW by frequency), each leaving the decision horizon
+        (_decision_horizon) of points for evaluation."""
         from backend.services.seasonality import infer_frequency
         sorted_points = AutoDiscoveryEngine._load_points(series_id, is_macro)
         window = RECENT_WINDOW.get(infer_frequency([p.timestamp for p in sorted_points]), RECENT_WINDOW_DEFAULT)
-        idx = recent_cutoff_indices(len(sorted_points), DECISION_N_CUTOFFS, window)
+        horizon = AutoDiscoveryEngine._decision_horizon(series_id, is_macro)
+        idx = recent_cutoff_indices(len(sorted_points), DECISION_N_CUTOFFS, window, horizon=horizon)
         return [sorted_points[i].timestamp for i in idx]

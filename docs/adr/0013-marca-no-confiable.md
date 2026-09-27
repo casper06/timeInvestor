@@ -24,8 +24,9 @@ serie se movió en ese horizonte en toda su historia.
 
 - 0 marcas en 2.358 corridas normales del snapshot, y marca las 6
   explosiones conocidas.
-- No arregla el pronóstico: una estimación robusta (variante C) queda
-  pendiente de evaluar con las series de 3.5 (ADR-0018).
+- No arregla el pronóstico. La estimación robusta que se evaluó (variante
+  C) no cumplió su criterio pre-registrado en 3.5 (falla mensual SA) y no se
+  adopta (ADR-0018, ADR-0019). La marca sigue siendo la única salvaguarda.
 
 ## Estado
 

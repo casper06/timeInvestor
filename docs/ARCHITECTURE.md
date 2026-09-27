@@ -149,9 +149,11 @@ flowchart TD
   resultado.
 - **Auto-discovery** (`backend/services/auto_discovery.py`): cubre cualquier
   serie fuera de los catálogos con 90 puntos o más. El mini-backtest
-  (criterio v4) toma 8 cutoffs repartidos en una ventana reciente según la
+  (criterio v5) toma 8 cutoffs repartidos en una ventana reciente según la
   frecuencia (`RECENT_WINDOW`: 504 puntos en diarias, 104 en semanales, 120
-  en mensuales, 40 en trimestrales), cada uno con `MINI_BACKTEST_HORIZON` (30)
+  en mensuales, 40 en trimestrales), cada uno con el horizonte canónico de la
+  frecuencia (`_decision_horizon`: diaria 60, semanal 13, mensual 12,
+  trimestral 4; hasta v4 eran 30 pasos, `MINI_BACKTEST_HORIZON`)
   puntos de evaluación, y corre en cada cutoff el motor base y TimesFM con
   `BacktestEngine.run_backtest(engine_override=...)`, los dos al 80%.
   - Motor base: Holt con MASE a un paso, o Holt-Winters con MASE estacional
@@ -160,7 +162,7 @@ flowchart TD
     y se cuentan en `timesfm_failed_cutoffs`.
   - Si el base rechaza un cutoff, se cuenta en `baseline_skipped_cutoffs`.
 
-### Regla v4 (`decide_robust`)
+### Regla de decisión (`decide_robust`, igual en v4 y v5)
 
 ```mermaid
 flowchart TD
@@ -211,9 +213,10 @@ stateDiagram-v2
 
 `_is_stale` marca una fila como vieja por cualquiera de estas razones:
 - **Versión del criterio**: `criteria_version` (NULL = 1) es menor que
-  `AUTO_DISCOVERY_CRITERIA_VERSION` (4). Hubo versiones 1 a 4: v2 en 3.0e
+  `AUTO_DISCOVERY_CRITERIA_VERSION` (5). Hubo versiones 1 a 5: v2 en 3.0e
   (banda de TimesFM y nivel común de comparación), v3 en 3.0f (base
-  Holt-Winters en series estacionales), v4 en 2.3.
+  Holt-Winters en series estacionales), v4 en 2.3 y v5 en 2.3d (horizonte
+  canónico).
 - **TTL**: pasaron más de `DECISION_TTL_DAYS` (30) desde `evaluated_at`.
 - **Crecimiento**: la serie creció `STALE_GROWTH_FRACTION` (20%) o más en
   puntos.
@@ -245,8 +248,10 @@ flowchart TD
   como DGS10.
 - `backend/services/horizons.py` y `frontend/src/utils/horizon.ts` son
   espejos: hay que mantenerlos iguales.
-- El auto-discovery todavía decide a 30 pasos en todas las frecuencias
-  (criterio v4). El horizonte canónico mensual es 12 por uso (ciclo
+- Desde el criterio v5, el auto-discovery decide en el mismo horizonte
+  canónico (ADR-0019); hasta v4 decidía a 30 pasos en todas las
+  frecuencias. El trimestral en 4 no tuvo evidencia en 3.5 y se decidió por
+  uso. El horizonte canónico mensual es 12 por uso (ciclo
   estacional completo, comparación interanual), no por una métrica.
 - Los snapshots guardan su `frequency`; los anteriores a 4.14 se muestran
   como "N pasos".
