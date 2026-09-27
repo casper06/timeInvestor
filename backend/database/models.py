@@ -101,6 +101,11 @@ class EngineDecisionModel(Base):
     # Horizon (steps of the series) the mini-backtest evaluated. NULL on rows
     # from before this column: MINI_BACKTEST_HORIZON, 30 since v1.
     horizon = Column(Integer, nullable=True)
+    # 4.13 (v9): per-cutoff MAE of the baseline, TimesFM and the naive (random
+    # walk, or seasonal naive for seasonal series), as JSON
+    # {"naive": ..., "cutoffs": [{"cutoff", "base", "tfm", "naive"}]}. The
+    # forecast-skill badge reads it. NULL on rows from before v9.
+    cutoff_errors_json = Column(Text, nullable=True)
 
 
 class ClaudeCliUsageModel(Base):

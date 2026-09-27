@@ -492,6 +492,7 @@ def test_migration_adds_column_to_existing_database(tmp_path):
         "engine_decisions.timesfm_failed_cutoffs", "engine_decisions.criteria_version",
         "engine_decisions.baseline_engine", "engine_decisions.metric",
         "engine_decisions.baseline_skipped_cutoffs", "engine_decisions.horizon",
+        "engine_decisions.cutoff_errors_json",
     ]
     assert migrate_added_columns(engine) == [], "must be idempotent"
 

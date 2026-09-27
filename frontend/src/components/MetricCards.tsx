@@ -41,6 +41,23 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
       ? `Motor elegido evaluando a ${horizonLabel(decisionHorizon, frequency)}`
       : null;
 
+  // 4.13: does the point forecast beat the naive? When it doesn't, the range
+  // is the main figure and the point is secondary.
+  const skill = forecast?.skill ?? null;
+  const noAporta = skill?.state === 'no_aporta';
+  const naiveWords =
+    skill?.naive === 'naive_estacional' ? 'igual que el mismo período del ciclo anterior' : 'igual que el último dato';
+  const SKILL_LABEL = {
+    aporta: 'Aporta sobre el naive',
+    no_aporta: 'No aporta más que el naive',
+    no_evaluado: 'No evaluado',
+  } as const;
+  const SKILL_STYLE = {
+    aporta: 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300',
+    no_aporta: 'border-amber-500/40 bg-amber-950/30 text-amber-300',
+    no_evaluado: 'border-slate-700 bg-slate-900/60 text-slate-400',
+  } as const;
+
   return (
     <div className="space-y-4">
       {/* Implausible forecast (2.6): said, never hidden or trimmed. */}
@@ -63,13 +80,29 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             <span className="text-xs font-medium uppercase tracking-wider">Objetivo +{horizonTag(horizon, frequency)}</span>
             <Target className="h-4 w-4 text-cyan-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-slate-100">
-            {targetVal.toFixed(2)}
-          </div>
-          <div className={`text-xs font-mono font-medium mt-1 flex items-center gap-1 ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            <span>{delta >= 0 ? '▲ +' : '▼ '}{delta.toFixed(2)}</span>
-            <span>({pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%)</span>
-          </div>
+          {noAporta ? (
+            <div data-testid="target-range-first">
+              <div className="text-lg font-bold font-mono text-slate-100">
+                [{lowerTarget.toFixed(2)} — {upperTarget.toFixed(2)}]
+              </div>
+              <div className="text-xs font-mono text-slate-400 mt-1">
+                Punto central {targetVal.toFixed(2)} ({pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%)
+              </div>
+              <div className="text-[10px] text-amber-400 mt-1">
+                El pronóstico puntual no supera a '{naiveWords}'
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="text-xl font-bold font-mono text-slate-100">
+                {targetVal.toFixed(2)}
+              </div>
+              <div className={`text-xs font-mono font-medium mt-1 flex items-center gap-1 ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <span>{delta >= 0 ? '▲ +' : '▼ '}{delta.toFixed(2)}</span>
+                <span>({pctChange >= 0 ? '+' : ''}{pctChange.toFixed(1)}%)</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Card 2: Projected CAGR */}
@@ -122,6 +155,20 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
           )}
         </div>
       </div>
+
+      {/* Forecast skill vs the naive (4.13) */}
+      {skill && (
+        <div
+          data-testid="skill-badge"
+          data-state={skill.state}
+          className={`flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border p-3 text-xs ${SKILL_STYLE[skill.state]}`}
+        >
+          <span className="font-bold uppercase tracking-wide whitespace-nowrap">
+            Capacidad de pronóstico: {SKILL_LABEL[skill.state]}
+          </span>
+          <span className="text-slate-300">{skill.reason}</span>
+        </div>
+      )}
 
       {/* Thesis Synthesis & Rationale Accordion */}
       {thesisData && (

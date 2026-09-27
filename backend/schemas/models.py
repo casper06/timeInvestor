@@ -62,6 +62,19 @@ class ForecastRequest(BaseModel):
     series_type: Optional[str] = Field(default=None, description="'equity' or 'macro', as in TimeSeriesData.type — used by EngineSelector alongside series_id")
     engine: Optional[Literal["holt_winters"]] = Field(default=None, description="Motor explícito. 'holt_winters' (ETS con estacionalidad) solo para series que el detector marca como estacionales; si no lo son, 422. None = comportamiento por defecto")
 
+class ForecastSkill(BaseModel):
+    """Does the forecast beat the naive it should beat? (4.13; criterion
+    pre-registered in docs/PLAN.md, backend/services/forecast_skill.py)"""
+    state: Literal["aporta", "no_aporta", "no_evaluado"]
+    reason: str = Field(..., description="Qué significa y con qué evidencia, o por qué no se evaluó")
+    naive: Optional[Literal["random_walk", "naive_estacional"]] = None
+    wins: Optional[int] = Field(default=None, description="Cutoffs donde el motor tuvo menor error que el naive")
+    losses: Optional[int] = None
+    n_pairs: Optional[int] = Field(default=None, description="Cutoffs con los dos errores definidos")
+    rel_gap: Optional[float] = Field(default=None, description="error medio del motor / del naive − 1 (negativo = mejor)")
+    source: Optional[str] = Field(default=None, description="De dónde sale la evidencia")
+
+
 class ForecastResponse(BaseModel):
     timestamps: List[str] = Field(..., description="Projected future timestamps")
     values: List[float] = Field(..., description="Point forecasts")
@@ -79,6 +92,7 @@ class ForecastResponse(BaseModel):
     decision_horizon: Optional[int] = Field(default=None, description="Horizonte (en la unidad de la serie) en el que se evaluó el motor elegido: mini-backtest de auto-discovery o benchmark del catálogo. None = el motor no salió de una evaluación (default o fallback)")
     reliable: bool = Field(default=True, description="False si el pronóstico es implausible: se mueve más de 2 veces lo máximo que la serie se movió en ese horizonte en su historia (backend/services/reliability.py). Los números no se tocan")
     reliability_warning: Optional[str] = Field(default=None, description="Por qué el pronóstico no es confiable (None si lo es)")
+    skill: Optional[ForecastSkill] = Field(default=None, description="Capacidad de pronóstico contra el naive (4.13)")
 
 class FundamentalsMetric(BaseModel):
     ticker: str

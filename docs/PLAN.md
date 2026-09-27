@@ -741,13 +741,64 @@ Rama: una por ítem, a definir.
   Hecho cuando: hay una propuesta de calibración conformal por categoría,
   medida en cutoffs que no se usaron para calibrar, que no empeora el
   arrepentimiento.
-- [ ] **4.13 Capacidad de pronóstico visible en la UI.** Para cada serie,
+- [x] **4.13 Capacidad de pronóstico visible en la UI.** (rama
+  `feat/forecast-skill-badge`, PR abierto; ADR-0023; criterio v9)
+  - Resultado sobre una copia de la DB: NVDA no aporta (6 de 8, 7%), IPG2211A2N
+    aporta (18 de 24, 17%, 3.0d), DGS10 no aporta (5 de 8, 0,6%), POPTHM
+    aporta (8 de 8, 91%).
+  - Verificado en el navegador en los dos estados. Para cada serie,
   mostrar si el motor le gana al naive en su backtest (random walk o
   estacional, según corresponda) y, cuando no le gana, decirlo
   explícitamente ("para esta serie, el pronóstico no supera a repetir el
   último valor").
   Hecho cuando: la proyección de cada serie muestra ese veredicto, con el
   número y su fuente.
+
+  **Criterio PRE-REGISTRADO el 2026-09-27 17:28**, antes de implementar (rama
+  `feat/forecast-skill-badge`, sobre la de 2.11). Se reporta tal como salga;
+  no se ajusta después de ver los estados.
+  - **Qué se evalúa:** el motor que eligió la decisión para esa serie.
+  - **Contra qué naive:**
+    - el naive estacional (mismo período del ciclo anterior) si el detector
+      de 3.0a marca la serie completa como estacional;
+    - si no, el random walk ("igual que el último dato").
+  - **Con qué evidencia:**
+    - serie con decisión del auto-discovery: los cutoffs de su mini-backtest
+      (criterio vigente, horizonte canónico). En cada cutoff, el MAE del
+      motor elegido contra el MAE del naive, en los mismos puntos;
+    - serie del catálogo estacional: los 24 cutoffs de 3.0d
+      (`docs/results/seasonal_benchmark_2026-09-26.json`), MASE estacional
+      del motor del catálogo contra el del naive estacional. Dentro de un
+      cutoff la escala es común, así que el orden es el mismo que con MAE.
+      Esos cutoffs cubren toda la historia, no la ventana reciente;
+    - serie del catálogo de ETFs y camino por defecto: no hay evidencia
+      contra el naive → "no evaluado".
+  - **Regla** (en la línea de v8):
+    - con **al menos 7 cutoffs en par** (los dos errores definidos);
+    - **"aporta sobre el naive"** si el motor tiene menor error que el
+      naive en la mayoría de los pares (ganados > perdidos) **y** su error
+      medio es al menos un 10% menor (media motor ≤ 0,9 × media naive);
+    - si no, **"no aporta más que el naive"**.
+  - **"No evaluado", siempre con el motivo:**
+    - menos de 7 pares;
+    - historia insuficiente para decidir;
+    - serie sin decisión (catálogo de ETFs o camino por defecto);
+    - decisión de una versión anterior sin esta evidencia;
+    - la respuesta no la dio el motor evaluado (plan B o fallback).
+  - **Almacenamiento:** los errores por cutoff (motor base, TimesFM y naive)
+    se guardan en la decisión (`engine_decisions`), con migración como en
+    #20, y se sube el criterio a v9 para que las decisiones se re-evalúen y
+    los completen.
+
+- [ ] **4.16 Agregar una serie de FRED a mano la carga como acción
+  (bug).** `handleAddMacro` (`App.tsx`) llama a `handleSelectSeries` justo
+  después de `setActiveMacro`, con el estado viejo. Entonces la serie se pide
+  a yfinance y falla con "No se pudo cargar la serie". Además,
+  `loadSeriesAndForecast` no descarta respuestas viejas: dos cargas que se
+  pisan mezclan serie, error y pronóstico. Visto al verificar 4.13
+  (IPG2211A2N).
+  Hecho cuando: agregar una serie de FRED a mano la carga como macro al
+  primer intento, las respuestas viejas se descartan, y hay un test.
 
 ## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
 

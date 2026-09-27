@@ -28,6 +28,8 @@ Versiones:
   (ADR-0021). Cambian las entradas, no la regla.
 - v8 (2.11): la misma regla, con pronósticos y métricas sin redondear
   (ADR-0022).
+- v9 (4.13): la misma regla; la decisión además guarda el MAE por cutoff
+  del motor base, de TimesFM y del naive (ADR-0023).
 
 ## Consecuencias
 

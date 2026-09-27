@@ -69,6 +69,20 @@ export interface ForecastResponse {
    * ever made over that horizon); the numbers are left as they came out. */
   reliable?: boolean;
   reliability_warning?: string | null;
+  /** Does the forecast beat the naive? (4.13) */
+  skill?: ForecastSkill | null;
+}
+
+export interface ForecastSkill {
+  state: 'aporta' | 'no_aporta' | 'no_evaluado';
+  /** What it means and with which evidence, or why it wasn't evaluated. */
+  reason: string;
+  naive?: 'random_walk' | 'naive_estacional' | null;
+  wins?: number | null;
+  losses?: number | null;
+  n_pairs?: number | null;
+  rel_gap?: number | null;
+  source?: string | null;
 }
 
 export interface FundamentalsMetric {
