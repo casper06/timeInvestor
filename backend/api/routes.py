@@ -3,6 +3,7 @@ import logging
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from backend.config import settings
@@ -47,7 +48,7 @@ from backend.schemas.models import (
     FORECAST_ENGINE_PER_SERIES_NOTICE,
 )
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
-from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
+from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError
 from backend.services.llm_router import get_llm_client
 from backend.services.engine_selector import EngineSelector
 from backend.services.forecast_engine import HoltWintersForecastEngine, NotSeasonalError
@@ -64,6 +65,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["TimeInvestor API"])
 
 fred_fetcher = FREDDataFetcher()
+
+
+def _fred_not_found(e: FredSeriesNotFoundError) -> JSONResponse:
+    """404 with the same string `detail` as every other FRED 404, plus a `code`
+    so the UI can tell "the ID doesn't exist" from "FRED couldn't be queried"
+    (no key, network), which are 404s too (4.16)."""
+    return JSONResponse(status_code=404, content={"detail": str(e), "code": "fred_series_not_found"})
 
 # ----------------- FASE 1: HEALTH, THESIS & INGESTION -----------------
 
@@ -173,6 +181,9 @@ def get_macro_data(
     """Fetches normalized macroeconomic or energy time series from FRED."""
     try:
         return fred_fetcher.get_series(series_id=series_id, limit=limit)
+    except FredSeriesNotFoundError as nf:
+        logger.warning(f"FRED series {series_id} does not exist")
+        return _fred_not_found(nf)
     except ValueError as ve:
         logger.warning(f"Validation/Missing data for FRED {series_id}: {ve}")
         raise HTTPException(status_code=404, detail=str(ve))
@@ -280,6 +291,9 @@ def get_fred_series_metadata(
     try:
         metadata = fred_fetcher.get_series_metadata(series_id=series_id)
         return FredSeriesMetadata(**metadata)
+    except FredSeriesNotFoundError as nf:
+        logger.warning(f"FRED series {series_id} does not exist")
+        return _fred_not_found(nf)
     except ValueError as ve:
         logger.warning(f"Validation/Missing metadata for FRED {series_id}: {ve}")
         raise HTTPException(status_code=404, detail=str(ve))

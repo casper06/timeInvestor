@@ -11,6 +11,8 @@ interface ThesisBarProps {
   onRemoveTicker: (symbol: string) => void;
   onAddMacro: (seriesId: string) => void;
   onRemoveMacro: (seriesId: string) => void;
+  /** Why the last "+ FRED ID" wasn't added (e.g. it doesn't exist on FRED). */
+  macroAddError?: string | null;
 }
 
 const PRESET_THESES = [
@@ -29,6 +31,7 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
   onRemoveTicker,
   onAddMacro,
   onRemoveMacro,
+  macroAddError = null,
 }) => {
   const [thesisText, setThesisText] = useState('');
   const [newTicker, setNewTicker] = useState('');
@@ -181,6 +184,11 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
                 className="w-24 px-2 py-0.5 bg-slate-950/60 border border-slate-700 rounded-lg text-xs text-slate-200 uppercase font-mono placeholder:normal-case placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </form>
+            {macroAddError && (
+              <span data-testid="macro-add-error" role="alert" className="basis-full text-[11px] text-rose-400">
+                {macroAddError}
+              </span>
+            )}
           </div>
         </div>
       </div>

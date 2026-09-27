@@ -34,3 +34,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0021](0021-precision-de-la-fuente.md) | Precisión de la fuente: sin redondeo en la carga; se redondea al mostrar (criterio v7) | Aceptada | #45 |
 | [0022](0022-motores-sin-redondeo.md) | Motores y backtest sin redondeo; el redondeo es solo de presentación (criterio v8) | Aceptada | 2.11 |
 | [0023](0023-capacidad-de-pronostico-visible.md) | Capacidad de pronóstico visible por serie (aporta / no aporta / no evaluado; criterio v9) | Aceptada | 4.13 |
+| [0024](0024-cargas-de-series-y-fred-inexistente.md) | Series de FRED agregadas a mano (validadas contra FRED) y cargas superpuestas (número de pedido) | Aceptada | 4.16 |

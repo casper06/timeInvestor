@@ -99,6 +99,11 @@ sequenceDiagram
     Note over UI: Pestañas a pedido: backtest (/backtest), correlación (/correlation),<br/>gráfico dual (/data/*), asignación y riesgo (/portfolio/*)
 ```
 
+Las cargas de serie y de pronóstico llevan un número de pedido (`loadSeq`
+en `App.tsx`): si llega la respuesta de una carga vieja, se descarta, así
+que la serie, el error y el pronóstico vienen siempre de la misma carga
+(4.16, ADR-0024).
+
 Archivos: `frontend/src/App.tsx` (`handleAnalyzeThesis`,
 `loadSeriesAndForecast`), `backend/api/routes.py`,
 `backend/services/llm_router.py`, `backend/services/data_fetcher.py`,
@@ -281,6 +286,7 @@ flowchart TD
     C -- sí --> CL["copia con el source ORIGINAL,<br/>from_cache = true, cached_at"]
     C -- no --> FETCH{"la fuente respondió?"}
     FETCH -- sí --> LIVE["source = live,<br/>from_cache = false"]
+    FETCH -- "FRED: la serie no existe" --> NF["FredSeriesNotFoundError: 404 con<br/>code = fred_series_not_found<br/>(nunca sintética)"]
     FETCH -- no --> SYN{"ALLOW_SYNTHETIC_DATA?<br/>(default false)"}
     SYN -- no --> ERR["ValueError: /data/* responde 404<br/>con la causa real"]
     SYN -- sí --> FAKE["serie sintética:<br/>source = synthetic, source_detail"]
@@ -296,6 +302,11 @@ flowchart TD
   (2.11). Se redondean solo al mostrarlos en la UI, el informe y los
   prompts. La caché vive solo
   en memoria (TTL `CACHE_TTL_SECONDS`), así que un reinicio la vacía.
+- **ID de FRED inexistente (4.16):** FRED responde 400 "The series does not
+  exist.". El fetcher lo convierte en `FredSeriesNotFoundError`, y
+  `/data/macro` y `/catalog/fred-metadata` responden 404 con
+  `code: "fred_series_not_found"`, sin caer en datos sintéticos. "+ FRED ID"
+  valida el ID así antes de agregarlo (ADR-0024).
 - `source` (de dónde vino el dato) y `from_cache` (si se sirvió desde la
   caché) son campos **separados**. Antes, un hit de caché pisaba `source`
   con `"cached"`, y un dato sintético podía pasar los guards.

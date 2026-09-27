@@ -141,6 +141,20 @@ export interface HealthResponse {
 
 const API_BASE = '/api';
 
+/** An API error with its HTTP status and, when the backend sends one, a
+ * machine-readable `code` next to `detail` (e.g. 'fred_series_not_found', 4.16). */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export async function checkHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
@@ -216,7 +230,7 @@ export async function fetchMacroData(seriesId: string): Promise<TimeSeriesData> 
   const res = await fetch(`${API_BASE}/data/macro?series_id=${encodeURIComponent(seriesId)}`);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Error obteniendo serie macro ${seriesId}`);
+    throw new ApiError(errorData.detail || `Error obteniendo serie macro ${seriesId}`, res.status, errorData.code);
   }
   return res.json();
 }
@@ -231,7 +245,7 @@ export async function fetchFredMetadata(seriesId: string): Promise<FredSeriesMet
   const res = await fetch(`${API_BASE}/catalog/fred-metadata?series_id=${encodeURIComponent(seriesId)}`);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Error obteniendo metadata FRED para ${seriesId}`);
+    throw new ApiError(errorData.detail || `Error obteniendo metadata FRED para ${seriesId}`, res.status, errorData.code);
   }
   return res.json();
 }
