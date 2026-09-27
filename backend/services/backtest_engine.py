@@ -9,7 +9,8 @@ from backend.schemas.models import (
 )
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.forecast_engine import BaseForecastEngine, get_forecast_engine
-from backend.services.horizons import resolve_frequency
+from backend.services.horizons import format_horizon, resolve_frequency
+from backend.services.reliability import reliability_warning
 from backend.services.seasonality import detect_seasonality, seasonal_naive_forecast, seasonal_scale
 
 logger = logging.getLogger(__name__)
@@ -182,6 +183,11 @@ class BacktestEngine:
         # (TimesFM only has an 80% band even if 95% was requested).
         interval_level = forecast_res.interval_level if forecast_res.interval_level is not None else confidence
         nominal_coverage = interval_level * 100.0
+        # Implausible forecast (2.6): said, never corrected.
+        unreliable = reliability_warning([p.value for p in train_points], forecast_res.values[:eval_horizon],
+                                         format_horizon(eval_horizon, frequency))
+        if unreliable:
+            warnings.append(unreliable)
         if interval_coverage < (nominal_coverage - 15.0):
             warnings.append(
                 f"Subcobertura del intervalo: La cobertura empírica observada ({interval_coverage:.1f}%) "
@@ -248,6 +254,8 @@ class BacktestEngine:
             aggregate_direction_correct=aggregate_direction_correct,
             verdict=verdict,
             warnings=warnings,
+            reliable=unreliable is None,
+            reliability_warning=unreliable,
             model_name=forecast_res.model_name,
             interval_level=forecast_res.interval_level,
             is_fallback=is_fallback,

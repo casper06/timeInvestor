@@ -53,13 +53,15 @@ def _fail(message: str) -> "NoReturn":
 class _Evaluator:
     """Per-cutoff backtests of one series, cached by (cutoff index, engine)."""
 
-    def __init__(self, sid: str, series, is_macro: bool, horizon: int = None):
+    def __init__(self, sid: str, series, is_macro: bool, horizon: int = None, extra_engines: dict = None):
         from backend.services import backtest_engine
         self.sid, self.series, self.is_macro = sid, series, is_macro
         self.horizon = horizon  # None = auto_discovery.MINI_BACKTEST_HORIZON
         self.points = sorted(series.points, key=lambda p: p.timestamp)
         self._bt = backtest_engine
         self.cache = {}
+        # name -> engine factory, beside holt/holt_winters/timesfm (2.6 variants)
+        self.extra_engines = extra_engines or {}
 
     def run(self, idx: int, engine_name: str):
         key = (idx, engine_name)
@@ -69,8 +71,9 @@ class _Evaluator:
         from backend.services.backtest_engine import BacktestEngine
         from backend.services.forecast_engine import (
             DampedHoltForecastEngine, HoltWintersForecastEngine, NotSeasonalError, TimesFMForecastEngine)
-        engine = {"holt": DampedHoltForecastEngine, "holt_winters": HoltWintersForecastEngine,
-                  "timesfm": TimesFMForecastEngine}[engine_name]()
+        engines = {"holt": DampedHoltForecastEngine, "holt_winters": HoltWintersForecastEngine,
+                   "timesfm": TimesFMForecastEngine, **self.extra_engines}
+        engine = engines[engine_name]()
         series = self.series
 
         class _Market:
@@ -93,7 +96,8 @@ class _Evaluator:
                 confidence=ad.GUARD_INTERVAL_LEVEL, is_macro=self.is_macro, engine_override=engine)
             out = {"mase": res.metrics.mase, "mase_seasonal": res.metrics.mase_seasonal,
                    "cov": res.interval_coverage, "fallback": bool(res.is_fallback), "refused": False,
-                   "level": res.interval_level}
+                   "level": res.interval_level,
+                   "pred_end": res.future_predicted_values[-1] if res.future_predicted_values else None}
         except NotSeasonalError:
             out = {"refused": True}
         finally:

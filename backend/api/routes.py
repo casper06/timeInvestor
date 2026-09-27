@@ -52,7 +52,8 @@ from backend.services.llm_router import get_llm_client
 from backend.services.engine_selector import EngineSelector
 from backend.services.forecast_engine import HoltWintersForecastEngine, NotSeasonalError
 from backend.services.backtest_engine import BacktestEngine
-from backend.services.horizons import canonical_horizon, resolve_frequency
+from backend.services.horizons import canonical_horizon, format_horizon, resolve_frequency
+from backend.services.reliability import reliability_warning
 from backend.services.correlation_engine import CorrelationEngine
 from backend.services.portfolio_engine import PortfolioEngine
 from backend.services.risk_engine import RiskEngine
@@ -194,6 +195,15 @@ def get_fundamentals_data(
         logger.error(f"Error fetching fundamentals: {e}")
         raise HTTPException(status_code=500, detail=f"Could not retrieve fundamentals: {str(e)}")
 
+def _mark_reliability(result: ForecastResponse, points, frequency: str) -> ForecastResponse:
+    """Marks an implausible forecast as unreliable (2.6); never changes it."""
+    history = [p.value for p in sorted(points, key=lambda p: p.timestamp)]
+    warning = reliability_warning(history, result.values, format_horizon(len(result.values), frequency))
+    if warning:
+        result.reliable, result.reliability_warning = False, warning
+    return result
+
+
 @router.post("/forecast", response_model=ForecastResponse)
 def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
     """
@@ -222,7 +232,7 @@ def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
             f"selector: estacionalidad detectada con período {int(result.fitted_params['seasonal_period'])}."
         )
         result.frequency, result.horizon = frequency, horizon
-        return result
+        return _mark_reliability(result, payload.points, frequency)
 
     try:
         result = EngineSelector.select(
@@ -235,7 +245,7 @@ def generate_forecast(payload: ForecastRequest, db: Session = Depends(get_db)):
             db=db,
         )
         result.frequency, result.horizon = frequency, horizon
-        return result
+        return _mark_reliability(result, payload.points, frequency)
     except Exception as e:
         logger.error(f"Error computing forecast: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Forecast generation failed: {str(e)}")

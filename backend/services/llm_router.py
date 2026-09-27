@@ -12,6 +12,15 @@ import httpx
 from backend.config import settings
 from backend.services.llm_availability import mark_account_rejected
 from backend.services.horizons import format_horizon
+
+
+def _reliability_line(ctx) -> str:
+    """The unreliable-forecast warning (2.6) as a prompt line, so the model
+    doesn't narrate an implausible projection as if it were a real one."""
+    if not ctx.reliability_warning:
+        return ""
+    return (f"- ADVERTENCIA DEL SISTEMA: {ctx.reliability_warning} No interpretes el objetivo ni el CAGR "
+            f"como una proyección válida; decilo explícitamente.\n")
 from backend.schemas.models import (
     ThesisResponse,
     TickerSuggestion,
@@ -463,6 +472,7 @@ class GeminiLLMClient(BaseLLMClient):
                 f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
                 f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
                 f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
+                f"{_reliability_line(ctx)}"
             )
 
             async def _attempt():
@@ -1126,7 +1136,8 @@ class GeminiCliLLMClient(BaseLLMClient):
             f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound} - {ctx.upper_bound}]\n"
             f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
             f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
-            f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n\n"
+            f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
+            f"{_reliability_line(ctx)}\n"
             f"Responde ÚNICAMENTE con el JSON pedido, sin texto adicional ni explicaciones."
         )
         try:
@@ -1394,6 +1405,7 @@ class ClaudeCliLLMClient(BaseLLMClient):
             f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
             f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
             f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
+            f"{_reliability_line(ctx)}"
         )
         schema = {
             "type": "object",
@@ -1686,6 +1698,12 @@ class MockLLMClient(BaseLLMClient):
             f"lo que representa una dispersión del {cone_pct:.1f}% respecto al objetivo central, "
             f"denotando una volatilidad {'moderada' if cone_pct < 25 else 'elevada y sensible a anuncios de Capex'}."
         )
+        if ctx.reliability_warning:
+            # 2.6: an implausible projection is said to be one, not narrated.
+            what_data_says = (
+                f"{ctx.reliability_warning} Por eso no se interpreta como una proyección válida para "
+                f"**{ctx.active_series_id}** (valor proyectado tal como salió: {ctx.projected_target:,.2f})."
+            )
 
         # b) Alineación con tu tesis
         is_power_related = any(w in ctx.thesis.lower() for w in ["electric", "eléctric", "datacenter", "ia", "potencia", "energia", "energía"])

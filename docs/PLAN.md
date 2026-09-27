@@ -199,15 +199,27 @@ Rama: a definir.
   Decisión explícita: el sesgo positivo (el precio real terminó por encima del
   centro, cada vez más con el horizonte) **NO se corrige**. Sale de una muestra
   de ~5 años mayormente alcista, y agregar drift sería ajustarse a ese régimen.
-- [ ] **2.6 Holt explota tras un shock de nivel (propuesto).** En el
-  mini-backtest de UNRATE, con el cutoff 2020-04-01 y 30 meses, el MASE de
-  Holt es 1.715.969: la tendencia amortiguada en escala log, estimada sobre
-  el salto del COVID, extrapola una exponencial. A 12 meses el mismo tramo
-  da 105,7. Pasaría en producción si se proyecta a horizonte largo justo
-  después de un salto.
-  Hecho cuando: hay un test con un salto de nivel sintético, y una salvaguarda
-  (límite al crecimiento implícito, o fallback con aviso) medida sobre el
-  snapshot.
+- [ ] **2.6 Holt explota tras un salto de nivel.** (rama `fix/holt-explosion`,
+  PR abierto; `docs/results/holt_explosion_2026-09-27.md`)
+  - Diagnóstico: cuando el último dato es el salto, el ajuste SSE lleva α y β
+    a ~0,99 y 0,89, y el salto pasa a la tendencia. UNRATE ≤ 2020-04 da
+    20.860% a 12 meses; INDPRO ≤ 2020-04, −40%; HOUSTNSA ≤ 1988-04, ×2,8.
+  - En producción llegaba sin aviso: Holt por plan B sin TimesFM, o elegido
+    por auto-discovery (INDPRO).
+  - **Hecho:** marca "no confiable" (X > 2) para cualquier motor, sin tocar
+    los números. 0 falsos positivos en 2.358 corridas normales, y marca las 6
+    explosiones conocidas.
+  - **Pendiente de decisión:** la estimación robusta.
+    - A (recorte en nivel y tendencia): descartada.
+    - C (recorte solo en la tendencia): MASE igual o mejor en todo y menor
+      arrepentimiento en SA, pero falla la cláusula de cobertura en FRED SA
+      (+3,5 / +5,5 pp, con 2 series). Medirla con las series de 3.5.
+- [ ] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
+  `/api/backtest` no recibe `is_macro`, y `BacktestEngine` busca en yfinance
+  cualquier serie que no esté en `FREDDataFetcher.SERIES_CATALOG` (UNRATE,
+  verificado en 2.6).
+  Hecho cuando: la ruta sabe si la serie es de FRED (tipo en el request, o
+  el catálogo de la tesis) y hay un test.
 
 ## Fase 3 — Experimento TimesFM-3
 

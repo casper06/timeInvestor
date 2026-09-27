@@ -77,6 +77,8 @@ class ForecastResponse(BaseModel):
     frequency: Optional[str] = Field(default=None, description="Frecuencia de la serie inferida de las fechas: unidad de `horizon` y de `decision_horizon`")
     horizon: Optional[int] = Field(default=None, description="Pasos proyectados, en la unidad de la serie")
     decision_horizon: Optional[int] = Field(default=None, description="Horizonte (en la unidad de la serie) en el que se evaluó el motor elegido: mini-backtest de auto-discovery o benchmark del catálogo. None = el motor no salió de una evaluación (default o fallback)")
+    reliable: bool = Field(default=True, description="False si el pronóstico es implausible: se mueve más de 2 veces lo máximo que la serie se movió en ese horizonte en su historia (backend/services/reliability.py). Los números no se tocan")
+    reliability_warning: Optional[str] = Field(default=None, description="Por qué el pronóstico no es confiable (None si lo es)")
 
 class FundamentalsMetric(BaseModel):
     ticker: str
@@ -107,6 +109,7 @@ class InterpretationContext(BaseModel):
     other_tickers: List[str] = Field(default_factory=list, description="Otros tickers en la cartera")
     macro_series: List[str] = Field(default_factory=list, description="Series macro en la tesis")
     capex_summary: Optional[Dict[str, float]] = Field(default=None, description="Resumen de Capex por ticker")
+    reliability_warning: Optional[str] = Field(default=None, description="Si el pronóstico fue marcado no confiable (ForecastResponse.reliability_warning), el texto; el copiloto tiene que decirlo")
 
 class InterpretationResponse(BaseModel):
     what_data_says: str = Field(..., description="Traducción conceptual de las curvas y tendencia proyectada")
@@ -295,6 +298,8 @@ class BacktestResponse(BaseModel):
     is_fallback: bool = Field(default=False, description="True si el motor pedido (TimesFM) falló y cayó a Holt internamente: las métricas son de Holt, no de TimesFM")
     fallback_kind: Optional[Literal["not_loaded", "horizon_exceeded", "inference_error"]] = Field(default=None, description="Causa del fallback (ver ForecastResponse.fallback_kind)")
     fallback_reason: Optional[str] = Field(default=None, description="Detalle legible de la causa del fallback")
+    reliable: bool = Field(default=True, description="False si el pronóstico es implausible: se mueve más de 2 veces lo máximo que la serie se movió en ese horizonte en su historia (backend/services/reliability.py). Los números no se tocan")
+    reliability_warning: Optional[str] = Field(default=None, description="Por qué el pronóstico no es confiable (None si lo es)")
 
 # Correlation Schemas
 class CorrelationRequest(BaseModel):

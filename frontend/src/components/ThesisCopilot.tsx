@@ -82,6 +82,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
         projected_target: projectedTarget,
         horizon,
         frequency,
+        reliability_warning: forecast?.reliable === false ? forecast.reliability_warning : null,
         confidence,
         lower_bound: lowerBound,
         upper_bound: upperBound,

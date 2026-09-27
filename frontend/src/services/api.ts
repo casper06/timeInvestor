@@ -65,6 +65,10 @@ export interface ForecastResponse {
   /** Horizon the chosen engine was evaluated at (auto-discovery or catalog
    * benchmark); null = not chosen by an evaluation. */
   decision_horizon?: number | null;
+  /** false = implausible forecast (moves > 2x the largest move the series
+   * ever made over that horizon); the numbers are left as they came out. */
+  reliable?: boolean;
+  reliability_warning?: string | null;
 }
 
 export interface FundamentalsMetric {
@@ -86,6 +90,8 @@ export interface InterpretationContext {
   projected_target: number;
   horizon: number;
   frequency?: string;
+  /** ForecastResponse.reliability_warning, so the copilot says it. */
+  reliability_warning?: string | null;
   confidence: number;
   lower_bound: number;
   upper_bound: number;

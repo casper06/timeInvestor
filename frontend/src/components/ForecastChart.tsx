@@ -416,6 +416,11 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
             {forecast && (
               <span>
                 Proyección +{horizonTag(horizon, frequency)}: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
+                {forecast.reliable === false && (
+                  <strong className="ml-1 text-rose-400" title={forecast.reliability_warning || undefined}>
+                    (no confiable)
+                  </strong>
+                )}
               </span>
             )}
           </div>
