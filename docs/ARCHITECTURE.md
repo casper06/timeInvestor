@@ -77,7 +77,7 @@ sequenceDiagram
     participant DF as data_fetcher
     participant SEL as EngineSelector
 
-    Note over UI: Al abrir, carga la última tesis guardada (GET /theses)<br/>o una tesis por defecto con force_mock: nunca gasta un LLM real sin pedido del usuario
+    Note over UI: Al abrir, solo el health check (GET /health): no se analiza ni se carga ninguna tesis.<br/>Estado vacío hasta que el usuario escribe una tesis, elige un ejemplo, agrega un activo o abre una de Mis Tesis
     U->>UI: escribe la tesis y pulsa "Analizar Tesis"
     UI->>API: POST /thesis
     API->>LLM: get_llm_client().parse_thesis(texto)

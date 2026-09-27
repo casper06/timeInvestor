@@ -176,9 +176,8 @@ export async function switchLLMProvider(provider: string): Promise<LLMProviderSw
   return res.json();
 }
 
-export async function analyzeThesis(thesis: string, options?: { forceMock?: boolean }): Promise<ThesisResponse> {
-  const query = options?.forceMock ? '?force_mock=true' : '';
-  const res = await fetch(`${API_BASE}/thesis${query}`, {
+export async function analyzeThesis(thesis: string): Promise<ThesisResponse> {
+  const res = await fetch(`${API_BASE}/thesis`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ thesis }),

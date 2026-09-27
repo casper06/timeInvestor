@@ -17,6 +17,7 @@ import { PortfolioRiskView } from './components/PortfolioRiskView';
 import { exportMarkdownReport } from './utils/exportReport';
 import { CANONICAL_HORIZON, seriesFrequency } from './utils/horizon';
 import { AlertTriangle } from 'lucide-react';
+import { EmptyState } from './components/EmptyState';
 
 import {
   checkHealth,
@@ -25,8 +26,6 @@ import {
   fetchMacroData,
   fetchFundamentals,
   fetchForecast,
-  fetchTheses,
-  fetchThesisDetail,
 } from './services/api';
 import type {
   HealthResponse,
@@ -84,49 +83,21 @@ export const App: React.FC = () => {
   const [period, setPeriod] = useState<string>('1y');
   const [isNormalized, setIsNormalized] = useState<boolean>(false);
 
-  // Load health check and restore prior state on mount.
-  // IMPORTANT: mount must never trigger a real LLM call on its own — the user hasn't
-  // asked for anything yet. Priority order:
-  //   1. The most recently saved thesis in SQLite, if one exists (free, instant, no LLM).
-  //   2. Otherwise, the same default placeholder thesis as before, but explicitly
-  //      forced through MockLLMClient (force_mock=true) so a brand-new install with
-  //      no saved theses still shows something without spending real provider quota.
-  // A real provider (Gemini/OpenAI/Ollama) is only ever called from an explicit
-  // user action: pressing "Analizar Tesis" in ThesisBar (handleAnalyzeThesis).
+  // On mount: only the health check. Nothing is analyzed or loaded on its own —
+  // no thesis, no saved thesis, no LLM call — until the user writes a thesis,
+  // picks an example, adds an asset, or opens one from "Mis Tesis".
   useEffect(() => {
-    async function init() {
-      try {
-        const h = await checkHealth();
-        setHealth(h);
-      } catch (err) {
-        console.warn('Backend offline or health check failed', err);
-      }
-
-      try {
-        const saved = await fetchTheses();
-        if (saved.length > 0) {
-          // fetchTheses() is ordered by created_at desc; [0] is the most recent.
-          const detail = await fetchThesisDetail(saved[0].id);
-          loadThesisDetailIntoState(detail);
-          return;
-        }
-      } catch (err) {
-        console.warn('Could not load saved theses, falling back to mock default', err);
-      }
-
-      handleAnalyzeThesis('Demanda eléctrica por centros de datos de IA', { forceMock: true });
-    }
-    init();
+    checkHealth()
+      .then(setHealth)
+      .catch((err) => console.warn('Backend offline or health check failed', err));
   }, []);
 
-  // Handler for analyzing a new thesis. `forceMock` is only ever set true by the
-  // mount-time bootstrap above (no saved thesis yet) — the user-facing "Analizar
-  // Tesis" button in ThesisBar always calls this without it, i.e. using the real
-  // configured provider.
-  const handleAnalyzeThesis = async (thesisText: string, options?: { forceMock?: boolean }) => {
+  // Handler for analyzing a thesis: only ever called from an explicit user
+  // action ("Analizar Tesis" in ThesisBar), with the configured provider.
+  const handleAnalyzeThesis = async (thesisText: string) => {
     setLoading(true);
     try {
-      const resp = await analyzeThesis(thesisText, options);
+      const resp = await analyzeThesis(thesisText);
       setThesisData(resp);
       setThesisStatus('Activa');
       setActiveTickers(resp.tickers);
@@ -336,6 +307,9 @@ export const App: React.FC = () => {
   ];
 
   const isSyntheticActive = !!seriesData && seriesData.source === 'synthetic';
+  // Nothing to analyze yet: every view shows the empty state instead of
+  // components that assume a thesis, a series or a forecast.
+  const isEmpty = !thesisData && activeTickers.length === 0 && activeMacro.length === 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -346,6 +320,7 @@ export const App: React.FC = () => {
         onChangeView={setCurrentView}
         onOpenThesesDrawer={() => setIsDrawerOpen(true)}
         onExportReport={handleExport}
+        canExport={!isEmpty}
         isSyntheticActive={isSyntheticActive}
         onLLMProviderChanged={(provider) => setHealth((h) => (h ? { ...h, llm_provider: provider } : h))}
       />
@@ -408,7 +383,9 @@ export const App: React.FC = () => {
         {/* ============================================================ */}
         {/* VIEW 1: DASHBOARD PRINCIPAL Y PROYECCIÓN (Default Phase 1) */}
         {/* ============================================================ */}
-        {currentView === 'forecast' && (
+        {isEmpty && <EmptyState view={currentView} />}
+
+        {!isEmpty && currentView === 'forecast' && (
           <div className="space-y-6">
             {/* Quantitative KPI Metrics & AI Synthesis */}
             <MetricCards
@@ -450,7 +427,7 @@ export const App: React.FC = () => {
 
             {/* 2. Componente Copiloto / Intérprete de Tesis (Asistente LLM) */}
             <ThesisCopilot
-              thesis={thesisData?.thesis || 'Demanda eléctrica por centros de datos de IA'}
+              thesis={thesisData?.thesis || ''}
               activeSeriesId={selectedSeriesId}
               seriesData={seriesData}
               forecast={forecast}
@@ -478,7 +455,7 @@ export const App: React.FC = () => {
         {/* ============================================================ */}
         {/* VIEW 2: REALITY CHECK / BACKTESTING                          */}
         {/* ============================================================ */}
-        {currentView === 'backtest' && (
+        {!isEmpty && currentView === 'backtest' && (
           <BacktestPanel
             seriesData={seriesData}
             activeSeriesId={selectedSeriesId}
@@ -489,7 +466,7 @@ export const App: React.FC = () => {
         {/* ============================================================ */}
         {/* VIEW 3: MATRIZ DE CORRELACIÓN MULTISERIE & HEATMAP           */}
         {/* ============================================================ */}
-        {currentView === 'correlation' && (
+        {!isEmpty && currentView === 'correlation' && (
           <CorrelationHeatmap
             activeTickers={activeTickers}
             activeMacro={activeMacro}
@@ -500,7 +477,7 @@ export const App: React.FC = () => {
         {/* ============================================================ */}
         {/* VIEW 4: GRÁFICO COMPARATIVO DUAL-AXIS                        */}
         {/* ============================================================ */}
-        {currentView === 'dual' && (
+        {!isEmpty && currentView === 'dual' && (
           <DualAxisChart
             primarySeriesData={seriesData}
             allAvailableSeries={allSeriesList}
@@ -510,7 +487,7 @@ export const App: React.FC = () => {
         {/* ============================================================ */}
         {/* VIEW 5: ASIGNACIÓN Y RIESGO (Markowitz, ERC & Monte Carlo)    */}
         {/* ============================================================ */}
-        {currentView === 'risk' && (
+        {!isEmpty && currentView === 'risk' && (
           <PortfolioRiskView
             activeThesis={activeThesisDetail}
             suggestedTickers={activeTickers}

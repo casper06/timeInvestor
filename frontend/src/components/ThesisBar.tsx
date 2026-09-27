@@ -30,7 +30,7 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
   onAddMacro,
   onRemoveMacro,
 }) => {
-  const [thesisText, setThesisText] = useState('Demanda eléctrica por centros de datos de IA');
+  const [thesisText, setThesisText] = useState('');
   const [newTicker, setNewTicker] = useState('');
   const [newMacro, setNewMacro] = useState('');
 
@@ -69,7 +69,8 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
             type="text"
             value={thesisText}
             onChange={(e) => setThesisText(e.target.value)}
-            placeholder="Introduce tu tesis de inversión en lenguaje natural (ej. Demanda eléctrica por IA)..."
+            placeholder="Escribí tu tesis de inversión en lenguaje natural…"
+            aria-label="Tesis de inversión"
             className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-sm transition-all shadow-inner"
           />
         </div>
@@ -101,10 +102,8 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
           <button
             key={idx}
             type="button"
-            onClick={() => {
-              setThesisText(preset);
-              onAnalyze(preset);
-            }}
+            // Only fills the box: analyzing is an explicit action ("Analizar Tesis").
+            onClick={() => setThesisText(preset)}
             className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 transition-colors cursor-pointer"
           >
             {preset}
