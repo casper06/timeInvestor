@@ -32,7 +32,12 @@
 
 ## Estado
 
-Aceptada. Re-evaluación pendiente (3.5).
+Re-evaluada en 3.5 (`docs/results/fred_category_benchmark_2026-09-27.md`):
+- **v5 cumple su criterio pre-registrado y se adopta.** Se implementa en un
+  PR aparte (2.3d), con una ADR nueva que reemplaza a esta en lo que toca a
+  v5.
+- **La variante C no lo cumple** (falla mensual SA) **y sigue sin
+  adoptarse.**
 
 ## Referencias
 

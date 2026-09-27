@@ -385,7 +385,15 @@ verificada.
   Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
   donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
   cambia algún veredicto del catálogo.
-- [ ] **3.5 Capacidad de pronóstico por categoría de FRED.** Benchmark de los
+- [x] **3.5 Capacidad de pronóstico por categoría de FRED.** (rama
+  `feat/fred-category-benchmark`, PR abierto;
+  `docs/results/fred_category_benchmark_2026-09-27.md`)
+  - Tiene capacidad solo la mensual NSA (3/5). Mensual SA 1/5, trimestral
+    2/5, semanal 2/5, financiera diaria 0/5.
+  - La hipótesis de las financieras diarias **se sostiene**.
+  - **v5 se adopta** según su criterio: pasa las 4 categorías evaluables,
+    sin casos catastróficos. La trimestral no es evaluable.
+  - **C no se adopta**: falla mensual SA, 2/5. Benchmark de los
   motores contra el naive que corresponda a cada serie (random walk, o
   estacional si el detector de 3.0a la marca así), en estas categorías:
   - economía real mensual NSA;
@@ -781,9 +789,27 @@ abiertas, con la lista de indicadores (fuente, frecuencia, historia
 disponible y licencia), discutido con el usuario antes de planificar la
 implementación.
 
+- [ ] **2.3d Implementar v5 (adoptada en 3.5).** El auto-discovery decide
+  en el horizonte canónico de cada frecuencia: diaria 60, semanal 13,
+  mensual 12. Criterio v5, con `engine_decisions.horizon`. PR aparte.
+  - **Pregunta abierta:** la trimestral (canónico 4) no tuvo evidencia en
+    3.5. ¿Decide también en 4 o se queda en 30?
+  - Hecho cuando: `AUTO_DISCOVERY_CRITERIA_VERSION = 5`, la decisión y el
+    `decision_horizon` salen en el canónico, hay tests y una verificación
+    sobre una copia de la DB.
+- [ ] **2.8 `decide_robust` lanza `ZeroDivisionError` si el error medio del
+  base es exactamente 0.** Divide por él para `rel_gap`, que es solo un
+  dato informativo. Se vio en DFEDTARU (3.5): Holt acierta exacto los
+  tramos planos de una tasa en escalones. En producción `decide()` atrapa
+  la excepción y la serie cae al default sin decisión.
+  Hecho cuando: `rel_gap` tolera el 0, la decisión no cambia, y hay un test
+  con errores 0. De paso, `holdout_regret` (scripts) devuelve 0 cuando el
+  mejor error es 0 y el elegido no; `fred_category_benchmark.capped_regret`
+  lo corrige.
+
 ## Orden de trabajo acordado (2026-09-26, actualizado el 2026-09-27)
 
-**2.7 → 3.5 (con la re-evaluación de v5 y de la variante C de Holt) → 4.13 → 4.11 → 3.4.**
+**3.5 → 2.3d (v5) → 2.8 → 4.13 → 4.11 → 3.4.** 2.7 está hecho.
 
 Historia del orden: 2.2 → 2.3 → 4.14 → 2.3b → 2.3c → 2.6 (hechos o medidos
 el 2026-09-26/27). 2.7 se agregó el 2026-09-27 y va primero porque bloquea
