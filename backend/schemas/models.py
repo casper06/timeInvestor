@@ -251,6 +251,7 @@ class BacktestRequest(BaseModel):
     series_id: str
     cutoff_date: str
     horizon: int = Field(default=60, ge=1, le=365, description="Pasos de la serie a evaluar (unidad según la frecuencia de la serie)")
+    series_type: Optional[Literal["equity", "macro"]] = Field(default=None, description="'macro' = serie de FRED, 'equity' = yfinance (TimeSeriesData.type). Sin él, solo las series del catálogo de FREDDataFetcher van a FRED; el resto se busca en yfinance")
     confidence: float = Field(default=0.95, ge=0.5, le=0.99)
     engine: Optional[Literal["holt_winters"]] = Field(default=None, description="Motor explícito. 'holt_winters' (ETS con estacionalidad) solo para series que el detector marca como estacionales; si no lo son, 422. None = comportamiento por defecto")
 

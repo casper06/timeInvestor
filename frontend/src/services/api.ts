@@ -505,7 +505,10 @@ export async function runBacktest(
   confidence = 0.95,
   /** Explicit engine; undefined = the server's default. 'holt_winters' only
    * works for seasonal series (the server answers 422 otherwise). */
-  engine?: 'holt_winters'
+  engine?: 'holt_winters',
+  /** TimeSeriesData.type: 'macro' sends the series to FRED even if it isn't
+   * in the server's fixed catalog (UNRATE); without it, it goes to yfinance. */
+  seriesType?: string
 ): Promise<BacktestResponse> {
   const res = await fetch(`${API_BASE}/backtest`, {
     method: 'POST',
@@ -516,6 +519,7 @@ export async function runBacktest(
       horizon,
       confidence,
       ...(engine ? { engine } : {}),
+      ...(seriesType === 'macro' || seriesType === 'equity' ? { series_type: seriesType } : {}),
     }),
   });
   if (!res.ok) {

@@ -246,8 +246,16 @@ Rama: a definir.
     por serie, en los dos horizontes, y ninguna serie empeora de forma
     catastrófica. Una categoría con < 3 series se reporta pero no decide; si
     no hay ninguna con ≥ 3, C no se adopta.
-- [ ] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
+- [x] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
   **Primero en el orden (2026-09-27): bloquea el uso normal.**
+  (rama `fix/backtest-fred-routing`, PR abierto)
+  - `BacktestRequest.series_type` (`macro` | `equity`, como en `/forecast`),
+    y la ruta lo pasa como `is_macro`. El panel manda `seriesData.type`.
+  - Sin tipo, el comportamiento no cambia (solo el catálogo va a FRED),
+    pero el 400 dice que hay que mandar `series_type='macro'`.
+  - Verificado sobre una copia de la DB: UNRATE daba 400 y ahora da 200
+    (mensual, 12 evaluados); INDPRO, IPG2211A2N y NVDA dan lo mismo que antes.
+  - La correlación tiene el mismo ruteo por catálogo; queda en 4.11.
   `/api/backtest` no recibe `is_macro`, y `BacktestEngine` busca en yfinance
   cualquier serie que no esté en `FREDDataFetcher.SERIES_CATALOG` (UNRATE,
   verificado en 2.6).

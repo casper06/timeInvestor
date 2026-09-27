@@ -262,11 +262,11 @@ class AutoDiscoveryEngine:
         short — the caller should fall back to EngineSelector's existing
         cold-start path in that case).
 
-        Measured cost (this repo's dev machine, CPU, 3 cutoffs x 2 engines):
-        a NEW series' first call pays ~3 x (Holt ~0.1s + TimesFM ~0.35s) =
-        ~1.35s extra before returning the decision. Every later call for the
-        same series (until the decision goes stale) is a single indexed SQLite
-        lookup — no measurable added latency.
+        Measured cost with criterion v4 (DECISION_N_CUTOFFS = 8 cutoffs x 2
+        engines): 2.2-3.0 s per new series end to end, data download included
+        (docs/results/decision_variants_2026-09-26.md). Every later call for
+        the same series (until the decision goes stale) is a single indexed
+        SQLite lookup — no measurable added latency.
         """
         clean_id = series_id.strip().upper()
         if n_points < MIN_HISTORY_FOR_AUTODISCOVERY:
@@ -318,9 +318,13 @@ class AutoDiscoveryEngine:
                            incumbent: Optional[str] = None) -> EngineDecisionModel:
         """
         Runs BacktestEngine.run_backtest (reused, not reimplemented) with an
-        explicit engine_override for both Holt and TimesFM across
-        MINI_BACKTEST_N_CUTOFFS cutoffs, and picks the winner by mean MASE —
-        subject to the coverage-calibration guard below.
+        explicit engine_override for the baseline (Holt, or Holt-Winters for
+        seasonal series) and TimesFM on DECISION_N_CUTOFFS (8) cutoffs over
+        the series' recent window (_pick_cutoffs), and decides with
+        decide_robust (criterion v4): TimesFM needs a majority of the paired
+        cutoffs and a 10% margin on the mean error, a tie goes to the
+        baseline, switching away from the `incumbent` needs twice the margin,
+        and there is no coverage guard (USE_COVERAGE_GUARD = False).
         """
         # Seasonal series (3.0a detector, on the full fetched history) are
         # compared against Holt-Winters with the seasonal MASE: against plain

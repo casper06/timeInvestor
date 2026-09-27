@@ -516,6 +516,9 @@ def run_backtest(payload: BacktestRequest):
             cutoff_date=payload.cutoff_date,
             horizon=payload.horizon,
             confidence=payload.confidence,
+            # FRED series outside FREDDataFetcher.SERIES_CATALOG (UNRATE) only
+            # reach FRED if the caller says what the series is (2.7).
+            is_macro=payload.series_type == "macro",
             engine_override=HoltWintersForecastEngine() if payload.engine == "holt_winters" else None,
         )
     except NotSeasonalError as nse:
@@ -524,6 +527,9 @@ def run_backtest(payload: BacktestRequest):
         err_msg = str(ve)
         if "sintética" in err_msg.lower():
             raise HTTPException(status_code=422, detail=err_msg)
+        if payload.series_type is None and "yfinance" in err_msg:
+            err_msg = (err_msg.rstrip(". ") + ". La serie se buscó en yfinance porque el pedido no dice de qué "
+                       "tipo es: si es una serie de FRED, mandá series_type='macro'.")
         raise HTTPException(status_code=400, detail=err_msg)
     except Exception as e:
         logger.error(f"Error running backtest: {e}", exc_info=True)
