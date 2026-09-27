@@ -98,7 +98,12 @@ GUARD_INTERVAL_LEVEL = 0.80
 #       every frequency. Adopted by its pre-registered criterion (db4fcdb) on
 #       the 3.5 series (docs/results/fred_category_benchmark_2026-09-27.md);
 #       quarterly had no evidence there and was decided by use (docs/adr/0019).
-AUTO_DISCOVERY_CRITERIA_VERSION = 5
+#   v6 (2026-09-27, 2.10): same as v5, but the MASE is never computed with
+#       + epsilon. If it's undefined on some cutoff (the series didn't move in
+#       that training window), the whole series is decided on the paired MAE
+#       (docs/adr/0020). v5 decisions of such series carried MASE values like
+#       2.5 million (DFEDTARU); bumping the version re-decides every series.
+AUTO_DISCOVERY_CRITERIA_VERSION = 6
 
 # --- v4 decision parameters (2.3), chosen from the variant measurement ---
 # 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),
@@ -203,6 +208,26 @@ def decide_robust(baseline_name: str, base_errors: list, tfm_errors: list,
     return choice, info
 
 
+class InsufficientHistoryError(ValueError):
+    """The series is too short for the rule to decide at its horizon: fewer
+    points than min_history_for_decision(). Not a failure to hide: the
+    selector says it in the reason and serves its default engine."""
+
+    def __init__(self, series_id: str, n: int, required: int, horizon: int):
+        self.series_id, self.n, self.required, self.horizon = series_id, n, required, horizon
+        super().__init__(f"Historia insuficiente para evaluar {series_id}: {n} de {required} puntos "
+                         f"(horizonte {horizon})")
+
+
+def min_history_for_decision(horizon: int) -> int:
+    """Fewest points for which recent_cutoff_indices leaves at least
+    MIN_PAIRED_CUTOFFS distinct cutoffs at this horizon: max(30, 2h) of
+    training, h to evaluate, and room for the other cutoffs. Below that the
+    rule could only answer "baseline, not enough pairs" (daily 60 -> 186,
+    weekly 13 -> 49, monthly 12 -> 48, quarterly 4 -> 40)."""
+    return max(30, horizon * 2) + horizon + (MIN_PAIRED_CUTOFFS - 1)
+
+
 def recent_cutoff_indices(n: int, n_cutoffs: int, window: int, horizon: int = None) -> list:
     """0-based indices of `n_cutoffs` cutoffs evenly spaced over the most
     recent `window` points (never before MIN training), each leaving
@@ -305,6 +330,8 @@ class AutoDiscoveryEngine:
         try:
             decision = AutoDiscoveryEngine._run_mini_backtest(
                 clean_id, is_macro=is_macro, n_points=n_points, incumbent=incumbent)
+        except InsufficientHistoryError:
+            raise  # not a hiccup: the selector says it in the reason
         except Exception as e:
             # A failed mini-backtest (e.g. data provider hiccup) must not break
             # the actual forecast request it was triggered by — fall through to
@@ -374,14 +401,22 @@ class AutoDiscoveryEngine:
             # "TimesFM unavailable" and would re-run on every request.
             raise ValueError(f"No hay historia suficiente para ningún cutoff del mini-backtest de {series_id}")
 
-        holt_mases, holt_coverages = [], []
+        holt_mases, holt_coverages, holt_maes = [], [], []
         # Paired results, only for cutoffs where TimesFM really ran: comparing
         # TimesFM's mean over some cutoffs against Holt's over all of them
         # would not be the same test.
-        paired_holt_mases, paired_holt_coverages = [], []
-        tfm_mases, tfm_coverages = [], []
+        paired_holt_mases, paired_holt_coverages, paired_holt_maes = [], [], []
+        tfm_mases, tfm_coverages, tfm_maes = [], [], []
         tfm_failed_cutoffs = 0
         baseline_skipped = 0
+        # 2.10: the metric is undefined on some cutoff (zero scale: the series
+        # didn't move in that training window). Then the whole series is
+        # decided on the paired MAE, which is always defined and, within one
+        # series, in the same units on every cutoff. Per cutoff both engines
+        # share the scale, so wins/losses are the same as with the MASE; only
+        # the margin on the mean changes. Dropping those cutoffs instead would
+        # lose pairs and could leave fewer than MIN_PAIRED_CUTOFFS.
+        metric_undefined = False
 
         for cutoff_date in cutoffs:
             try:
@@ -395,10 +430,14 @@ class AutoDiscoveryEngine:
                 baseline_skipped += 1
                 continue
             base_metric = getattr(holt_res.metrics, metric)
-            if base_metric is None:
+            if base_metric is None and metric in getattr(holt_res.metrics, "undefined", {}):
+                metric_undefined = True
+            elif base_metric is None:
+                # mase_seasonal is None when this training window isn't seasonal.
                 baseline_skipped += 1
                 continue
             holt_mases.append(base_metric)
+            holt_maes.append(getattr(holt_res.metrics, "mae", None))
             holt_coverages.append(holt_res.interval_coverage)
 
             if timesfm_engine is not None:
@@ -425,12 +464,20 @@ class AutoDiscoveryEngine:
                         f"Holt {levels[0]}, TimesFM {levels[1]}"
                     )
                 tfm_metric = getattr(tfm_res.metrics, metric)
-                if tfm_metric is None:
+                if tfm_metric is None and metric in getattr(tfm_res.metrics, "undefined", {}):
+                    metric_undefined = True
+                elif tfm_metric is None:
                     continue
                 tfm_mases.append(tfm_metric)
+                tfm_maes.append(getattr(tfm_res.metrics, "mae", None))
                 tfm_coverages.append(tfm_res.interval_coverage)
                 paired_holt_mases.append(base_metric)
+                paired_holt_maes.append(getattr(holt_res.metrics, "mae", None))
                 paired_holt_coverages.append(holt_res.interval_coverage)
+
+        if metric_undefined:
+            metric = "mae"
+            holt_mases, paired_holt_mases, tfm_mases = holt_maes, paired_holt_maes, tfm_maes
 
         if not holt_mases:
             raise ValueError(
@@ -501,5 +548,8 @@ class AutoDiscoveryEngine:
         sorted_points = AutoDiscoveryEngine._load_points(series_id, is_macro)
         window = RECENT_WINDOW.get(infer_frequency([p.timestamp for p in sorted_points]), RECENT_WINDOW_DEFAULT)
         horizon = AutoDiscoveryEngine._decision_horizon(series_id, is_macro)
+        required = min_history_for_decision(horizon)
+        if len(sorted_points) < required:
+            raise InsufficientHistoryError(series_id, len(sorted_points), required, horizon)
         idx = recent_cutoff_indices(len(sorted_points), DECISION_N_CUTOFFS, window, horizon=horizon)
         return [sorted_points[i].timestamp for i in idx]

@@ -29,4 +29,5 @@ reemplace y se actualiza el estado de la anterior.
 | [0016](0016-claude-cli-haiku-por-defecto.md) | `CLAUDE_CLI_MODEL=haiku` por defecto | Aceptada | #10 |
 | [0017](0017-sin-correccion-de-sesgo-de-holt.md) | No corregir el sesgo positivo de Holt | Aceptada | #26 |
 | [0018](0018-v4-se-mantiene-v5-y-c-con-3-5.md) | v4 se mantiene; v5 y la variante C se evalúan solo con las series de 3.5 | Reemplazada por 0019 en lo que toca a v5; C no se adopta | #36, #37 |
-| [0019](0019-v5-decidir-en-el-horizonte-canonico.md) | Criterio v5: decidir en el horizonte canónico (trimestral 4 por uso); C no se adopta | Aceptada | #40 y 2.3d |
+| [0019](0019-v5-decidir-en-el-horizonte-canonico.md) | Criterio v5: decidir en el horizonte canónico (trimestral 4 por uso); C no se adopta | Aceptada; ampliada por 0020 (v6) | #40, #42 |
+| [0020](0020-metricas-escaladas-no-definidas.md) | Métricas escaladas no definidas (sin + epsilon); decisión con MAE en pares (criterio v6) | Aceptada | 2.10 |

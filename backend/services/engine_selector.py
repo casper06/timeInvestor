@@ -237,10 +237,19 @@ class EngineSelector:
         both curated catalogs. Returns None if auto-discovery couldn't produce
         a decision (e.g. the mini-backtest itself failed) — the caller then
         falls through to the existing cold-start/default path unchanged."""
-        from backend.services.auto_discovery import MINI_BACKTEST_HORIZON, AutoDiscoveryEngine
+        from backend.services.auto_discovery import (
+            MINI_BACKTEST_HORIZON, AutoDiscoveryEngine, InsufficientHistoryError,
+        )
 
         is_macro = series_type == "macro"
-        decision = AutoDiscoveryEngine.decide(db, clean_id, n_points, is_macro=is_macro)
+        try:
+            decision = AutoDiscoveryEngine.decide(db, clean_id, n_points, is_macro=is_macro)
+        except InsufficientHistoryError as e:
+            return EngineSelector._run_holt(
+                points, horizon=horizon, confidence=confidence, freq=freq,
+                reason=(f"Historia insuficiente para evaluar ({e.n} de {e.required} puntos, para decidir a "
+                        f"{e.horizon} pasos): se usa Holt por defecto."),
+            )
         if decision is None:
             return None
         # NULL = a row from before the column: every criterion so far used 30.
@@ -256,7 +265,7 @@ class EngineSelector:
         # seasonal MASE for seasonal series (criterion v3). NULL = legacy Holt.
         base = decision.baseline_engine or "holt"
         base_label = "Holt-Winters" if base == "holt_winters" else "Holt"
-        metric = "MASE estacional" if decision.metric == "mase_seasonal" else "MASE"
+        metric = {"mase_seasonal": "MASE estacional", "mae": "MAE"}.get(decision.metric, "MASE")
         date = decision.evaluated_at.strftime('%Y-%m-%d')
         mase_base = decision.mase_holt  # error of the baseline engine (see baseline_engine)
 
@@ -268,6 +277,12 @@ class EngineSelector:
             f"la comparación usa solo aquellos donde corrió de verdad."
             if failed and decision.mase_timesfm is not None else ""
         )
+        if decision.metric == "mae":
+            # 2.10: the MASE was undefined on some cutoff; say why it's MAE.
+            dropped_note += (
+                " Se comparó el MAE en pares porque el MASE no está definido en algún cutoff: la serie "
+                "no varió en ese período de entrenamiento."
+            )
 
         if decision.engine_choice == "timesfm":
             won = (f"TimesFM ganó {metric} {decision.mase_timesfm:.3f} vs {base_label} "

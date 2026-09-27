@@ -173,6 +173,31 @@ Rama: a definir.
     Si no hay ninguna categoría con ≥ 3 series, v5 no se adopta.
   - **Qué se reporta.** Por serie: A_s(v4), A_s(v5), la diferencia y el
     veredicto. Por categoría: el conteo. Todo tal como salga.
+- [x] **2.10 MASE no definido.** (rama `fix/undefined-mase-and-v5-checks`, PR
+  abierto; ADR-0020)
+  - MASE, MASE estacional y MAPE ya no usan `+1e-8`: con escala 0 son
+    `None`, con el motivo en `BacktestMetrics.undefined`.
+  - La decisión usa MAE en pares si el MASE no está definido en algún
+    cutoff (criterio v6). La UI muestra "no definido".
+  - DFEDTARU: MAE, Holt (igual que en #41); ya no aparece 2,5 millones.
+  - También en esta rama: el motivo "Historia insuficiente para evaluar (N
+    de M puntos): se usa Holt por defecto", con M =
+    `min_history_for_decision` (diaria 186).
+  - Latencia de v5 medida: primer pedido de 1,1 a 2,1 s, menos de 10 s.
+  - **Relevamiento del `+1e-8`:**
+    - backend: MASE, MASE estacional y MAPE, corregidos; sMAPE y los
+      porcentajes del veredicto se dejaron, porque ahí no puede aparecer un
+      0 en el denominador;
+    - scripts con piso de escala 1e-8: `benchmark_real_data.py:88` y
+      `download_and_benchmark_timesfm.py:234`;
+    - `seasonal_benchmark.py:168` divide sin protección.
+  - **Resultados versionados afectados** (no re-corridos):
+    - solo 3.5, en los números de v5 y C de DFEDTARU; los veredictos no
+      cambian;
+    - los snapshots de 2.2–2.6 y 3.0d no tienen escalas nulas ni valores en
+      0;
+    - el `--replay` de 3.5 exacto requiere el commit `5ee140d`: los
+      scripts de medición todavía no toleran MASE `None`.
 - [ ] **2.9 Redondeo en la carga de datos.** `data_fetcher.py` redondea a 2
   decimales al cargar (líneas 91, 174, 196, 236, 342 y 456, la última en la
   serie sintética). En índices como NFCI o STLFSI4 eso descarta información

@@ -257,12 +257,13 @@ class BacktestRequest(BaseModel):
 
 class BacktestMetrics(BaseModel):
     mae: float
-    mape: float
+    mape: Optional[float] = Field(..., description="MAPE (%). None si no está definido: algún valor real evaluado es 0 (ver `undefined`)")
     smape: float = Field(default=0.0, description="Symmetric Mean Absolute Percentage Error (%)")
-    mase: float = Field(default=0.0, description="Mean Absolute Scaled Error relative to in-sample naive")
+    mase: Optional[float] = Field(default=0.0, description="Mean Absolute Scaled Error relative to in-sample naive. None si no está definido: la escala (error del naive en el entrenamiento) es 0 (ver `undefined`)")
     mase_seasonal: Optional[float] = Field(default=None, description="MASE escalado con el naive estacional in-sample, mean |y_t - y_{t-m}|. Solo para series con estacionalidad detectada; None en el resto. No reemplaza a `mase` (escala de 1 paso)")
     directional_accuracy: float = Field(..., description="Step-by-step directional accuracy (%)")
     observations_evaluated: int
+    undefined: Dict[str, str] = Field(default_factory=dict, description="Métricas no definidas en este backtest (mase, mase_seasonal, mape) y el motivo. Nunca se reemplazan por un número (2.10)")
 
 class SeasonalityInfo(BaseModel):
     """Cómo se decidió si la serie es estacional (ver backend/services/seasonality.py)."""

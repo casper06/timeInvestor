@@ -157,3 +157,15 @@ describe('BacktestPanel horizon in the series unit (4.14)', () => {
     expect(spy).toHaveBeenCalledWith('INDPRO', '2024-12-01', 12, 0.95, undefined, 'macro');
   });
 });
+
+describe('BacktestPanel undefined metrics (2.10)', () => {
+  it('shows "no definido" with the reason instead of a number', async () => {
+    await runWith(
+      backtestResult({
+        metrics: { ...metrics, mape: null, undefined: { mape: 'MAPE no definido: algún valor real del período evaluado es 0' } },
+      })
+    );
+    expect(screen.getByTestId('mape-undefined')).toHaveTextContent('no definido');
+    expect(screen.getByText(/algún valor real del período evaluado es 0/)).toBeInTheDocument();
+  });
+});

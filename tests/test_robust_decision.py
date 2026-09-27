@@ -222,7 +222,7 @@ def test_v5_cutoffs_leave_the_canonical_horizon(monkeypatch):
 
 
 def test_v4_decisions_are_stale_and_redecided_without_incumbent(db_session, monkeypatch):  # noqa: F811
-    assert ad.AUTO_DISCOVERY_CRITERIA_VERSION == 5
+    assert ad.AUTO_DISCOVERY_CRITERIA_VERSION > 4
     db_session.add(EngineDecisionModel(series_id="OLDV4", engine_choice="timesfm", mase_holt=1.0, mase_timesfm=0.5,
                                        n_points_at_evaluation=500, criteria_version=4, horizon=30))
     db_session.commit()

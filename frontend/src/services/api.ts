@@ -337,13 +337,17 @@ export interface ThesisCreateRequest {
 
 export interface BacktestMetrics {
   mae: number;
-  mape: number;
+  /** null = not defined (some actual value is 0); the reason is in `undefined`. */
+  mape: number | null;
   smape?: number;
-  mase?: number;
+  /** null = not defined (the series didn't move in training). */
+  mase?: number | null;
   /** MASE scaled by the in-sample seasonal naive; only for seasonal series. */
   mase_seasonal?: number | null;
   directional_accuracy: number;
   observations_evaluated: number;
+  /** Metric -> why it isn't defined (2.10). Shown as "no definido", never as a number. */
+  undefined?: Record<string, string>;
 }
 
 export interface SeasonalityInfo {

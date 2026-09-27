@@ -15,6 +15,39 @@ from backend.services.seasonality import detect_seasonality, seasonal_naive_fore
 
 logger = logging.getLogger(__name__)
 
+# A scale this small relative to the series' level is numerically zero: the
+# metric it divides is not defined (2.10). Never replaced by + epsilon.
+NEGLIGIBLE_SCALE = 1e-9
+
+WHY_MASE = "MASE no definido: la serie no varió en el período de entrenamiento (el error del naive a un paso es 0)"
+WHY_MASE_SEASONAL = ("MASE estacional no definido: en el entrenamiento la serie repitió exactamente el ciclo "
+                     "anterior (el error del naive estacional es 0)")
+WHY_MAPE = "MAPE no definido: algún valor real del período evaluado es 0"
+
+
+def _is_negligible(scale: float, level: float) -> bool:
+    return scale <= NEGLIGIBLE_SCALE * max(1.0, abs(level))
+
+
+def _scaled(num: float, scale: float, level: float):
+    """num / scale, or None when the scale is (numerically) zero."""
+    return None if _is_negligible(scale, level) else float(num / scale)
+
+
+def _mape(actual, pred, level: float):
+    """MAPE (%), or None when some actual value is (numerically) zero."""
+    if np.any(np.abs(actual) <= NEGLIGIBLE_SCALE * max(1.0, abs(level))):
+        return None
+    return float(np.mean(np.abs((actual - pred) / np.abs(actual))) * 100)
+
+
+def _r(x, nd):
+    return None if x is None else round(x, nd)
+
+
+def _mase_s_text(x):
+    return "MASE estacional no definido" if x is None else f"MASE estacional {x:.3f}"
+
 class BacktestEngine:
     """
     Backtesting engine evaluating model accuracy against ground-truth historical market data.
@@ -92,21 +125,26 @@ class BacktestEngine:
         # MAE: Mean Absolute Error
         mae = float(np.mean(np.abs(y_actual - y_pred)))
 
-        # MAPE with absolute denominator: safe for negative or near-zero series
-        epsilon = 1e-8
-        mape = float(np.mean(np.abs((y_actual - y_pred) / (np.abs(y_actual) + epsilon))) * 100)
+        # MAPE with absolute denominator (negative series are fine); not
+        # defined if some actual value is 0 (2.10).
+        epsilon = 1e-8  # only for sMAPE, where it can only turn 0/0 into 0
+        y_train_vals = np.array([p.value for p in train_points], dtype=float)
+        level = float(np.mean(np.abs(y_train_vals))) if len(y_train_vals) else 1.0
+        mape = _mape(y_actual, y_pred, level)
+        undefined = {}
+        if mape is None:
+            undefined["mape"] = WHY_MAPE
 
         # sMAPE: Symmetric Mean Absolute Percentage Error
         smape = float(np.mean(2.0 * np.abs(y_actual - y_pred) / (np.abs(y_actual) + np.abs(y_pred) + epsilon)) * 100)
 
-        # MASE: Mean Absolute Scaled Error relative to in-sample 1-step naive forecast
-        y_train_vals = np.array([p.value for p in train_points], dtype=float)
-        if len(y_train_vals) > 1:
-            in_sample_naive_mae = float(np.mean(np.abs(np.diff(y_train_vals))))
-            mase = float(mae / (in_sample_naive_mae + epsilon))
-        else:
-            in_sample_naive_mae = 1.0
-            mase = 1.0
+        # MASE: Mean Absolute Scaled Error relative to in-sample 1-step naive
+        # forecast. Not defined when that scale is 0 (a series that didn't
+        # move in training, e.g. a policy rate between moves): None + reason.
+        in_sample_naive_mae = float(np.mean(np.abs(np.diff(y_train_vals)))) if len(y_train_vals) > 1 else 0.0
+        mase = _scaled(mae, in_sample_naive_mae, level)
+        if mase is None:
+            undefined["mase"] = WHY_MASE
 
         # Step-by-step directional accuracy
         if eval_horizon > 1:
@@ -130,17 +168,18 @@ class BacktestEngine:
         # 5. Mandatory Naive Random Walk Benchmark (y_hat = y_{train_last})
         y_naive = np.full_like(y_actual, y_train_last)
         naive_mae = float(np.mean(np.abs(y_actual - y_naive)))
-        naive_mape = float(np.mean(np.abs((y_actual - y_naive) / (np.abs(y_actual) + epsilon))) * 100)
+        naive_mape = _mape(y_actual, y_naive, level)
         naive_smape = float(np.mean(2.0 * np.abs(y_actual - y_naive) / (np.abs(y_actual) + np.abs(y_naive) + epsilon)) * 100)
-        naive_mase = float(naive_mae / (in_sample_naive_mae + epsilon))
+        naive_mase = _scaled(naive_mae, in_sample_naive_mae, level)
 
         naive_metrics = BacktestMetrics(
             mae=round(naive_mae, 2),
-            mape=round(naive_mape, 2),
+            mape=_r(naive_mape, 2),
             smape=round(naive_smape, 2),
-            mase=round(naive_mase, 3),
+            mase=_r(naive_mase, 3),
             directional_accuracy=0.0,
-            observations_evaluated=eval_horizon
+            observations_evaluated=eval_horizon,
+            undefined=dict(undefined),
         )
 
         # 5b. Seasonal naive benchmark + seasonally scaled MASE, only for series
@@ -159,16 +198,24 @@ class BacktestEngine:
                 snaive_dir = float(np.mean(np.sign(np.diff(y_actual)) == np.sign(np.diff(y_snaive))) * 100)
             else:
                 snaive_dir = 50.0
-            mase_seasonal = float(mae / (s_scale + epsilon))
-            naive_metrics.mase_seasonal = round(float(naive_mae / (s_scale + epsilon)), 3)
+            mase_seasonal = _scaled(mae, s_scale, level)
+            if mase_seasonal is None:
+                undefined["mase_seasonal"] = WHY_MASE_SEASONAL
+                naive_metrics.undefined["mase_seasonal"] = WHY_MASE_SEASONAL
+            naive_metrics.mase_seasonal = _r(_scaled(naive_mae, s_scale, level), 3)
+            snaive_mape = _mape(y_actual, y_snaive, level)
+            snaive_undefined = dict(undefined)
+            if snaive_mape is None:
+                snaive_undefined["mape"] = WHY_MAPE
             seasonal_naive_metrics = BacktestMetrics(
                 mae=round(snaive_mae, 2),
-                mape=round(float(np.mean(np.abs((y_actual - y_snaive) / (np.abs(y_actual) + epsilon))) * 100), 2),
+                mape=_r(snaive_mape, 2),
                 smape=round(float(np.mean(2.0 * np.abs(y_actual - y_snaive) / (np.abs(y_actual) + np.abs(y_snaive) + epsilon)) * 100), 2),
-                mase=round(float(snaive_mae / (in_sample_naive_mae + epsilon)), 3),
-                mase_seasonal=round(float(snaive_mae / (s_scale + epsilon)), 3),
+                mase=_r(_scaled(snaive_mae, in_sample_naive_mae, level), 3),
+                mase_seasonal=_r(_scaled(snaive_mae, s_scale, level), 3),
                 directional_accuracy=round(snaive_dir, 1),
                 observations_evaluated=eval_horizon,
+                undefined=snaive_undefined,
             )
 
         # 6. Verdict and Warnings
@@ -215,12 +262,12 @@ class BacktestEngine:
                     f" Serie estacional (m={seasonality.period}): frente al naive estacional (mismo período "
                     f"del ciclo anterior) el modelo también gana, reduciendo el MAE un "
                     f"{(snaive_mae - mae) / (snaive_mae + epsilon) * 100:.1f}% "
-                    f"(MASE estacional {mase_seasonal:.3f})."
+                    f"({_mase_s_text(mase_seasonal)})."
                 )
             else:
                 verdict += (
                     f" Serie estacional (m={seasonality.period}): el modelo NO supera al naive estacional "
-                    f"(MAE {mae:.2f} vs {snaive_mae:.2f} {data.unit}; MASE estacional {mase_seasonal:.3f}). "
+                    f"(MAE {mae:.2f} vs {snaive_mae:.2f} {data.unit}; {_mase_s_text(mase_seasonal)}). "
                     f"Repetir el mismo período del ciclo anterior predice mejor."
                 )
 
@@ -240,12 +287,13 @@ class BacktestEngine:
             future_upper_bound=[round(float(v), 2) for v in ubs],
             metrics=BacktestMetrics(
                 mae=round(mae, 2),
-                mape=round(mape, 2),
+                mape=_r(mape, 2),
                 smape=round(smape, 2),
-                mase=round(mase, 3),
-                mase_seasonal=round(mase_seasonal, 3) if mase_seasonal is not None else None,
+                mase=_r(mase, 3),
+                mase_seasonal=_r(mase_seasonal, 3),
                 directional_accuracy=round(directional_accuracy, 1),
-                observations_evaluated=eval_horizon
+                observations_evaluated=eval_horizon,
+                undefined=undefined,
             ),
             naive_metrics=naive_metrics,
             seasonal_naive_metrics=seasonal_naive_metrics,

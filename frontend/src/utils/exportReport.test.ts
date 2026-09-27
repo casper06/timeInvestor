@@ -156,3 +156,20 @@ describe('generateMarkdownReport — unreliable forecast (2.6)', () => {
     expect(md).toContain('⚠ Pronóstico no confiable: a 12 meses proyecta 20,855.32.');
   });
 });
+
+describe('generateMarkdownReport — undefined MAPE (2.10)', () => {
+  it('writes "no definido" with the reason, never a number', () => {
+    const md = generateMarkdownReport({
+      ...baseData,
+      lastBacktest: {
+        series_id: 'DFEDTARU', cutoff_date: '2025-08-01', horizon: 60, frequency: 'daily',
+        historical_dates: [], historical_values: [], future_actual_dates: [], future_actual_values: [],
+        future_predicted_values: [], future_lower_bound: [], future_upper_bound: [],
+        metrics: { mae: 0.1, mape: null, directional_accuracy: 50, observations_evaluated: 60,
+                   undefined: { mape: 'MAPE no definido: algún valor real del período evaluado es 0' } },
+        verdict: 'v', warnings: [],
+      },
+    });
+    expect(md).toContain('**MAPE:** no definido (MAPE no definido: algún valor real del período evaluado es 0)');
+  });
+});
