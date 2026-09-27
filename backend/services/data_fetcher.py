@@ -12,6 +12,32 @@ from backend.schemas.models import TimeSeriesPoint, TimeSeriesData, Fundamentals
 
 logger = logging.getLogger(__name__)
 
+
+class FredSeriesNotFoundError(ValueError):
+    """FRED itself says the series_id doesn't exist (4.16). A ValueError, so
+    every caller that already turns ValueError into a 404 keeps working; its
+    own type lets the API tell "no existe" apart from "no se pudo consultar"."""
+
+    def __init__(self, series_id: str):
+        super().__init__(
+            f"La serie '{series_id}' no existe en FRED (la API de FRED respondió "
+            f"\"The series does not exist\"). Revisá el ID en fred.stlouisfed.org."
+        )
+        self.series_id = series_id
+
+
+def _fred_says_missing(resp) -> bool:
+    """FRED answers HTTP 400 "Bad Request. The series does not exist." for an
+    unknown series_id, on both /fred/series and /fred/series/observations
+    (checked against the live API on 2026-09-27)."""
+    if resp.status_code != 400:
+        return False
+    try:
+        message = str(resp.json().get("error_message", ""))
+    except Exception:
+        message = str(getattr(resp, "text", ""))
+    return "does not exist" in message.lower()
+
 class SimpleCache:
     """Thread-safe in-memory cache with TTL."""
     def __init__(self, ttl_seconds: int = 3600):
@@ -361,8 +387,13 @@ class FREDDataFetcher:
                             )
                             cache.set(cache_key, series_data)
                             return series_data
+                    elif _fred_says_missing(resp):
+                        # Never a synthetic stand-in for a series that doesn't exist.
+                        raise FredSeriesNotFoundError(series_id)
                     else:
                         logger.warning(f"FRED API returned HTTP {resp.status_code}: {resp.text}")
+            except FredSeriesNotFoundError:
+                raise
             except Exception as e:
                 logger.error(f"Failed to query FRED API: {e}")
 
@@ -418,7 +449,9 @@ class FREDDataFetcher:
                         }
                         cache.set(cache_key, metadata)
                         return metadata
-                    raise ValueError(f"La serie FRED '{series_id}' no existe (respuesta vacía de la API)")
+                    raise FredSeriesNotFoundError(series_id)
+                elif _fred_says_missing(resp):
+                    raise FredSeriesNotFoundError(series_id)
                 else:
                     logger.warning(f"FRED metadata API returned HTTP {resp.status_code}: {resp.text}")
                     raise ValueError(

@@ -790,8 +790,15 @@ Rama: una por ítem, a definir.
     #20, y se sube el criterio a v9 para que las decisiones se re-evalúen y
     los completen.
 
-- [ ] **4.16 Agregar una serie de FRED a mano la carga como acción
-  (bug).** `handleAddMacro` (`App.tsx`) llama a `handleSelectSeries` justo
+- [x] **4.16 Agregar una serie de FRED a mano la carga como acción
+  (bug).** (rama `fix/manual-fred-and-race`, PR abierto; ADR-0024)
+  - "+ FRED ID" valida el ID contra `/fred/series` y lo carga siempre como
+    macro. Si FRED dice que no existe, lo dice así y no lo agrega.
+  - Las cargas llevan un número de pedido y las respuestas viejas se
+    descartan.
+  - Verificado en el navegador sobre una copia de la DB, incluida una
+    carrera forzada (respuesta de IPG2211A2N demorada 2,5 s).
+  Descripción original: `handleAddMacro` (`App.tsx`) llama a `handleSelectSeries` justo
   después de `setActiveMacro`, con el estado viejo. Entonces la serie se pide
   a yfinance y falla con "No se pudo cargar la serie". Además,
   `loadSeriesAndForecast` no descarta respuestas viejas: dos cargas que se

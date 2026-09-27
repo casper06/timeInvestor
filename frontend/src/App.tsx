@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import type { DashboardView } from './components/Header';
 import { ThesisBar } from './components/ThesisBar';
@@ -26,6 +26,8 @@ import {
   fetchMacroData,
   fetchFundamentals,
   fetchForecast,
+  fetchFredMetadata,
+  ApiError,
 } from './services/api';
 import type {
   HealthResponse,
@@ -68,6 +70,18 @@ export const App: React.FC = () => {
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('NVDA');
   const [seriesData, setSeriesData] = useState<TimeSeriesData | null>(null);
   const [seriesError, setSeriesError] = useState<string | null>(null);
+  // Why a FRED ID typed in "+ FRED ID" was not added (4.16).
+  const [macroAddError, setMacroAddError] = useState<string | null>(null);
+  // 4.16: every load that writes seriesData / forecast / seriesError takes a
+  // number, and its responses are applied only while it is still the latest.
+  // A request id and not AbortController: the state is only written in these
+  // few places, so one check there covers every kind of request (series,
+  // forecast, re-forecast), while aborting would only save the download, not
+  // the backend's work (its handlers don't stop when the client goes away).
+  const loadSeq = useRef(0);
+  // The series load in flight, if any: a re-forecast then re-runs it instead of
+  // forecasting the previous series' points.
+  const pendingLoad = useRef<{ id: string; type: string; period: string } | null>(null);
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [fundamentals, setFundamentals] = useState<FundamentalsMetric[]>([]);
   const [lastInterpretation, setLastInterpretation] = useState<InterpretationResponse | null>(null);
@@ -128,12 +142,18 @@ export const App: React.FC = () => {
   // "Serie:" label keep showing the PREVIOUS series while the tab itself highlights as
   // selected — which looks exactly like "clicking the tab does nothing" even though
   // the click handler and state update are both working correctly.
+  //
+  // 4.16: a response that arrives after a newer load started is dropped, so the
+  // series, its error and its forecast always come from the same load.
   const loadSeriesAndForecast = async (
     id: string,
     type: string,
     p: string,
-    conf: number
+    conf: number,
+    horizons: Record<string, number> = horizonByFreq
   ) => {
+    const req = ++loadSeq.current;
+    pendingLoad.current = { id, type, period: p };
     setChartLoading(true);
     setSeriesError(null);
     try {
@@ -143,53 +163,71 @@ export const App: React.FC = () => {
       } else {
         data = await fetchMarketData(id, p);
       }
+      if (req !== loadSeq.current) return;
       setSeriesData(data);
       setForecast(null);
 
       if (data.points.length > 2) {
-        const h = horizonByFreq[seriesFrequency(data.frequency)];
+        const h = horizons[seriesFrequency(data.frequency)];
         const fc = await fetchForecast(data.points, h, conf, data.id, data.type);
+        if (req !== loadSeq.current) return;
         setForecast(fc);
       }
     } catch (err) {
+      if (req !== loadSeq.current) return;
       console.error(`Error loading series ${id}:`, err);
       setSeriesData(null);
       setForecast(null);
       setSeriesError(err instanceof Error ? err.message : `No se pudo cargar la serie ${id}`);
     } finally {
-      setChartLoading(false);
+      if (req === loadSeq.current) {
+        pendingLoad.current = null;
+        setChartLoading(false);
+      }
     }
   };
 
-  // Switch selected series
-  const handleSelectSeries = (id: string) => {
+  // Switch selected series. `type` when the caller knows it: right after adding
+  // a series, `activeMacro` in this closure doesn't have it yet (4.16).
+  const handleSelectSeries = (id: string, type?: 'macro' | 'equity') => {
     setSelectedSeriesId(id);
-    const isMacro = activeMacro.some((m) => m.series_id === id);
+    const isMacro = type ? type === 'macro' : activeMacro.some((m) => m.series_id === id);
     loadSeriesAndForecast(id, isMacro ? 'macro' : 'equity', period, confidence);
+  };
+
+  // Re-forecast the loaded series with a new horizon or level. With a series
+  // load still in flight, re-run that load instead: forecasting the previous
+  // series' points would show them under the newly selected tab (4.16).
+  const reforecast = (horizons: Record<string, number>, conf: number) => {
+    const pending = pendingLoad.current;
+    if (pending) {
+      loadSeriesAndForecast(pending.id, pending.type, pending.period, conf, horizons);
+      return;
+    }
+    if (!seriesData || seriesData.points.length <= 2) return;
+    const req = ++loadSeq.current;
+    setChartLoading(true);
+    fetchForecast(seriesData.points, horizons[seriesFrequency(seriesData.frequency)], conf, seriesData.id, seriesData.type)
+      .then((fc) => {
+        if (req === loadSeq.current) setForecast(fc);
+      })
+      .catch((e) => console.error(e))
+      .finally(() => {
+        if (req === loadSeq.current) setChartLoading(false);
+      });
   };
 
   // Re-forecast on horizon change
   const handleChangeHorizon = (newHorizon: number) => {
-    setHorizonByFreq((prev) => ({ ...prev, [frequency]: newHorizon }));
-    if (seriesData && seriesData.points.length > 2) {
-      setChartLoading(true);
-      fetchForecast(seriesData.points, newHorizon, confidence, seriesData.id, seriesData.type)
-        .then((fc) => setForecast(fc))
-        .catch((e) => console.error(e))
-        .finally(() => setChartLoading(false));
-    }
+    const horizons = { ...horizonByFreq, [frequency]: newHorizon };
+    setHorizonByFreq(horizons);
+    reforecast(horizons, confidence);
   };
 
   // Re-forecast on confidence change
   const handleChangeConfidence = (newConf: number) => {
     setConfidence(newConf);
-    if (seriesData && seriesData.points.length > 2) {
-      setChartLoading(true);
-      fetchForecast(seriesData.points, horizon, newConf, seriesData.id, seriesData.type)
-        .then((fc) => setForecast(fc))
-        .catch((e) => console.error(e))
-        .finally(() => setChartLoading(false));
-    }
+    reforecast(horizonByFreq, newConf);
   };
 
   // Change historical period
@@ -224,17 +262,34 @@ export const App: React.FC = () => {
     }
   };
 
-  // Add macro series manually
-  const handleAddMacro = (seriesId: string) => {
-    if (activeMacro.some((m) => m.series_id === seriesId)) return;
+  // Add a FRED series by hand (4.16). The ID is checked against FRED's own
+  // /fred/series first (4.11's FRED search isn't done yet), and the series is
+  // always loaded as macro: it never goes to yfinance.
+  const handleAddMacro = async (rawId: string) => {
+    const seriesId = rawId.trim().toUpperCase();
+    setMacroAddError(null);
+    if (!seriesId || activeMacro.some((m) => m.series_id === seriesId)) return;
+    const seqAtStart = loadSeq.current;
+    try {
+      await fetchFredMetadata(seriesId);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'fred_series_not_found') {
+        setMacroAddError(err.message);
+        return;
+      }
+      // FRED couldn't be asked (no key, network): that doesn't show the ID is
+      // wrong. It is added, and loading it says what failed.
+    }
     const newM: MacroSuggestion = {
       series_id: seriesId,
       name: `FRED ${seriesId}`,
       category: 'Macro Indicator',
       expected_correlation: 'Positive',
     };
-    setActiveMacro([...activeMacro, newM]);
-    handleSelectSeries(seriesId);
+    setActiveMacro((prev) => (prev.some((m) => m.series_id === seriesId) ? prev : [...prev, newM]));
+    // If the user started another load while this ID was being checked, that
+    // one is the latest and stays on screen.
+    if (loadSeq.current === seqAtStart) handleSelectSeries(seriesId, 'macro');
   };
 
   // Remove macro series
@@ -377,6 +432,7 @@ export const App: React.FC = () => {
           onAddTicker={handleAddTicker}
           onRemoveTicker={handleRemoveTicker}
           onAddMacro={handleAddMacro}
+          macroAddError={macroAddError}
           onRemoveMacro={handleRemoveMacro}
         />
 
