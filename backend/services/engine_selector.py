@@ -311,6 +311,13 @@ class EngineSelector:
                     f"{base_label} {mase_base:.3f}) pero su intervalo de confianza quedó mal calibrado en el "
                     f"mini-backtest — {base_label} (elegido por calibración, no porque haya ganado en {metric})."
                 )
+        elif decision.mase_timesfm is not None and decision.mase_timesfm == mase_base:
+            # Same mean error (e.g. both exactly 0 on a step series, 2.8): a
+            # tie, which goes to the baseline. "X ganó" would be false.
+            reason = (
+                f"Auto-evaluado el {date}: {base_label} y TimesFM empataron en {metric} medio "
+                f"({mase_base:.3f}) en un mini-backtest de esta serie puntual — empate, se queda {base_label}."
+            )
         elif decision.mase_timesfm is None and failed:
             # TimesFM was loaded but fell back to Holt on every cutoff: no real
             # TimesFM error to compare. Not re-evaluated early; regular TTL.

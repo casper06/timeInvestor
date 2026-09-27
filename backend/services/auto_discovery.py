@@ -156,6 +156,15 @@ def decide_robust(baseline_name: str, base_errors: list, tfm_errors: list,
     if n < min_paired:
         info["why"] = f"solo {n} cutoffs en par (< {min_paired})"
         return baseline_name, info
+    # Baseline error exactly 0 on every paired cutoff (a step series whose
+    # rounded forecast is exact, e.g. DFEDTARU): nothing to improve on. The
+    # baseline wins, and if TimesFM is also 0 it's a tie, which goes to the
+    # baseline too, with or without an incumbent (2.8). Before this, the
+    # rel_gap ratio below divided by 0 and decide() fell back to no decision.
+    if float(np.mean(base_errors)) == 0.0:
+        info.update({"why": "error del motor base = 0 en todos los cutoffs",
+                     "tie": float(np.mean(tfm_errors)) == 0.0, "rel_gap": None})
+        return baseline_name, info
 
     def beats(a, b, m):
         wins = sum(x < y for x, y in zip(a, b))

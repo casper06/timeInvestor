@@ -157,3 +157,32 @@ def test_recent_cutoffs_respect_an_explicit_horizon():
     idx = recent_cutoff_indices(498, 8, 120, horizon=12)
     assert max(idx) == 498 - 1 - 12
     assert min(idx) >= 498 - 120
+
+
+# ---- 2.8: baseline error exactly 0 (step series, e.g. DFEDTARU) ----
+
+KW = dict(margin=0.10, alpha=None, min_paired=7, guard=False)
+
+def test_zero_baseline_error_keeps_baseline_without_raising():
+    choice, info = decide_robust("holt", [0.0] * 8, [0.3] * 8, **KW)
+    assert choice == "holt" and info["tie"] is False and info["rel_gap"] is None
+
+
+def test_both_zero_is_a_tie_that_goes_to_baseline_even_against_a_timesfm_incumbent():
+    for incumbent in (None, "holt", "timesfm"):
+        choice, info = decide_robust("holt", [0.0] * 8, [0.0] * 8, **KW, incumbent=incumbent, hysteresis_factor=2.0)
+        assert choice == "holt" and info["tie"] is True, incumbent
+
+
+def test_zero_timesfm_error_against_a_positive_baseline_still_lets_timesfm_win():
+    choice, info = decide_robust("holt", [0.4] * 8, [0.0] * 8, **KW)
+    assert choice == "timesfm" and info["rel_gap"] == pytest.approx(-1.0)
+
+
+def test_mini_backtest_with_zero_errors_caches_a_baseline_decision(db_session, monkeypatch):  # noqa: F811
+    """Before 2.8 the division by 0 made decide() return None (no decision,
+    re-run on every request) and the selector served its default Holt."""
+    _mock_mini_backtest(monkeypatch, tfm_available=True, mase_holt=0.0, mase_tfm=0.0)
+    decision = AutoDiscoveryEngine.decide(db_session, "STEPS", n_points=500)
+    assert decision is not None and decision.engine_choice == "holt"
+    assert decision.mase_holt == 0.0 and decision.mase_timesfm == 0.0

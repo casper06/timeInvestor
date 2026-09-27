@@ -587,3 +587,11 @@ def test_choose_engine_rule():
     assert ce("holt", [1.0], [95], [0.5], [60]) == "holt"                         # gap 35 pp > 30: guard
     assert ce("holt_winters", [1.0], [80], [0.8], [79]) == "timesfm"
     assert ce("holt_winters", [1.0], [80], [], []) == "holt_winters"              # no TimesFM results
+
+
+def test_reason_says_tie_when_both_mean_errors_are_equal(db_session, monkeypatch):
+    """2.8: both exactly 0 on a step series. "Holt ganó" would be false."""
+    reason = _reason_for(db_session, monkeypatch, engine_choice="holt", mase_holt=0.0,
+                         mase_timesfm=0.0, timesfm_failed_cutoffs=0)
+    assert "empataron" in reason and "se queda Holt" in reason
+    assert "ganó" not in reason
