@@ -40,6 +40,10 @@ class SimpleCache:
         with self._lock:
             self._cache.clear()
 
+# Values are stored and processed at the source's precision (2.9): no
+# rounding on load; the UI rounds when it displays them. The cache lives only
+# in this process's memory (TTL CACHE_TTL_SECONDS), so a restart starts it
+# empty: no rounded entries survive a deploy and it needs no format version.
 cache = SimpleCache(ttl_seconds=settings.CACHE_TTL_SECONDS)
 
 
@@ -88,7 +92,7 @@ class MarketDataFetcher:
 
                 close_val = row.get("Close")
                 if close_val is not None and not np.isnan(close_val):
-                    points.append(TimeSeriesPoint(timestamp=date_str, value=round(float(close_val), 2)))
+                    points.append(TimeSeriesPoint(timestamp=date_str, value=float(close_val)))
 
             info = {}
             try:
@@ -171,7 +175,7 @@ class MarketDataFetcher:
                                         ticker=sym,
                                         metric="Capex (Billions USD)",
                                         period=year,
-                                        value=round(val_abs, 2),
+                                        value=float(val_abs),
                                         source="live",
                                         source_detail="Cashflow statement oficial de yfinance"
                                     ))
@@ -193,7 +197,7 @@ class MarketDataFetcher:
                                         ticker=sym,
                                         metric="Revenue (Billions USD)",
                                         period=year,
-                                        value=round(val_billions, 2),
+                                        value=float(val_billions),
                                         source="live",
                                         source_detail="Income statement oficial de yfinance"
                                     ))
@@ -233,7 +237,7 @@ class MarketDataFetcher:
             if current.weekday() < 5:
                 points.append(TimeSeriesPoint(
                     timestamp=current.strftime("%Y-%m-%d"),
-                    value=round(float(prices[i]), 2)
+                    value=float(prices[i])
                 ))
 
         return TimeSeriesData(
@@ -339,7 +343,7 @@ class FREDDataFetcher:
                                 try:
                                     points.append(TimeSeriesPoint(
                                         timestamp=date_str,
-                                        value=round(float(val_str), 2)
+                                        value=float(val_str)
                                     ))
                                 except ValueError:
                                     continue
@@ -453,7 +457,7 @@ class FREDDataFetcher:
             cur_val = cur_val * (1 + trend) + noise
             points.append(TimeSeriesPoint(
                 timestamp=cur_date.strftime("%Y-%m-%d"),
-                value=round(float(cur_val), 2)
+                value=float(cur_val)
             ))
             month = cur_date.month + 1
             year = cur_date.year

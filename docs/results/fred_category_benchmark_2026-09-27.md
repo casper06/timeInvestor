@@ -160,6 +160,17 @@ mensual SA.
    se usó (es lo que ve la app). En NFCI y STLFSI4, índices con movimientos
    de centésimas, eso limita la resolución y produce empates.
 
+   **Corrección (2026-09-27, 2.9):** lo de los empates era una inferencia,
+   no una medición.
+   - Medido en 2.9 sobre un gemelo del snapshot a la precisión de la fuente
+     (mismas fechas): en la comparación de capacidad de NFCI y STLFSI4 hubo
+     **0 empates**, redondeado y sin redondear.
+   - El redondeo sí movió números: en NFCI, TimesFM pasa de skill +0,189 y
+     p 0,076 a +0,239 y p 0,032 (sigue sin capacidad), y v5 pasa de "mejora
+     o empata" a "empeora".
+   - **Ningún veredicto de este documento cambia.**
+   - Detalle en `docs/adr/0021-precision-de-la-fuente.md`.
+
 ## Limitaciones
 
 - 5 series por categoría y un solo snapshot. Las series se eligieron por
