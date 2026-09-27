@@ -749,6 +749,42 @@ Rama: una por ítem, a definir.
   Hecho cuando: la proyección de cada serie muestra ese veredicto, con el
   número y su fuente.
 
+  **Criterio PRE-REGISTRADO el 2026-09-27 17:28**, antes de implementar (rama
+  `feat/forecast-skill-badge`, sobre la de 2.11). Se reporta tal como salga;
+  no se ajusta después de ver los estados.
+  - **Qué se evalúa:** el motor que eligió la decisión para esa serie.
+  - **Contra qué naive:**
+    - el naive estacional (mismo período del ciclo anterior) si el detector
+      de 3.0a marca la serie completa como estacional;
+    - si no, el random walk ("igual que el último dato").
+  - **Con qué evidencia:**
+    - serie con decisión del auto-discovery: los cutoffs de su mini-backtest
+      (criterio vigente, horizonte canónico). En cada cutoff, el MAE del
+      motor elegido contra el MAE del naive, en los mismos puntos;
+    - serie del catálogo estacional: los 24 cutoffs de 3.0d
+      (`docs/results/seasonal_benchmark_2026-09-26.json`), MASE estacional
+      del motor del catálogo contra el del naive estacional. Dentro de un
+      cutoff la escala es común, así que el orden es el mismo que con MAE.
+      Esos cutoffs cubren toda la historia, no la ventana reciente;
+    - serie del catálogo de ETFs y camino por defecto: no hay evidencia
+      contra el naive → "no evaluado".
+  - **Regla** (en la línea de v8):
+    - con **al menos 7 cutoffs en par** (los dos errores definidos);
+    - **"aporta sobre el naive"** si el motor tiene menor error que el
+      naive en la mayoría de los pares (ganados > perdidos) **y** su error
+      medio es al menos un 10% menor (media motor ≤ 0,9 × media naive);
+    - si no, **"no aporta más que el naive"**.
+  - **"No evaluado", siempre con el motivo:**
+    - menos de 7 pares;
+    - historia insuficiente para decidir;
+    - serie sin decisión (catálogo de ETFs o camino por defecto);
+    - decisión de una versión anterior sin esta evidencia;
+    - la respuesta no la dio el motor evaluado (plan B o fallback).
+  - **Almacenamiento:** los errores por cutoff (motor base, TimesFM y naive)
+    se guardan en la decisión (`engine_decisions`), con migración como en
+    #20, y se sube el criterio a v9 para que las decisiones se re-evalúen y
+    los completen.
+
 ## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
 
 **Reencuadre (2026-09-26):** el objetivo principal pasa de "construir
