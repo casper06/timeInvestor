@@ -199,7 +199,7 @@ Rama: a definir.
     - el `--replay` de 3.5 exacto requiere el commit `5ee140d`: los
       scripts de medición todavía no toleran MASE `None`.
 - [x] **2.11 Los motores redondean sus pronósticos a 2 decimales.** (rama
-  `fix/no-rounding-in-engines`, PR abierto; ADR-0022)
+  `fix/no-rounding-in-engines`, PR #46, mergeado; ADR-0022)
   - Motores y backtest (pronóstico, bandas y métricas) con precisión
     completa; el redondeo es solo de presentación.
   - Criterio v8: con los datos precisos, NFCI da vuelta un cutoff (6-2 →
@@ -211,7 +211,7 @@ Rama: a definir.
   Hecho cuando: los motores devuelven la precisión completa y la UI y los
   snapshots redondean al mostrar; se mide el efecto como en 2.9.
 - [x] **2.9 Redondeo en la carga de datos.** (rama `fix/no-rounding-on-load`,
-  PR abierto; ADR-0021)
+  PR #45, mergeado; ADR-0021)
   - `data_fetcher.py` ya no redondea (las 6 líneas). La UI ya formatea al
     mostrar; el prompt formatea el último precio con 4 decimales.
   - Caché de datos: solo en memoria, se vacía al reiniciar; no necesita
@@ -307,7 +307,7 @@ Rama: a definir.
     no hay ninguna con ≥ 3, C no se adopta.
 - [x] **2.7 El Reality Check de series FRED fuera del catálogo devuelve 400.**
   **Primero en el orden (2026-09-27): bloquea el uso normal.**
-  (rama `fix/backtest-fred-routing`, PR abierto)
+  (rama `fix/backtest-fred-routing`, PR #39, mergeado)
   - `BacktestRequest.series_type` (`macro` | `equity`, como en `/forecast`),
     y la ruta lo pasa como `is_macro`. El panel manda `seriesData.type`.
   - Sin tipo, el comportamiento no cambia (solo el catálogo va a FRED),
@@ -445,7 +445,7 @@ verificada.
   donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
   cambia algún veredicto del catálogo.
 - [x] **3.5 Capacidad de pronóstico por categoría de FRED.** (rama
-  `feat/fred-category-benchmark`, PR abierto;
+  `feat/fred-category-benchmark`, PR #40, mergeado;
   `docs/results/fred_category_benchmark_2026-09-27.md`)
   - Tiene capacidad solo la mensual NSA (3/5). Mensual SA 1/5, trimestral
     2/5, semanal 2/5, financiera diaria 0/5.
@@ -742,17 +742,20 @@ Rama: una por ítem, a definir.
   medida en cutoffs que no se usaron para calibrar, que no empeora el
   arrepentimiento.
 - [x] **4.13 Capacidad de pronóstico visible en la UI.** (rama
-  `feat/forecast-skill-badge`, PR abierto; ADR-0023; criterio v9)
-  - Resultado sobre una copia de la DB: NVDA no aporta (6 de 8, 7%), IPG2211A2N
-    aporta (18 de 24, 17%, 3.0d), DGS10 no aporta (5 de 8, 0,6%), POPTHM
-    aporta (8 de 8, 91%).
-  - Verificado en el navegador en los dos estados. Para cada serie,
-  mostrar si el motor le gana al naive en su backtest (random walk o
-  estacional, según corresponda) y, cuando no le gana, decirlo
+  `feat/forecast-skill-badge`, PR #47, mergeado; ADR-0023; criterio v9)
+  Para cada serie, mostrar si el motor le gana al naive en su backtest
+  (random walk o estacional, según corresponda) y, cuando no le gana, decirlo
   explícitamente ("para esta serie, el pronóstico no supera a repetir el
   último valor").
   Hecho cuando: la proyección de cada serie muestra ese veredicto, con el
   número y su fuente.
+  - Resultado sobre una copia de la DB: NVDA no aporta (6 de 8, 7%), IPG2211A2N
+    aporta (18 de 24, 17%, 3.0d), DGS10 no aporta (5 de 8, 0,6%), POPTHM
+    aporta (8 de 8, 91%).
+  - Verificado en el navegador en los dos estados.
+  - Chequeo posterior (2026-09-27): en las series estacionales, 4.13 compara
+    solo contra el naive estacional, y en 5 de 6 series de 3.5 el random walk
+    es más exigente. GFDEGDQ188S "aporta" solo por eso. Ver 4.17.
 
   **Criterio PRE-REGISTRADO el 2026-09-27 17:28**, antes de implementar (rama
   `feat/forecast-skill-badge`, sobre la de 2.11). Se reporta tal como salga;
@@ -806,6 +809,42 @@ Rama: una por ítem, a definir.
   (IPG2211A2N).
   Hecho cuando: agregar una serie de FRED a mano la carga como macro al
   primer intento, las respuestas viejas se descartan, y hay un test.
+
+- [ ] **4.17 Capacidad contra el más exigente de los dos naives
+  (propuesta, 2026-09-27; no pre-registrada todavía).**
+  - **Problema (medido, criterio v9, copia de la DB):** en las series
+    estacionales, el indicador de 4.13 compara solo contra el naive
+    estacional.
+    - 3.5 no hacía eso: `capability()` en
+      `scripts/fred_category_benchmark.py` toma como referencia el naive de
+      menor error total (`if seasonal and sum(snaive) < sum(rw): ref =
+      snaive`).
+    - En 5 de las 6 series estacionales de 3.5 (POPTHM, GFDEBTN,
+      GFDEGDQ188S, IMPCH, UNRATENSA) el random walk es el más exigente; en
+      MTSDS133FMS, y en las 4 del catálogo (3.0d), lo es el estacional.
+    - **GFDEGDQ188S "aporta" solo porque el rival es el naive estacional:**
+      TimesFM le gana 7-1 (−28%), pero contra el random walk queda 5-3 y
+      −5,6%, que no llega al 10%.
+    - Las otras 9 aportan contra los dos.
+  - **Propuesta:** en las series estacionales, comparar contra el naive más
+    exigente, es decir, el de menor error medio en los mismos cutoffs (como
+    3.5).
+    - Alternativa a decidir en el pre-registro: exigir ganarle a los dos. En
+      las 10 series medidas, las dos opciones dan lo mismo.
+  - **Qué hace falta:**
+    - guardar en la decisión el MAE de los dos naives por cutoff, lo que
+      requiere un criterio v10 para que las decisiones se re-evalúen;
+    - para el catálogo, recalcular la evidencia de 3.0d contra el random
+      walk. Medido: las 4 series aportan contra los dos.
+  - **Pre-registro a futuro:**
+    - la regla exacta se escribe con fecha y en su propio commit antes de
+      implementarla;
+    - honestidad: el efecto sobre estas 10 series ya se midió al escribir
+      esta propuesta (bitácora 2026-09-27), así que la verificación del
+      pre-registro tiene que incluir series que no se usaron acá.
+  Hecho cuando: el indicador de las series estacionales compara contra el
+  naive pre-registrado, la evidencia de los dos naives está guardada, y hay
+  tests y verificación sobre una copia de la DB.
 
 ## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
 
@@ -913,7 +952,7 @@ disponible y licencia), discutido con el usuario antes de planificar la
 implementación.
 
 - [x] **2.3d Implementar v5 (adoptada en 3.5).** (rama `feat/decision-v5`,
-  sobre `fix/decide-robust-zero-error`; PR abierto; ADR-0019)
+  sobre `fix/decide-robust-zero-error`; PR #42, mergeado; ADR-0019)
   - **Trimestral: decide en 4 trimestres.** Sin evidencia en 3.5, decidido
     por uso (30 pasos trimestrales son 7,5 años). Revisar cuando haya más
     series trimestrales.
@@ -928,7 +967,7 @@ implementación.
     `decision_horizon` salen en el canónico, hay tests y una verificación
     sobre una copia de la DB.
 - [x] **2.8 `decide_robust` lanza `ZeroDivisionError` si el error medio del
-  base es exactamente 0.** (rama `fix/decide-robust-zero-error`, PR abierto)
+  base es exactamente 0.** (rama `fix/decide-robust-zero-error`, PR #41, mergeado)
   - Ahora: si el error del base es 0, gana el base; si los dos son 0, es
     empate → base, también contra un incumbente TimesFM.
   - Da lo mismo que producción hacía por accidente (el motor base), pero sin
