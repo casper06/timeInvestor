@@ -444,6 +444,69 @@ verificada.
   Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
   donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
   cambia algún veredicto del catálogo.
+
+  **Medición PRE-REGISTRADA el 2026-09-28**, en commit propio, antes de
+  descargar ningún vintage (rama `feat/vintage-benchmark`). Solo mide: no
+  cambia criterios ni catálogos.
+  - **Series:**
+    - las 4 del catálogo estacional (IPG2211A2N, HOUSTNSA, RSAFSNA,
+      MRTSSM4451USN) y las 5 mensuales SA de 3.5 (HOUST, INDPRO, JTSJOL,
+      PSAVERT, UNRATE);
+    - entra solo la que tenga historia de vintages suficiente: primera fecha
+      de `fred/series/vintagedates` ≤ 2016-12-31, para que la ventana de
+      cutoffs cubra al menos 8 años. Las demás se reportan como excluidas,
+      con su primera fecha.
+  - **Cutoffs:** 24 fechas mensuales equiespaciadas entre el primer mes
+    posterior a la primera fecha de vintage y la última observación actual
+    menos 12 meses.
+  - **Horizonte:** 12 meses (el canónico mensual).
+  - **Dos versiones de los datos de entrenamiento en cada cutoff `c`:**
+    - **de época:** la serie como se publicó el día `c`
+      (`fred/series/observations?vintage_dates=c`), con su última
+      observación `t`;
+    - **revisada:** la serie actual cortada en esa misma `t`. Así las dos ven
+      el mismo período y difieren solo en las revisiones.
+  - **Dos verdades para los 12 meses siguientes a `t`:**
+    - el valor de la **primera publicación** (`output_type=4`);
+    - el **revisado** actual.
+  - **Métrica:** la capacidad de pronóstico de 3.5 (`capability()` de
+    `scripts/fred_category_benchmark.py`), en cada una de las 4
+    combinaciones (datos × verdad):
+    - motores Holt, Holt-Winters (si la serie es estacional según 3.0a sobre
+      los datos revisados completos) y TimesFM real (si cae a Holt, se
+      frena, como en 3.5);
+    - naive de referencia: el más exigente de los dos (menor error total),
+      calculado con los mismos datos de entrenamiento;
+    - un motor "le gana" si el test de signo da p < 0,05/k (k = motores) y
+      el skill (1 − ΣMAE motor / ΣMAE naive) es > 0;
+    - la serie "tiene capacidad" si algún motor le gana.
+  - **Qué contaría como "la conclusión no se sostiene"**, por serie:
+    - la serie tiene capacidad con datos revisados y verdad revisada (lo que
+      miden hoy los benchmarks) y **no** la tiene con datos de época y verdad
+      de primera publicación (lo que se habría podido saber en tiempo real);
+    - el caso contrario (sin capacidad → con capacidad) se reporta aparte;
+    - por motor se reporta además el cambio de skill entre las dos
+      condiciones;
+    - las combinaciones cruzadas (datos de época con verdad revisada, y al
+      revés) se reportan para separar el efecto del entrenamiento del efecto
+      de la verdad.
+  - **Snapshot:** todo lo bajado queda en `data/snapshots/vintages_<fecha>.json`
+    con su sha256, y la medición se re-corre desde ahí.
+  - **Límite de la API de FRED:** 120 pedidos por minuto. Unos 27 pedidos
+    por serie, espaciados.
+
+  **Resultado (2026-09-28)** (rama `feat/vintage-benchmark`, PR abierto;
+  `docs/results/vintage_benchmark_2026-09-28.md`):
+  - **Se sostienen:** HOUSTNSA, IPG2211A2N y RSAFSNA (el catálogo estacional).
+  - **No se sostienen:** HOUST, INDPRO y JTSJOL. Su capacidad con datos
+    revisados era de TimesFM; en INDPRO el skill cae de +0,42 a +0,08.
+  - **Sin capacidad en ninguna:** PSAVERT y UNRATE.
+  - **Excluida:** MRTSSM4451USN.
+  - **Límites:** cambios de base y de definición (INDPRO, PSAVERT) hacen
+    ininterpretables las combinaciones cruzadas; las ventanas de HOUST,
+    INDPRO y UNRATE mezclan décadas.
+  - No se cambió ningún criterio ni catálogo.
+
 - [x] **3.5 Capacidad de pronóstico por categoría de FRED.** (rama
   `feat/fred-category-benchmark`, PR #40, mergeado;
   `docs/results/fred_category_benchmark_2026-09-27.md`)
