@@ -145,6 +145,8 @@ class EngineSelector:
             res.skill = not_evaluated(
                 "sin evaluación contra el naive para esta serie: no pasó por el auto-discovery "
                 "(camino por defecto)")
+        if res.seasonality is None and points:
+            res.seasonality = detect_seasonality(points)
         return res
 
     @staticmethod

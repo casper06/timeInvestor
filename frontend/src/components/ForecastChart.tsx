@@ -15,6 +15,7 @@ import { KeyRound } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
 import { HORIZON_OPTIONS, horizonButton, horizonTag, seriesFrequency } from '../utils/horizon';
 import { FredInfoTooltip } from './FredInfoTooltip';
+import { SkillBadge } from './SkillBadge';
 
 ChartJS.register(
   CategoryScale,
@@ -367,6 +368,10 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Forecast skill of the selected series (4.13), next to "Serie activa":
+          it changes with the series, never shows another one's verdict. */}
+      {forecast?.skill && <SkillBadge skill={forecast.skill} seriesId={seriesData?.id} />}
 
       {/* Main Chart Area */}
       <div className="relative h-[380px] w-full">
