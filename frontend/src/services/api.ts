@@ -441,7 +441,15 @@ export interface BacktestResponse {
   fallback_reason?: string | null;
 }
 
+/** A series left out of a calculation, with the reason. */
+export interface ExcludedSeries {
+  series_id: string;
+  reason: string;
+}
+
 export interface CorrelationMatrixResponse {
+  /** Series that didn't enter the matrix and why (it's computed with the rest). */
+  excluded?: ExcludedSeries[];
   series_ids: string[];
   series_names: Record<string, string>;
   pearson_matrix: number[][];

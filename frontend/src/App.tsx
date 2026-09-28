@@ -70,6 +70,8 @@ export const App: React.FC = () => {
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>('NVDA');
   const [seriesData, setSeriesData] = useState<TimeSeriesData | null>(null);
   const [seriesError, setSeriesError] = useState<string | null>(null);
+  // Why the last thesis analysis failed (shown in the page, not in an alert()).
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   // Why a FRED ID typed in "+ FRED ID" was not added (4.16).
   const [macroAddError, setMacroAddError] = useState<string | null>(null);
   // 4.16: every load that writes seriesData / forecast / seriesError takes a
@@ -110,6 +112,7 @@ export const App: React.FC = () => {
   // action ("Analizar Tesis" in ThesisBar), with the configured provider.
   const handleAnalyzeThesis = async (thesisText: string) => {
     setLoading(true);
+    setAnalyzeError(null);
     try {
       const resp = await analyzeThesis(thesisText);
       setThesisData(resp);
@@ -129,7 +132,7 @@ export const App: React.FC = () => {
       await loadSeriesAndForecast(defaultId, 'equity', period, confidence);
     } catch (err) {
       console.error('Error analyzing thesis:', err);
-      alert(err instanceof Error ? err.message : 'Error al analizar la tesis');
+      setAnalyzeError(err instanceof Error ? err.message : 'Error al analizar la tesis');
     } finally {
       setLoading(false);
     }
@@ -356,9 +359,16 @@ export const App: React.FC = () => {
   };
 
   // List of all active series for selector pills
+  // nameFromLLM: the name is the LLM's (the ones added by hand carry the app's
+  // generic "X Equity" / "FRED X"), not FRED's or the market's title.
   const allSeriesList = [
-    ...activeTickers.map((t) => ({ id: t.symbol, name: t.name, type: 'equity' })),
-    ...activeMacro.map((m) => ({ id: m.series_id, name: m.name, type: 'macro' })),
+    ...activeTickers.map((t) => ({ id: t.symbol, name: t.name, type: 'equity', nameFromLLM: t.sector !== 'Custom Asset' })),
+    ...activeMacro.map((m) => ({
+      id: m.series_id,
+      name: m.name,
+      type: 'macro',
+      nameFromLLM: m.name !== `FRED ${m.series_id}`,
+    })),
   ];
 
   const isSyntheticActive = !!seriesData && seriesData.source === 'synthetic';
@@ -413,6 +423,16 @@ export const App: React.FC = () => {
                 La serie actual <strong className="text-white font-mono">{seriesData?.id}</strong> proviene de un generador sintético o de referencia ({seriesData?.source_detail || 'sin conexión de datos reales'}). Los módulos de <strong>Reality Check (Backtesting)</strong> y <strong>Matrices de Correlación</strong> han sido inhabilitados para proteger la integridad cuantitativa de la tesis.
               </p>
             </div>
+          </div>
+        )}
+
+        {analyzeError && (
+          <div
+            data-testid="analyze-error"
+            role="alert"
+            className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-xs text-rose-200"
+          >
+            No se pudo analizar la tesis: {analyzeError}
           </div>
         )}
 
@@ -513,6 +533,7 @@ export const App: React.FC = () => {
         {/* ============================================================ */}
         {!isEmpty && currentView === 'backtest' && (
           <BacktestPanel
+            seasonality={forecast?.seasonality ?? null}
             seriesData={seriesData}
             activeSeriesId={selectedSeriesId}
             onResult={setLastBacktest}

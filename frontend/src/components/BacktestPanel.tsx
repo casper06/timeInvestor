@@ -15,7 +15,7 @@ import { Line } from 'react-chartjs-2';
 import { Play, RotateCcw, Award, CheckCircle, Sliders, AlertTriangle, Info } from 'lucide-react';
 import { runBacktest } from '../services/api';
 import { CANONICAL_HORIZON, HORIZON_OPTIONS, horizonButton, horizonLabel, seriesFrequency } from '../utils/horizon';
-import type { BacktestResponse, TimeSeriesData } from '../services/api';
+import type { BacktestResponse, SeasonalityInfo, TimeSeriesData } from '../services/api';
 import { ExplainerPanel } from './ExplainerPanel';
 import { formatValue } from '../utils/valueFormat';
 
@@ -27,6 +27,9 @@ interface BacktestPanelProps {
   /** Notifies the parent of the latest result, so the exported report can
    * include a one-line verdict summary of what the user actually reviewed here. */
   onResult?: (result: BacktestResponse) => void;
+  /** 3.0a detector on this series (ForecastResponse.seasonality): Holt-Winters
+   * is disabled, with the reason, when it already knows it isn't seasonal. */
+  seasonality?: SeasonalityInfo | null;
 }
 
 // What to do about each fallback cause: whether waiting helps or someone has
@@ -43,7 +46,7 @@ const FALLBACK_ACTION: Record<string, string> = {
 const FALLBACK_ACTION_UNKNOWN =
   'El servidor no informó la causa. Reintentá; si se repite, revisá el log del servidor.';
 
-export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, activeSeriesId, onResult }) => {
+export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, activeSeriesId, onResult, seasonality = null }) => {
   const [cutoffIndex, setCutoffIndex] = useState<number>(0);
   // The user's horizon choice, tied to the frequency it was made for.
   const [horizonChoice, setHorizonChoice] = useState<{ frequency: string; h: number } | null>(null);
@@ -52,6 +55,15 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
   // Holt-Winters is chosen explicitly here; it isn't part of the automatic
   // engine selection yet (item 3.0d).
   const [useHoltWinters, setUseHoltWinters] = useState<boolean>(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  // Known not seasonal: Holt-Winters would be refused by the server anyway.
+  const hwBlockedReason =
+    seasonality && !seasonality.is_seasonal
+      ? seasonality.acf_at_period != null && seasonality.threshold != null
+        ? `El detector no marca esta serie como estacional: ACF en el lag ${seasonality.period} = ${seasonality.acf_at_period.toFixed(3)} ≤ umbral ${seasonality.threshold.toFixed(3)}.`
+        : seasonality.reason
+      : null;
+  const hwOn = useHoltWinters && !hwBlockedReason;
 
   const points = seriesData?.points || [];
   const frequency = seriesFrequency(seriesData?.frequency);
@@ -81,15 +93,16 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
   const handleRunBacktest = async () => {
     if (!selectedDate) return;
     setLoading(true);
+    setRunError(null);
     try {
       const res = await runBacktest(
-        activeSeriesId, selectedDate, horizon, 0.95, useHoltWinters ? 'holt_winters' : undefined, seriesData?.type,
+        activeSeriesId, selectedDate, horizon, 0.95, hwOn ? 'holt_winters' : undefined, seriesData?.type,
       );
       setResult(res);
       onResult?.(res);
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : 'Error al ejecutar backtest');
+      setRunError(err instanceof Error ? err.message : 'Error al ejecutar backtest');
     } finally {
       setLoading(false);
     }
@@ -286,7 +299,9 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           >
             <input
               type="checkbox"
-              checked={useHoltWinters}
+              data-testid="hw-checkbox"
+              checked={hwOn}
+              disabled={!!hwBlockedReason}
               onChange={(e) => setUseHoltWinters(e.target.checked)}
             />
             <span className="text-slate-400">Holt-Winters (estacional)</span>
@@ -322,6 +337,23 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           </button>
         </div>
       </div>
+      {points.length < 30 && (
+        <p data-testid="backtest-no-data" className="text-[11px] text-slate-400 -mt-2">
+          {seriesData
+            ? `${activeSeriesId} tiene ${points.length} observaciones; el Reality Check necesita al menos 30.`
+            : `No hay datos de ${activeSeriesId} para evaluar (la serie no se pudo cargar).`}
+        </p>
+      )}
+      {hwBlockedReason && (
+        <p data-testid="hw-blocked-reason" className="text-[11px] text-slate-400 -mt-2">
+          Holt-Winters no disponible para esta serie. {hwBlockedReason}
+        </p>
+      )}
+      {runError && (
+        <div data-testid="backtest-error" role="alert" className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-xs text-rose-200">
+          No se pudo ejecutar el Reality Check: {runError}
+        </div>
+      )}
 
       {/* Date Slider */}
       {points.length > 30 && (

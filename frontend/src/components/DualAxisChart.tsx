@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,7 +21,8 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 interface DualAxisChartProps {
   primarySeriesData: TimeSeriesData | null;
-  allAvailableSeries: { id: string; name: string; type: string }[];
+  /** nameFromLLM: the name is what the LLM wrote, not FRED's or the market's title. */
+  allAvailableSeries: { id: string; name: string; type: string; nameFromLLM?: boolean }[];
 }
 
 export const DualAxisChart: React.FC<DualAxisChartProps> = ({
@@ -31,30 +32,49 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
   const [secondaryId, setSecondaryId] = useState<string>('');
   const [secondaryData, setSecondaryData] = useState<TimeSeriesData | null>(null);
   const [loadingSecondary, setLoadingSecondary] = useState<boolean>(false);
+  const [secondaryError, setSecondaryError] = useState<string | null>(null);
   const [isNormalized, setIsNormalized] = useState<boolean>(false);
+  // Only the latest request's answer is shown: the chart never draws a
+  // series other than the one in the selector.
+  const requestSeq = useRef(0);
 
-  // Default secondary to something different from primary
+  // Default secondary: only when there's none yet, or it left the list. (It
+  // used to be reset on every parent render, since the list is a new array
+  // each time, overwriting the user's choice.)
+  const candidateIds = allAvailableSeries.map((s) => s.id).join(',');
   useEffect(() => {
-    if (primarySeriesData && allAvailableSeries.length > 1) {
-      const candidate = allAvailableSeries.find((s) => s.id !== primarySeriesData.id);
-      if (candidate) {
-        setSecondaryId(candidate.id);
-      }
+    if (!primarySeriesData) return;
+    const others = allAvailableSeries.filter((s) => s.id !== primarySeriesData.id);
+    if (!others.some((s) => s.id === secondaryId)) {
+      setSecondaryId(others[0]?.id ?? '');
     }
-  }, [primarySeriesData, allAvailableSeries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primarySeriesData?.id, candidateIds]);
 
   // Fetch secondary series data
   useEffect(() => {
     if (!secondaryId) return;
     const item = allAvailableSeries.find((s) => s.id === secondaryId);
     const isMacro = item?.type === 'macro';
+    const req = ++requestSeq.current;
 
     setLoadingSecondary(true);
+    setSecondaryData(null);
+    setSecondaryError(null);
     const fetcher = isMacro ? fetchMacroData(secondaryId) : fetchMarketData(secondaryId, '2y');
     fetcher
-      .then((res) => setSecondaryData(res))
-      .catch((err) => console.error(err))
-      .finally(() => setLoadingSecondary(false));
+      .then((res) => {
+        if (req === requestSeq.current) setSecondaryData(res);
+      })
+      .catch((err) => {
+        if (req === requestSeq.current) {
+          setSecondaryError(err instanceof Error ? err.message : `No se pudo cargar ${secondaryId}`);
+        }
+      })
+      .finally(() => {
+        if (req === requestSeq.current) setLoadingSecondary(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondaryId]);
 
   if (!primarySeriesData || primarySeriesData.points.length === 0) {
@@ -178,6 +198,8 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
             position: 'right',
             grid: { drawOnChartArea: false },
             ticks: { color: '#f59e0b', font: { size: 10, family: 'monospace' } },
+            // No right axis without a loaded series (never an empty or stale title).
+            display: !!secondaryData,
             title: { display: true, text: `${secondaryData?.id || ''} (${seriesMetaText(secondaryData)})`, color: '#f59e0b' },
           },
         },
@@ -212,7 +234,7 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
                 .filter((s) => s.id !== primarySeriesData.id)
                 .map((s) => (
                   <option key={s.id} value={s.id} className="bg-slate-900 text-white">
-                    {s.id} ({s.name})
+                    {s.id} ({s.name}{s.nameFromLLM ? ', nombre según el LLM' : ''})
                   </option>
                 ))}
             </select>
@@ -259,6 +281,16 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
             Cargando serie secundaria ({secondaryId})...
           </div>
         )}
+        {secondaryError && (
+          <div
+            data-testid="dual-secondary-error"
+            role="alert"
+            className="absolute top-2 right-2 left-2 z-10 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/40 text-xs text-rose-200"
+          >
+            No se pudo cargar {secondaryId}: {secondaryError.replace(/\.+$/, '')}. El gráfico muestra solo{' '}
+            {primarySeriesData.id}.
+          </div>
+        )}
         <Line data={chartData} options={options} />
       </div>
 
@@ -268,7 +300,14 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
           Eje Izquierdo (Cyan): {primarySeriesData.name} — {seriesMetaText(primarySeriesData)}
         </span>
         <span data-testid="dual-right">
-          Eje Derecho (Ámbar): {secondaryData ? `${secondaryData.name} — ${seriesMetaText(secondaryData)}` : 'Selecciona una serie'}
+          Eje Derecho (Ámbar):{' '}
+          {secondaryData
+            ? `${secondaryData.name} — ${seriesMetaText(secondaryData)}`
+            : secondaryError
+            ? `${secondaryId} — no se pudo cargar`
+            : loadingSecondary
+            ? `${secondaryId} — cargando…`
+            : 'Selecciona una serie'}
         </span>
       </div>
     </div>
