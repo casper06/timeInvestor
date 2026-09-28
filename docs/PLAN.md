@@ -888,6 +888,50 @@ Rama: una por ítem, a definir.
   naive pre-registrado, la evidencia de los dos naives está guardada, y hay
   tests y verificación sobre una copia de la DB.
 
+  **Criterio PRE-REGISTRADO el 2026-09-28**, en commit propio, antes de
+  implementar y antes de mirar datos de las series de validación (rama
+  `feat/skill-strictest-naive`).
+  - **Regla (criterio v10 del badge):**
+    - en series estacionales, la referencia es el naive de **menor error
+      total** en los cutoffs de la decisión, sumando el MAE de los cutoffs
+      donde el motor, el random walk y el naive estacional están definidos.
+      Es el mismo criterio de 3.5 (`capability()`: `if sum(snaive) <
+      sum(rw)`). Con empate, el random walk;
+    - contra esa referencia, la misma regla de 4.13: al menos 7 pares,
+      mayoría de cutoffs ganados y error medio al menos 10% menor;
+    - en series no estacionales no cambia nada: random walk.
+  - **Evidencia:**
+    - la decisión guarda por cutoff el MAE del random walk y del naive
+      estacional (antes, solo el del naive elegido). Se sube el criterio a
+      v10 para que las decisiones se re-evalúen;
+    - para el catálogo estacional, la evidencia de 3.0d contra el random walk
+      se recalcula del snapshot y se versiona.
+  - **Esperado por lo medido (no es validación, ya se vio):** GFDEGDQ188S
+    pasa de "aporta" a "no aporta"; las otras 9 del chequeo no cambian.
+  - **Series de validación (regla mecánica sobre metadatos, sin mirar
+    errores):**
+    - el endpoint `fred/tags/series` con `tag_names=nsa;monthly;usa`,
+      `order_by=popularity`, `sort_order=desc`, primera página (`limit=1000`);
+    - se recorre en orden y se toman las **primeras 6** que cumplan:
+      - (a) no están en el set del chequeo de POPTHM (POPTHM, GFDEBTN,
+        GFDEGDQ188S, IMPCH, MTSDS133FMS, UNRATENSA, IPG2211A2N, HOUSTNSA,
+        RSAFSNA, MRTSSM4451USN);
+      - (b) `observation_start` ≤ 2000-01-01 y `observation_end` ≥ 2026-01-01;
+      - (c) el detector 3.0a las marca estacionales sobre las 500
+        observaciones que baja la app (la regla nueva solo cambia algo en
+        series estacionales);
+    - si no alcanzan 6, se reporta con las que haya.
+  - **Criterio de adopción (escrito antes de medir):**
+    - la v10 **se adopta** salvo que, en las series de validación, aparezca
+      al menos un caso donde la regla nueva diga "aporta" y el motor pierda
+      la mayoría de los cutoffs (ganados ≤ perdidos) contra el **otro**
+      naive, el de mayor error total;
+    - ese caso mostraría que "el más exigente por error total" no alcanza
+      como resumen y que habría que pasar a "contra los dos";
+    - se reporta además cuántas series cambian de estado entre v9 y v10.
+  - **Verificación:** sobre una copia de la DB, con TimesFM real. Se reporta
+    tal como salga.
+
 - [x] **4.18 Lote de honestidad de la UI.** (rama `fix/ui-honesty-batch`, PR
   abierto; ADR-0025)
   - El indicador de capacidad pasa al panel del gráfico, junto a "Serie
