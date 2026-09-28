@@ -362,7 +362,72 @@ Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema exacto:
 # so the example block in the original prompts is redundant for this client
 # specifically (the other clients still need it, since they parse free JSON
 # text with no schema enforcement of their own).
-CLAUDE_CLI_SYSTEM_PROMPT = "Eres un analista cuantitativo senior. " + _THESIS_INSTRUCTIONS
+# Claude CLI: a SHORT system prompt, and the v2 rules in the --json-schema
+# field descriptions. With the full numbered instructions as --system-prompt,
+# haiku ignored --json-schema and answered free Markdown (3 of 3 attempts on
+# 2026-09-27, the same failure the note above describes for the old prompt's
+# JSON example); with the rules in the schema it answered the structure.
+CLAUDE_CLI_SYSTEM_PROMPT = (
+    "Eres un analista cuantitativo senior. Tu tarea es traducir una hipótesis de inversión a una "
+    "estructura verificable: su mecanismo causal, las series de FRED que miden sus eslabones, qué dato "
+    "la refutaría y los instrumentos para seguirla."
+)
+
+CLAUDE_CLI_THESIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "mechanism": {"type": "string", "description": "1. Mecanismo causal: en 2 a 4 frases, qué causa qué y por qué canal."},
+        "macro_series": {
+            "type": "array",
+            "description": "2. Drivers medibles: entre 1 y 4 series de FRED que midan eslabones del mecanismo "
+                           "(causa, canal o efecto). Usá solo IDs de FRED que existan.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "series_id": {"type": "string", "description": "ID de FRED existente; no inventes IDs de FRED"},
+                    "name": {"type": "string"},
+                    "category": {"type": "string"},
+                    "expected_correlation": {"type": "string"},
+                    "mechanism_role": {"type": "string", "description": "causa, canal o efecto: qué eslabón mide"},
+                },
+                "required": ["series_id", "name", "category", "mechanism_role"],
+            },
+        },
+        "falsifiers": {
+            "type": "array",
+            "description": "3. Qué la refutaría: entre 1 y 3 condiciones observables, cada una con una variable "
+                           "(idealmente una de las series anteriores) y una dirección o un umbral.",
+            "items": {
+                "type": "object",
+                "properties": {"condition": {"type": "string"}, "series_id": {"type": "string"}},
+                "required": ["condition"],
+            },
+        },
+        "tickers": {
+            "type": "array",
+            "description": "4. Instrumentos: entre 3 y 6, con pesos que sumen 1.0. Preferí ETFs sectoriales, "
+                           "commodities y tasas antes que acciones sueltas; incluí una acción suelta solo si expone "
+                           "algo que ningún ETF cubre. El benchmark es SPY, siempre, y no va en esta lista.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "name": {"type": "string"},
+                    "sector": {"type": "string"},
+                    "instrument_type": {"type": "string", "enum": ["etf", "commodity", "rate", "index", "stock"]},
+                    "weight": {"type": "number"},
+                    "thesis_role": {"type": "string", "description": "Rol de este instrumento en el mecanismo"},
+                    "source": {"type": "string", "description": "Fuente de los hechos concretos que afirmás (cifras, "
+                               "contratos, cuotas, eventos); cadena vacía si no tenés fuente. No inventes fuentes."},
+                },
+                "required": ["symbol", "name", "sector", "instrument_type", "weight", "thesis_role"],
+            },
+        },
+        "rationales": {"type": "object", "description": "Por instrumento: por qué expone al mecanismo; hechos concretos solo con fuente."},
+    },
+    "required": ["summary", "mechanism", "macro_series", "falsifiers", "tickers", "rationales"],
+}
 
 CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT = (
     "Eres un Copiloto Cuantitativo Senior y Director de Análisis Estratégico. "
@@ -715,7 +780,10 @@ class OllamaLLMClient(BaseLLMClient):
 # the CLI's own internal retries on transient errors — observed taking 60-90s
 # during testing when the underlying model was overloaded), short enough that
 # a genuinely hung process can't block a /thesis request forever.
-CLI_SUBPROCESS_TIMEOUT_SECONDS = 45
+# 120 since the v2 thesis prompt (4.10): its structured answer is longer, and
+# haiku took 52 s for it on 2026-09-27 (the old prompt also hit 45 s timeouts
+# that day: one thesis took 170 s through retries).
+CLI_SUBPROCESS_TIMEOUT_SECONDS = 120
 
 
 def _run_cli_subprocess(
@@ -1317,56 +1385,7 @@ class ClaudeCliLLMClient(BaseLLMClient):
         # user message — see _build_args' comment for why the concatenated
         # form (used by every other client here) breaks with this CLI.
         user_prompt = f'Hipótesis de inversión: "{thesis}"'
-        schema = {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string"},
-                "mechanism": {"type": "string"},
-                "macro_series": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "series_id": {"type": "string"},
-                            "name": {"type": "string"},
-                            "category": {"type": "string"},
-                            "expected_correlation": {"type": "string"},
-                            "mechanism_role": {"type": "string"},
-                        },
-                        "required": ["series_id", "name", "category", "mechanism_role"],
-                    },
-                },
-                "falsifiers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "condition": {"type": "string"},
-                            "series_id": {"type": ["string", "null"]},
-                        },
-                        "required": ["condition"],
-                    },
-                },
-                "tickers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "symbol": {"type": "string"},
-                            "name": {"type": "string"},
-                            "sector": {"type": "string"},
-                            "instrument_type": {"type": "string", "enum": ["etf", "commodity", "rate", "index", "stock"]},
-                            "weight": {"type": "number"},
-                            "thesis_role": {"type": "string"},
-                            "source": {"type": ["string", "null"]},
-                        },
-                        "required": ["symbol", "name", "sector", "instrument_type", "weight", "thesis_role"],
-                    },
-                },
-                "rationales": {"type": "object"},
-            },
-            "required": ["summary", "mechanism", "macro_series", "falsifiers", "tickers", "rationales"],
-        }
+        schema = CLAUDE_CLI_THESIS_SCHEMA
         try:
             async def _attempt():
                 return await asyncio.to_thread(self._run, user_prompt, CLAUDE_CLI_SYSTEM_PROMPT, schema)

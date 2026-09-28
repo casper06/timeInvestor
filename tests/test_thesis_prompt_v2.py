@@ -36,13 +36,25 @@ V2 = {
 
 # ---- the prompt ----
 
-@pytest.mark.parametrize("prompt", [lr.SYSTEM_PROMPT, lr.CLAUDE_CLI_SYSTEM_PROMPT])
+# Claude CLI gets the rules through the --json-schema descriptions (a long
+# system prompt makes it ignore the schema); what it receives is both.
+CLAUDE_CLI_TEXT = lr.CLAUDE_CLI_SYSTEM_PROMPT + json.dumps(lr.CLAUDE_CLI_THESIS_SCHEMA, ensure_ascii=False)
+
+
+@pytest.mark.parametrize("prompt", [lr.SYSTEM_PROMPT, CLAUDE_CLI_TEXT])
 def test_both_prompt_variants_ask_in_the_v2_order(prompt):
     positions = [prompt.index(step) for step in ORDER]
     assert positions == sorted(positions)
     assert "Preferí ETFs sectoriales, commodities y tasas antes que acciones sueltas" in prompt
     assert "El benchmark es SPY, siempre" in prompt
-    assert 'dejá "source" en null. No inventes fuentes' in prompt
+    assert "No inventes fuentes" in prompt
+    assert "inventes IDs de FRED" in prompt or "ni IDs de FRED" in prompt
+
+
+def test_claude_cli_system_prompt_stays_short():
+    """The failure seen: with the long numbered instructions as --system-prompt,
+    haiku ignored --json-schema. The rules live in the schema instead."""
+    assert len(lr.CLAUDE_CLI_SYSTEM_PROMPT) < 400 and "1." not in lr.CLAUDE_CLI_SYSTEM_PROMPT
 
 
 def test_the_json_prompt_example_has_the_new_fields():
@@ -97,7 +109,7 @@ def test_cli_clients_use_the_v2_prompt_and_builder(cls):
     r = asyncio.run(c.parse_thesis("t"))
     assert r.mechanism and r.benchmark == "SPY" and len(r.falsifiers) == 2
     if cls == "ClaudeCliLLMClient":
-        assert seen["system"] == lr.CLAUDE_CLI_SYSTEM_PROMPT
+        assert seen["system"] == lr.CLAUDE_CLI_SYSTEM_PROMPT and seen["schema"] is lr.CLAUDE_CLI_THESIS_SCHEMA
         assert {"mechanism", "falsifiers"} <= set(seen["schema"]["required"])
         ticker = seen["schema"]["properties"]["tickers"]["items"]
         assert "instrument_type" in ticker["required"] and "source" in ticker["properties"]
