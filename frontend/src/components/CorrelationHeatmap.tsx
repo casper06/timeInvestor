@@ -187,7 +187,24 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
           </div>
         )}
 
-        {!loading && error && (
+        {data?.excluded && data.excluded.length > 0 && (
+        <div
+          data-testid="correlation-excluded"
+          role="status"
+          className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-1"
+        >
+          <strong className="text-amber-300">Quedaron fuera de la matriz:</strong>
+          <ul className="list-disc pl-4">
+            {data.excluded.map((e) => (
+              <li key={e.series_id}>
+                <span className="font-mono">{e.series_id}</span>: {e.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!loading && error && (
           <div className="py-8 text-center text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4">
             <strong className="block mb-1">No se pudo calcular la matriz de correlación</strong>
             {error}

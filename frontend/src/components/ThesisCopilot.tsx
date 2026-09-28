@@ -53,6 +53,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
   const [loading, setLoading] = useState(false);
   const [interpretation, setInterpretation] = useState<InterpretationResponse | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Compute key stats for context
   const lastPrice = seriesData?.points[seriesData.points.length - 1]?.value || 0;
@@ -66,6 +67,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
 
   const handleRunInterpretation = async () => {
     setLoading(true);
+    setError(null);
     try {
       const ctx: InterpretationContext = {
         thesis,
@@ -99,7 +101,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
       setCollapsed(false);
     } catch (err) {
       console.error('Error running thesis interpretation:', err);
-      alert(err instanceof Error ? err.message : 'Error al interpretar la situación');
+      setError(err instanceof Error ? err.message : 'Error al interpretar la situación');
     } finally {
       setLoading(false);
     }
@@ -162,6 +164,12 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
           </button>
         </div>
       </div>
+
+      {error && (
+        <div data-testid="copilot-error" role="alert" className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-xs text-rose-200">
+          No se pudo interpretar la situación: {error}
+        </div>
+      )}
 
       {/* When no interpretation is generated yet */}
       {!interpretation && !loading && (

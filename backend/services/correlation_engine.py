@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from backend.schemas.models import CorrelationMatrixResponse
+from backend.schemas.models import CorrelationMatrixResponse, ExcludedSeries
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
 from backend.services.series_routing import is_fred_series
 
@@ -37,11 +37,19 @@ class CorrelationEngine:
         is_monthly_list = []
 
         types = {k.strip().upper(): v for k, v in (series_types or {}).items()}
+        # A series that doesn't exist or fails to load is left out, with the
+        # reason; the matrix is computed with the rest. One bad ID (an LLM
+        # proposing TOTALSI) must not take the whole matrix down.
+        excluded: List[ExcludedSeries] = []
         for sid in clean_ids:
-            if is_fred_series(sid, types.get(sid)):
-                data = fred.get_series(sid)
-            else:
-                data = MarketDataFetcher.get_history(sid, period=period)
+            try:
+                if is_fred_series(sid, types.get(sid)):
+                    data = fred.get_series(sid)
+                else:
+                    data = MarketDataFetcher.get_history(sid, period=period)
+            except Exception as e:  # noqa: BLE001 — every load failure is reported, none is fatal
+                excluded.append(ExcludedSeries(series_id=sid, reason=str(e) or type(e).__name__))
+                continue
 
             # Reject synthetic data
             if getattr(data, "source", "live") == "synthetic":
@@ -65,6 +73,13 @@ class CorrelationEngine:
                 is_monthly = False
             is_monthly_list.append(is_monthly)
             series_dict[sid] = s
+
+        if len(series_dict) < 2:
+            detail = "; ".join(f"{e.series_id}: {e.reason}" for e in excluded)
+            raise ValueError(
+                f"Quedan {len(series_dict)} serie(s) con datos; hacen falta al menos 2 para la matriz. "
+                f"Excluidas: {detail}"
+            )
 
         # If any series is low-frequency (e.g. monthly macro), resample all series to month-end
         has_monthly = any(is_monthly_list)
@@ -153,5 +168,6 @@ class CorrelationEngine:
             start_date=start_date,
             end_date=end_date,
             mode=mode,
-            warning=warning_msg
+            warning=warning_msg,
+            excluded=excluded,
         )
