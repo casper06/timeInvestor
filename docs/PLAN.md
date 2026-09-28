@@ -671,6 +671,16 @@ Rama: una por ítem, a definir.
     CAPUTLG2211S).
   - El ruteo FRED/yfinance pasa a depender de que el ID exista en FRED
     (`fred/series`), no de un catálogo fijo. Absorbe 4.1.
+    **Hecho en parte (rama `fix/correlation-fred-routing`, PR abierto;
+    ADR-0026):**
+    - `series_routing.is_fred_series` decide en correlación, backtest y
+      auto-discovery. Manda el tipo del pedido; si no hay tipo, el catálogo
+      y después FRED mismo.
+    - El heatmap manda el tipo de cada serie.
+    - Se arregló el mensaje duplicado "ALLOW_SYNTHETIC_DATA=false y
+      ALLOW_SYNTHETIC_DATA=false".
+    - Verificado con PCU221110221110 y DGS10.
+    - Falta la búsqueda de conceptos → candidatas reales.
   Hecho cuando: ninguna serie macro llega a la app sin haber sido validada
   contra FRED, y `CorrelationEngine` acepta cualquier ID válido de FRED.
 - [ ] **4.12 Fuentes fuera de FRED (solo investigación).** SEC EDGAR (datos

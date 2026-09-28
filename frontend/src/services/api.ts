@@ -563,7 +563,9 @@ export async function runBacktest(
 export async function fetchCorrelations(
   seriesIds: string[],
   period = '2y',
-  mode: 'returns' | 'levels' = 'returns'
+  mode: 'returns' | 'levels' = 'returns',
+  /** Where each series lives: a FRED ID is never looked up in yfinance. */
+  seriesTypes?: Record<string, 'equity' | 'macro'>
 ): Promise<CorrelationMatrixResponse> {
   const res = await fetch(`${API_BASE}/correlation`, {
     method: 'POST',
@@ -572,6 +574,7 @@ export async function fetchCorrelations(
       series_ids: seriesIds,
       period,
       mode,
+      series_types: seriesTypes,
     }),
   });
   if (!res.ok) {

@@ -21,6 +21,16 @@ import backend.services.llm_availability as availability  # noqa: E402
 from backend.database import connection  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _offline_series_routing(monkeypatch):
+    """series_routing asks FRED whether an untyped ID is a FRED series. The
+    suite never does that over the network: by default FRED "can't be asked"
+    (same as no key). tests/test_series_routing.py replaces it with fakes."""
+    from backend.services import series_routing
+    series_routing.clear_routing_cache()
+    monkeypatch.setattr(series_routing, "_fred_knows", lambda series_id: None)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _isolated_test_database():
     """Refuses to run if the app's engine isn't the temporary database (e.g.
