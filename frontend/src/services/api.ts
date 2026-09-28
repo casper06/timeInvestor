@@ -71,6 +71,8 @@ export interface ForecastResponse {
   reliability_warning?: string | null;
   /** Does the forecast beat the naive? (4.13) */
   skill?: ForecastSkill | null;
+  /** 3.0a detector on the forecast points (the UI hides 'inercia' on seasonal series). */
+  seasonality?: SeasonalityInfo | null;
 }
 
 export interface ForecastSkill {
@@ -393,6 +395,8 @@ export interface BacktestResponse {
   horizon: number;
   /** Unit of `horizon`, inferred from the series' dates. */
   frequency?: string | null;
+  /** Unit of the evaluated series (the MAE's). */
+  unit?: string | null;
   historical_dates: string[];
   historical_values: number[];
   future_actual_dates: string[];

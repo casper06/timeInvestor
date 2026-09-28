@@ -47,16 +47,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   const noAporta = skill?.state === 'no_aporta';
   const naiveWords =
     skill?.naive === 'naive_estacional' ? 'igual que el mismo período del ciclo anterior' : 'igual que el último dato';
-  const SKILL_LABEL = {
-    aporta: 'Aporta sobre el naive',
-    no_aporta: 'No aporta más que el naive',
-    no_evaluado: 'No evaluado',
-  } as const;
-  const SKILL_STYLE = {
-    aporta: 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300',
-    no_aporta: 'border-amber-500/40 bg-amber-950/30 text-amber-300',
-    no_evaluado: 'border-slate-700 bg-slate-900/60 text-slate-400',
-  } as const;
 
   return (
     <div className="space-y-4">
@@ -109,14 +99,29 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
         <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-md">
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-xs font-medium uppercase tracking-wider">CAGR Anualizado</span>
-            <TrendingUp className="h-4 w-4 text-emerald-400" />
+            <TrendingUp className={`h-4 w-4 ${noAporta ? 'text-slate-500' : 'text-emerald-400'}`} />
           </div>
-          <div className="text-xl font-bold font-mono text-emerald-400">
+          {/* The CAGR comes from the point forecast: when that doesn't beat the
+              naive it goes to the background too (no color, no emphasis). */}
+          <div
+            data-testid="cagr-value"
+            data-secondary={noAporta ? 'true' : 'false'}
+            className={
+              noAporta
+                ? 'text-sm font-medium font-mono text-slate-400 mt-1'
+                : `text-xl font-bold font-mono ${cagr >= 0 ? 'text-emerald-400' : 'text-rose-400'}`
+            }
+          >
             {cagr >= 0 ? '+' : ''}{cagr.toFixed(1)}%
           </div>
           <div className="text-[11px] text-slate-500 font-mono mt-1">
             Horizonte proyectivo {horizonLabel(horizon, frequency)}
           </div>
+          {noAporta && (
+            <div className="text-[10px] text-slate-500 mt-1">
+              Sale del punto central, que no supera al naive
+            </div>
+          )}
         </div>
 
         {/* Card 3: Prediction Interval */}
@@ -155,20 +160,6 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
           )}
         </div>
       </div>
-
-      {/* Forecast skill vs the naive (4.13) */}
-      {skill && (
-        <div
-          data-testid="skill-badge"
-          data-state={skill.state}
-          className={`flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border p-3 text-xs ${SKILL_STYLE[skill.state]}`}
-        >
-          <span className="font-bold uppercase tracking-wide whitespace-nowrap">
-            Capacidad de pronóstico: {SKILL_LABEL[skill.state]}
-          </span>
-          <span className="text-slate-300">{skill.reason}</span>
-        </div>
-      )}
 
       {/* Thesis Synthesis & Rationale Accordion */}
       {thesisData && (

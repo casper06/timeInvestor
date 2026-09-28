@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
+import { formatValue, isPriceSeries } from '../utils/valueFormat';
 
 interface ThesisAlertBannerProps {
   seriesData: TimeSeriesData | null;
@@ -26,6 +27,9 @@ export const ThesisAlertBanner: React.FC<ThesisAlertBannerProps> = ({
   if (!isUnderStress) {
     return null;
   }
+  // The band's real level (TimesFM only has 80%), never a fixed 95%.
+  const level = forecast.interval_level != null ? ` ${Math.round(forecast.interval_level * 100)}%` : '';
+  const price = isPriceSeries(seriesData);
 
   return (
     <div className="rounded-2xl p-4 bg-gradient-to-r from-rose-950/60 via-slate-900 to-slate-900 border border-rose-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
@@ -39,14 +43,15 @@ export const ThesisAlertBanner: React.FC<ThesisAlertBannerProps> = ({
               Alerta Cuantitativa • Tesis Bajo Estrés
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-200 border border-rose-500/30">
-              Desvío de Soporte 95%
+              Desvío de Soporte{level}
             </span>
           </div>
           <p className="text-slate-300 leading-relaxed text-[11px]">
-            El activo <strong className="text-white font-mono">{seriesData.id}</strong> registra un último
-            cierre de <strong className="text-rose-300 font-mono">${lastPrice.toFixed(2)}</strong>,
-            perforando la banda inferior proyectada por TimesFM (
-            <strong className="text-slate-200 font-mono">${lowerBound.toFixed(2)}</strong>). Las premisas
+            {price ? 'El activo' : 'La serie'} <strong className="text-white font-mono">{seriesData.id}</strong> registra un{' '}
+            {price ? 'último cierre' : 'último valor'} de{' '}
+            <strong className="text-rose-300 font-mono">{formatValue(lastPrice, seriesData)}</strong>, perforando la banda
+            inferior proyectada por {forecast.model_name} (
+            <strong className="text-slate-200 font-mono">{formatValue(lowerBound, seriesData)}</strong>). Las premisas
             fundamentales pueden haber cambiado.
           </p>
         </div>

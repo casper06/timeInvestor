@@ -99,6 +99,11 @@ sequenceDiagram
     Note over UI: Pestañas a pedido: backtest (/backtest), correlación (/correlation),<br/>gráfico dual (/data/*), asignación y riesgo (/portfolio/*)
 ```
 
+El veredicto del Reality Check nombra primero el naive más exigente en ese
+corte (el de menor error, criterio de 3.5) y después el otro. La UI escribe
+"$" y "Precio" solo para acciones; una serie macro lleva su unidad
+(ADR-0025).
+
 Las cargas de serie y de pronóstico llevan un número de pedido (`loadSeq`
 en `App.tsx`): si llega la respuesta de una carga vieja, se descarta, así
 que la serie, el error y el pronóstico vienen siempre de la misma carga
