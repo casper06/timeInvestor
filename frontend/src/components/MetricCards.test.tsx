@@ -176,3 +176,15 @@ describe('MetricCards thesis translated with prompt v2 (4.10)', () => {
     expect(labels[1]).toHaveTextContent('Fuente citada por el LLM: 10-K 2025 (la app no la verificó)');
   });
 });
+
+describe('MetricCards claim label with the local template', () => {
+  it('does not call the local template text an LLM claim', () => {
+    const thesis = {
+      thesis: 't', summary: 's', macro_series: [], rationales: {}, provider_used: 'mock-semantic-engine',
+      tickers: [{ symbol: 'ITB', name: 'i', sector: 'x', weight: 1, thesis_role: 'r', instrument_type: 'etf' as const }],
+    };
+    render(<MetricCards thesisData={thesis} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    expect(screen.getByTestId('claim-label')).toHaveTextContent('Texto de plantilla local (sin LLM)');
+  });
+});

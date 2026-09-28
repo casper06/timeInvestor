@@ -259,7 +259,9 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                     data-sourced={t.source ? 'true' : 'false'}
                     className={`text-[10px] ${t.source ? 'text-slate-400' : 'text-amber-400/90'}`}
                   >
-                    {t.source
+                    {thesisData.provider_used?.startsWith('mock')
+                      ? 'Texto de plantilla local (sin LLM)'
+                      : t.source
                       ? `Fuente citada por el LLM: ${t.source} (la app no la verificó)`
                       : 'Afirmación del LLM, no verificada'}
                   </p>

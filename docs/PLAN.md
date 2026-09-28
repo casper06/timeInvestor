@@ -610,7 +610,11 @@ Rama: una por ítem, a definir.
   verificación de #24).
   Hecho cuando: la versión de torch de la imagen es una decisión explícita y
   hay al menos una inferencia real de TimesFM verificada en esa imagen.
-- [ ] **4.6 Calidad del LLM al traducir la tesis.** Con
+- [ ] **4.6 Calidad del LLM al traducir la tesis.** **Medido junto con 4.10
+  (2026-09-28):** con el prompt nuevo, Sonnet sin errores de hecho y con series
+  relevantes (15/16); Haiku con series irrelevantes e inexistentes en T1, mal
+  uso de `source` y errores de hecho, y no más rápido. Propuesta: Sonnet por
+  defecto en Claude CLI. Gemini no se pudo evaluar (cupo). Decide el usuario. Con
   `CLAUDE_CLI_MODEL=haiku`, la tesis "Demanda eléctrica por centros de datos
   de IA" dio como series FRED TOTALSA, GPDI, INDPRO y DFEDTARU, ninguna
   eléctrica. Comparar Haiku contra Sonnet con las mismas 3–4 tesis y
@@ -754,6 +758,23 @@ Rama: una por ítem, a definir.
   - **Salida:** una tabla tesis × prompt × modelo con C1a, C1b, C2, C3a, C3b,
     C3c y C4. Con la tabla completa se propone qué prompt queda (4.10) y qué
     modelo por defecto (4.6), y lo decide el usuario.
+
+  **Resultado (2026-09-28)** (rama `feat/thesis-prompt-v2`, PR abierto;
+  ADR-0030; `docs/results/thesis_prompt_v2_2026-09-28.md`):
+  - Con Claude CLI (Haiku y Sonnet, las 4 tesis), el prompt nuevo trae
+    refutación medible en 8 de 8 corridas (el viejo en 0).
+  - Peso en acciones sueltas: de 94% a 5% (Haiku) y de 51% a 18% (Sonnet).
+  - Primer instrumento que no es una acción: 8 de 8 (el viejo, 2 de 8).
+  - Series relevantes: Sonnet 15/16 con los dos prompts; Haiku, de 8/13 a
+    10/13.
+  - Haiku con el prompt nuevo usó `source` para afirmaciones y cometió
+    errores de hecho.
+  - **Gemini sin datos con el prompt nuevo:** se agotó el cupo gratuito
+    diario.
+  - Desviaciones dichas en el documento: variante de Claude CLI corregida y
+    celdas nuevas corridas de cero; mismo timeout para los dos prompts.
+  - Propuesta: queda el prompt nuevo; con Gemini, correr antes sus 4 celdas.
+    La decisión es del usuario.
 - [ ] **4.11 IDs de FRED anclados en datos reales.** El LLM propone
   *conceptos*; `fred/series/search` devuelve candidatas reales con metadata, y
   se elige entre esas. Nunca un ID generado por el LLM sin verificar contra
