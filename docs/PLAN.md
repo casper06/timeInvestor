@@ -636,6 +636,16 @@ Rama: una por ítem, a definir.
   `ETSModel` no incluyen la incertidumbre de los parámetros (Holt-Winters
   sub-cubre: 91,3% al 95% en 3.0b). Evaluar intervalos por simulación o
   bootstrap.
+- [x] **4.19 Simulación de riesgo: semilla y tendencia.** (rama
+  `fix/risk-simulation`, PR abierto; ADR-0027;
+  `docs/results/risk_drift_2026-09-27.md`)
+  - Cada clic simula con una semilla nueva, y la usada se muestra y se puede
+    reproducir. Antes era siempre 42.
+  - Por defecto, retornos centrados (sin la tendencia del período), con la
+    opción histórica y una etiqueta visible.
+  - Medido con CEG, ETN, GEV, PWR y VST a pesos iguales: tendencia +26,9%
+    anual (t = 0,9). Con ella, el VaR95 del bootstrap a 30 días baja de 18,8%
+    a 16,2% (8 veces el ruido de semilla), y a un año de 44,4% a 27,3%.
 - [ ] **4.10 Sesgos del prompt que traduce la tesis** (`SYSTEM_PROMPT` en
   `backend/services/llm_router.py`, ~línea 283, y su variante
   `CLAUDE_CLI_SYSTEM_PROMPT` + `--json-schema` de `ClaudeCliLLMClient`, que

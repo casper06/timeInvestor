@@ -636,6 +636,12 @@ export interface PortfolioRiskResponse {
   prob_loss_30pct: number;
   histogram: HistogramData;
   warnings: string[];
+  /** Seed the simulation used: sending it again reproduces the result. */
+  seed_used: number;
+  /** centered = returns centered on 0 (no historical trend); historical = with it. */
+  drift_used: 'centered' | 'historical';
+  /** The portfolio's mean annual (log) trend in the historical period: what "centered" removes. */
+  historical_drift_annual: number;
 }
 
 export interface RebalanceCurvePoint {
@@ -722,6 +728,9 @@ export async function evaluatePortfolioRisk(params: {
   method?: 'bootstrap' | 'student_t' | 'gaussian';
   n_simulations?: number;
   block_size?: number;
+  /** Omitted: a new seed on every run (the one used comes back in seed_used). */
+  seed?: number;
+  drift?: 'centered' | 'historical';
 }): Promise<PortfolioRiskResponse> {
   const res = await fetch(`${API_BASE}/portfolio/risk`, {
     method: 'POST',
