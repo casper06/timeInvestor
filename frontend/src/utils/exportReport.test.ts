@@ -173,3 +173,75 @@ describe('generateMarkdownReport — undefined MAPE (2.10)', () => {
     expect(md).toContain('**MAPE:** no definido (MAPE no definido: algún valor real del período evaluado es 0)');
   });
 });
+
+describe('generateMarkdownReport — macro wording and forecast skill', () => {
+  const macro: ReportData = {
+    ...baseData,
+    seriesData: {
+      id: 'IPG2211A2N', name: 'Electric Power', type: 'macro', unit: 'Index 2017=100', frequency: 'monthly',
+      points: [{ timestamp: '2026-07-01', value: 125.47 }], source: 'live',
+    },
+    forecast: {
+      timestamps: ['2027-07-01'], values: [122.54], lower_bound: [117.4], upper_bound: [127.9],
+      model_name: 'timesfm-2.5-200m (cpu)',
+      skill: { state: 'aporta', reason: 'Le gana al naive estacional en 18 de 24 cutoffs', naive: 'naive_estacional' },
+    },
+    horizon: 12,
+    confidence: 0.8,
+  };
+
+  it('a macro series has no "$" nor "Precio": last value and its unit', () => {
+    const md = generateMarkdownReport(macro);
+    const telemetry = md.split('## 3.')[1].split('## 4.')[0];
+    expect(telemetry).toContain('**Último valor:** 125.47 Index 2017=100');
+    expect(telemetry).toContain('**Valor proyectado (+12 meses):** 122.54 Index 2017=100');
+    expect(telemetry).not.toMatch(/\$|Precio|precio/);
+    expect(telemetry).toContain(
+      '**Capacidad de pronóstico:** aporta sobre el naive — Le gana al naive estacional en 18 de 24 cutoffs'
+    );
+  });
+
+  it('a stock keeps its price in dollars', () => {
+    const md = generateMarkdownReport(baseData);
+    expect(md).toContain('**Último precio real:** $220.00');
+    expect(md).toContain('**Precio objetivo proyectado');
+  });
+
+  it('"no aporta": the range goes first and the point is secondary', () => {
+    const md = generateMarkdownReport({
+      ...macro,
+      forecast: { ...macro.forecast!, skill: { state: 'no_aporta', reason: 'x', naive: 'random_walk' } },
+    });
+    const rangeAt = md.indexOf(
+      '**Rango proyectado (+12 meses, 80% CI):** [117.40 Index 2017=100 — 127.90 Index 2017=100]'
+    );
+    const pointAt = md.indexOf(
+      "**Punto central (secundario):** 122.54 Index 2017=100 (-2.3%). El pronóstico puntual no supera a 'igual que el último dato'."
+    );
+    expect(rangeAt).toBeGreaterThan(-1);
+    expect(pointAt).toBeGreaterThan(rangeAt);
+    expect(md).not.toContain('Valor proyectado');
+  });
+});
+
+describe('generateMarkdownReport — Reality Check of another series', () => {
+  it("names the backtest's series and writes its MAE in its own unit, not the on-screen series'", () => {
+    const md = generateMarkdownReport({
+      ...baseData,
+      seriesData: {
+        id: 'IPG2211A2N', name: 'Electric Power', type: 'macro', unit: 'Index 2017=100',
+        points: [{ timestamp: '2026-07-01', value: 125.47 }], source: 'live',
+      },
+      lastBacktest: {
+        series_id: 'NVDA', cutoff_date: '2026-06-03', horizon: 60, frequency: 'daily', unit: 'USD',
+        historical_dates: [], historical_values: [], future_actual_dates: [], future_actual_values: [],
+        future_predicted_values: [], future_lower_bound: [], future_upper_bound: [],
+        metrics: { mae: 8.31, mape: 4.01, directional_accuracy: 55.9, observations_evaluated: 60 },
+        verdict: 'v', warnings: [],
+      },
+    });
+    expect(md).toContain('Reality Check (Backtest Histórico, NVDA)');
+    expect(md).toContain('**MAE:** 8.31 USD');
+    expect(md).not.toContain('8.31 Index');
+  });
+});
