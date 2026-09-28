@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.config import settings
+from backend.api import routes
 from backend.main import app
 from backend.services.data_fetcher import FREDDataFetcher, cache
 
@@ -43,7 +44,11 @@ def _fake_fred(monkeypatch, meta_status=200):
             return Resp(meta_status, META if meta_status == 200 else {"error_message": "Internal Server Error"})
 
     monkeypatch.setattr(httpx, "Client", Client)
+    # The key has to be "present" everywhere, also on a machine without
+    # FRED_API_KEY: in settings (fetchers created in the test) and in the
+    # route's module-level fetcher, which read it when it was imported.
     monkeypatch.setattr(settings, "FRED_API_KEY", "fake-test-key")
+    monkeypatch.setattr(routes.fred_fetcher, "api_key", "fake-test-key")
     cache.clear()
 
 
