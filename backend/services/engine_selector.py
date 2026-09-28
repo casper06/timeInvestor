@@ -145,6 +145,8 @@ class EngineSelector:
             res.skill = not_evaluated(
                 "sin evaluación contra el naive para esta serie: no pasó por el auto-discovery "
                 "(camino por defecto)")
+        if res.seasonality is None and points:
+            res.seasonality = detect_seasonality(points)
         return res
 
     @staticmethod
@@ -263,7 +265,10 @@ class EngineSelector:
             MINI_BACKTEST_HORIZON, AutoDiscoveryEngine, InsufficientHistoryError,
         )
 
-        is_macro = series_type == "macro"
+        from backend.services.series_routing import is_fred_series
+        # Where the mini-backtest fetches the series: the caller's type, or
+        # the catalog / FRED itself when there is none (4.11, partial).
+        is_macro = is_fred_series(clean_id, series_type)
         try:
             decision = AutoDiscoveryEngine.decide(db, clean_id, n_points, is_macro=is_macro)
         except InsufficientHistoryError as e:

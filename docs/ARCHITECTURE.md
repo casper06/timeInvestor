@@ -99,6 +99,11 @@ sequenceDiagram
     Note over UI: Pestañas a pedido: backtest (/backtest), correlación (/correlation),<br/>gráfico dual (/data/*), asignación y riesgo (/portfolio/*)
 ```
 
+El veredicto del Reality Check nombra primero el naive más exigente en ese
+corte (el de menor error, criterio de 3.5) y después el otro. La UI escribe
+"$" y "Precio" solo para acciones; una serie macro lleva su unidad
+(ADR-0025).
+
 Las cargas de serie y de pronóstico llevan un número de pedido (`loadSeq`
 en `App.tsx`): si llega la respuesta de una carga vieja, se descarta, así
 que la serie, el error y el pronóstico vienen siempre de la misma carga
@@ -302,6 +307,11 @@ flowchart TD
   (2.11). Se redondean solo al mostrarlos en la UI, el informe y los
   prompts. La caché vive solo
   en memoria (TTL `CACHE_TTL_SECONDS`), así que un reinicio la vacía.
+- **FRED o yfinance (4.11 parcial, ADR-0026):** `series_routing.is_fred_series`
+  decide de dónde se baja cada serie en correlación, backtest y
+  auto-discovery. Manda el tipo del pedido; si no hay tipo, el catálogo y
+  después FRED mismo (`/fred/series`). Un ID de FRED no se busca en
+  yfinance.
 - **ID de FRED inexistente (4.16):** FRED responde 400 "The series does not
   exist.". El fetcher lo convierte en `FredSeriesNotFoundError`, y
   `/data/macro` y `/catalog/fred-metadata` responden 404 con

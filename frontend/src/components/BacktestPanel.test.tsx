@@ -4,7 +4,12 @@ import { BacktestPanel } from './BacktestPanel';
 import * as api from '../services/api';
 
 // The chart isn't under test here, and jsdom has no canvas.
-vi.mock('react-chartjs-2', () => ({ Line: () => <div data-testid="chart" /> }));
+// It renders only the dataset labels, so the legend can be checked.
+vi.mock('react-chartjs-2', () => ({
+  Line: ({ data }: { data: { datasets: { label: string }[] } }) => (
+    <div data-testid="chart">{data.datasets.map((d) => d.label).join(' | ')}</div>
+  ),
+}));
 
 afterEach(() => {
   cleanup();
@@ -167,5 +172,33 @@ describe('BacktestPanel undefined metrics (2.10)', () => {
     );
     expect(screen.getByTestId('mape-undefined')).toHaveTextContent('no definido');
     expect(screen.getByText(/algún valor real del período evaluado es 0/)).toBeInTheDocument();
+  });
+});
+
+describe('BacktestPanel honesty (fix/ui-honesty-batch)', () => {
+  it("labels the band with the engine's real level (80% for TimesFM), not a fixed 95%", async () => {
+    await runWith(backtestResult({ interval_level: 0.8 }));
+    const chart = screen.getByTestId('chart');
+    expect(chart).toHaveTextContent('Banda Superior (80% CI)');
+    expect(chart).toHaveTextContent('Banda Inferior (80% CI)');
+    expect(chart).not.toHaveTextContent('95%');
+  });
+
+  it('keeps the requested level when the engine reports none', async () => {
+    await runWith(backtestResult({ interval_level: null }));
+    expect(screen.getByTestId('chart')).toHaveTextContent('Banda Superior (95% CI)');
+  });
+
+  it('shows the MAE in dollars for a stock and in the series unit for a macro series', async () => {
+    await runWith(backtestResult());
+    expect(screen.getByTestId('backtest-mae')).toHaveTextContent('$1.50');
+    cleanup();
+    vi.spyOn(api, 'runBacktest').mockResolvedValue(backtestResult({ series_id: 'IPG2211A2N' }));
+    const macro = { ...seriesData, id: 'IPG2211A2N', type: 'macro', unit: 'Index 2017=100' };
+    render(<BacktestPanel seriesData={macro} activeSeriesId="IPG2211A2N" />);
+    fireEvent.click(screen.getByRole('button', { name: /Ejecutar Reality Check/ }));
+    await screen.findByText(/El modelo supera al benchmark naive/);
+    expect(screen.getByTestId('backtest-mae')).toHaveTextContent('1.50 Index 2017=100');
+    expect(screen.getByTestId('backtest-mae')).not.toHaveTextContent('$');
   });
 });

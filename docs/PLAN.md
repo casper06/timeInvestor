@@ -622,6 +622,9 @@ Rama: una por ítem, a definir.
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
   cola, remitir a la pestaña de Riesgo.
+  (La tarjeta y el Reality Check se resolvieron en 4.13 y 4.18: rango
+  primero cuando "no aporta", y nivel real de la banda. Queda el texto de
+  "¿Qué estoy viendo?".)
   Además, la tarjeta "Objetivo +{horizon}d" (`MetricCards.tsx`) muestra un
   precio puntual con más precisión de la que respaldan los backtests en
   acciones individuales. Evaluar mostrar el rango como dato principal y el
@@ -681,6 +684,16 @@ Rama: una por ítem, a definir.
     CAPUTLG2211S).
   - El ruteo FRED/yfinance pasa a depender de que el ID exista en FRED
     (`fred/series`), no de un catálogo fijo. Absorbe 4.1.
+    **Hecho en parte (rama `fix/correlation-fred-routing`, PR abierto;
+    ADR-0026):**
+    - `series_routing.is_fred_series` decide en correlación, backtest y
+      auto-discovery. Manda el tipo del pedido; si no hay tipo, el catálogo
+      y después FRED mismo.
+    - El heatmap manda el tipo de cada serie.
+    - Se arregló el mensaje duplicado "ALLOW_SYNTHETIC_DATA=false y
+      ALLOW_SYNTHETIC_DATA=false".
+    - Verificado con PCU221110221110 y DGS10.
+    - Falta la búsqueda de conceptos → candidatas reales.
   Hecho cuando: ninguna serie macro llega a la app sin haber sido validada
   contra FRED, y `CorrelationEngine` acepta cualquier ID válido de FRED.
 - [ ] **4.12 Fuentes fuera de FRED (solo investigación).** SEC EDGAR (datos
@@ -855,6 +868,19 @@ Rama: una por ítem, a definir.
   Hecho cuando: el indicador de las series estacionales compara contra el
   naive pre-registrado, la evidencia de los dos naives está guardada, y hay
   tests y verificación sobre una copia de la DB.
+
+- [x] **4.18 Lote de honestidad de la UI.** (rama `fix/ui-honesty-batch`, PR
+  abierto; ADR-0025)
+  - El indicador de capacidad pasa al panel del gráfico, junto a "Serie
+    activa", y cambia con la serie.
+  - El Reality Check usa el nivel real de la banda (80% con TimesFM), y el
+    veredicto nombra primero el naive más exigente (criterio de 3.5).
+  - Sin "$", "Precio" ni "cierre" en series macro: "Último valor" y la unidad.
+  - Con "no aporta", el CAGR también pasa a segundo plano.
+  - "Estado de la inercia" se oculta en series estacionales, con el motivo.
+  - Verificado en el navegador sobre una copia de la DB (NVDA e IPG2211A2N).
+  - Hallazgo: en el corte por defecto de IPG2211A2N, TimesFM no supera al
+    naive estacional (MAE 3,00 contra 2,67; un solo corte).
 
 ## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
 

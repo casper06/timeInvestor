@@ -93,6 +93,7 @@ class ForecastResponse(BaseModel):
     reliable: bool = Field(default=True, description="False si el pronóstico es implausible: se mueve más de 2 veces lo máximo que la serie se movió en ese horizonte en su historia (backend/services/reliability.py). Los números no se tocan")
     reliability_warning: Optional[str] = Field(default=None, description="Por qué el pronóstico no es confiable (None si lo es)")
     skill: Optional[ForecastSkill] = Field(default=None, description="Capacidad de pronóstico contra el naive (4.13)")
+    seasonality: Optional["SeasonalityInfo"] = Field(default=None, description="Detector de 3.0a sobre los puntos pronosticados: la UI oculta la 'inercia' en series estacionales")
 
 class FundamentalsMetric(BaseModel):
     ticker: str
@@ -294,6 +295,7 @@ class BacktestResponse(BaseModel):
     cutoff_date: str
     horizon: int
     frequency: Optional[str] = Field(default=None, description="Frecuencia de la serie inferida de las fechas: unidad de `horizon`")
+    unit: Optional[str] = Field(default=None, description="Unidad de la serie evaluada (la del MAE): el informe no la toma de otra serie")
     historical_dates: List[str]
     historical_values: List[float]
     future_actual_dates: List[str]
@@ -322,6 +324,10 @@ class CorrelationRequest(BaseModel):
     series_ids: List[str] = Field(..., min_length=2)
     period: str = Field(default="2y")
     mode: Literal["returns", "levels"] = Field(default="returns", description="returns (log-diff/pct_change) or levels")
+    series_types: Optional[Dict[str, Literal["equity", "macro"]]] = Field(
+        default=None,
+        description="Tipo de cada serie ({id: 'equity' | 'macro'}). Sin él, se decide por el catálogo y después "
+                    "preguntándole a FRED; un ID de FRED nunca se busca en yfinance")
 
 class CorrelationMatrixResponse(BaseModel):
     series_ids: List[str]
@@ -473,3 +479,6 @@ class RebalanceBacktestResponse(BaseModel):
     verdict: str
     warnings: List[str] = Field(default_factory=list)
 
+
+# ForecastResponse.seasonality refers to SeasonalityInfo, defined further down.
+ForecastResponse.model_rebuild()

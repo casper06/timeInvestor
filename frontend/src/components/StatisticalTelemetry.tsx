@@ -2,6 +2,7 @@ import React from 'react';
 import { Gauge, ArrowUpRight, ArrowDownRight, Minus, Activity, ShieldAlert, Compass } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
 import { horizonLabel, seriesFrequency } from '../utils/horizon';
+import { formatValue, isPriceSeries } from '../utils/valueFormat';
 
 interface StatisticalTelemetryProps {
   seriesData: TimeSeriesData | null;
@@ -39,6 +40,10 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
   const slope2 = (recent[n - 1] - recent[mid]) / Math.max(1, n - 1 - mid);
   const accel = slope2 - slope1;
   const totalRet = (recent[n - 1] - recent[0]) / (recent[0] || 1);
+  // On a seasonal series the slope of the last N points is the phase of the
+  // cycle (the season), not a trend: the card is hidden there, saying why.
+  const seasonal = forecast.seasonality?.is_seasonal === true;
+  const noAporta = forecast.skill?.state === 'no_aporta';
 
   let inertiaLabel = 'Lateralización';
   let inertiaDetail = 'Rango neutral de consolidación sin sesgo direccional dominante en los últimos registros.';
@@ -47,7 +52,7 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
 
   if (Math.abs(totalRet) < 0.018 && Math.abs(slope2) < 0.15) {
     inertiaLabel = 'Lateralización';
-    inertiaDetail = `Consolidación de precio en rango estrecho (±${(Math.abs(totalRet) * 100).toFixed(1)}%) en los últimos ${n} registros.`;
+    inertiaDetail = `Consolidación en rango estrecho (±${(Math.abs(totalRet) * 100).toFixed(1)}%) en los últimos ${n} registros.`;
     inertiaBadge = 'bg-amber-500/10 text-amber-300 border-amber-500/20';
     inertiaIcon = <Minus className="h-4 w-4 text-amber-400" />;
   } else if (slope2 > 0 && accel > 0) {
@@ -94,15 +99,19 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
               <Activity className="h-3.5 w-3.5 text-cyan-400" />
               Tendencia Central
             </span>
-            <span className={`font-mono font-bold ${deltaPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <span
+              data-testid="central-trend-pct"
+              className={`font-mono ${noAporta ? 'text-slate-400' : `font-bold ${deltaPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}`}
+            >
               {deltaPct >= 0 ? '+' : ''}{deltaPct.toFixed(1)}%
             </span>
           </div>
           <div className="text-slate-300 font-mono text-[13px] font-medium">
-            ${lastPrice.toFixed(2)} → ${target.toFixed(2)}
+            {formatValue(lastPrice, seriesData)} → {formatValue(target, seriesData)}
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            Desviación porcentual proyectada a <strong>{horizonLabel(horizon, seriesFrequency(seriesData.frequency))}</strong> frente al último cierre real registrado.
+            Desviación porcentual proyectada a <strong>{horizonLabel(horizon, seriesFrequency(seriesData.frequency))}</strong> frente al {isPriceSeries(seriesData) ? 'último cierre' : 'último valor'} registrado.
+            {noAporta && ' Es el punto central, que en esta serie no supera al naive.'}
           </p>
         </div>
 
@@ -132,18 +141,29 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
               <Compass className="h-3.5 w-3.5 text-indigo-400" />
               Estado de la Inercia
             </span>
-            <div className="flex items-center gap-1">
-              {inertiaIcon}
-            </div>
+            {!seasonal && (
+              <div className="flex items-center gap-1">
+                {inertiaIcon}
+              </div>
+            )}
           </div>
-          <div className="flex items-center">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border ${inertiaBadge}`}>
-              {inertiaLabel}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            {inertiaDetail}
-          </p>
+          {seasonal ? (
+            <p data-testid="inertia-hidden" className="text-[11px] text-slate-500 leading-relaxed">
+              No se muestra en series estacionales: en los últimos {n} registros la pendiente refleja en qué
+              parte del ciclo estacional está la serie (m={forecast.seasonality?.period}), no una tendencia.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border ${inertiaBadge}`}>
+                  {inertiaLabel}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                {inertiaDetail}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

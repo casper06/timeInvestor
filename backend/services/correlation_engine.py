@@ -6,6 +6,7 @@ from scipy import stats
 
 from backend.schemas.models import CorrelationMatrixResponse
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher
+from backend.services.series_routing import is_fred_series
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,12 @@ class CorrelationEngine:
     def calculate_correlations(
         series_ids: List[str],
         period: str = "2y",
-        mode: Literal["returns", "levels"] = "returns"
+        mode: Literal["returns", "levels"] = "returns",
+        series_types: Optional[Dict[str, str]] = None,
     ) -> CorrelationMatrixResponse:
+        """`series_types` ({id: 'equity' | 'macro'}) says where each series
+        lives; without it, series_routing asks the catalog and then FRED
+        itself, so a FRED ID is never looked up in yfinance (4.11, partial)."""
         clean_ids = [s.strip().upper() for s in series_ids if s.strip()]
         if len(clean_ids) < 2:
             raise ValueError("Se requieren al menos 2 series para calcular matrices de correlación")
@@ -31,8 +36,9 @@ class CorrelationEngine:
         names_dict: Dict[str, str] = {}
         is_monthly_list = []
 
+        types = {k.strip().upper(): v for k, v in (series_types or {}).items()}
         for sid in clean_ids:
-            if sid in FREDDataFetcher.SERIES_CATALOG:
+            if is_fred_series(sid, types.get(sid)):
                 data = fred.get_series(sid)
             else:
                 data = MarketDataFetcher.get_history(sid, period=period)

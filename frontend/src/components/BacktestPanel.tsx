@@ -17,6 +17,7 @@ import { runBacktest } from '../services/api';
 import { CANONICAL_HORIZON, HORIZON_OPTIONS, horizonButton, horizonLabel, seriesFrequency } from '../utils/horizon';
 import type { BacktestResponse, TimeSeriesData } from '../services/api';
 import { ExplainerPanel } from './ExplainerPanel';
+import { formatValue } from '../utils/valueFormat';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -96,6 +97,9 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
 
   // Build Chart Data
   let chartData = null;
+  // The band's real level (TimesFM only has 80%), as ForecastChart does; the
+  // requested 95% only when the engine didn't report one.
+  const bandLevel = Math.round((result?.interval_level ?? 0.95) * 100);
   if (result) {
     const allLabels = [...result.historical_dates, ...result.future_actual_dates];
     const nHist = result.historical_dates.length;
@@ -143,7 +147,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           tension: 0.1,
         },
         {
-          label: 'Mercado Real Ocurrido (Ground Truth)',
+          label: 'Dato real ocurrido (Ground Truth)',
           data: actualFutureData,
           borderColor: '#10b981', // Emerald-500
           backgroundColor: 'rgba(16, 185, 129, 0.05)',
@@ -163,7 +167,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           tension: 0.15,
         },
         {
-          label: 'Banda Superior (95% CI)',
+          label: `Banda Superior (${bandLevel}% CI)`,
           data: upperData,
           borderColor: 'rgba(245, 158, 11, 0.3)',
           borderWidth: 1,
@@ -172,7 +176,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           fill: false,
         },
         {
-          label: 'Banda Inferior (95% CI)',
+          label: `Banda Inferior (${bandLevel}% CI)`,
           data: lowerData,
           borderColor: 'rgba(245, 158, 11, 0.3)',
           borderWidth: 1,
@@ -231,7 +235,7 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Corta la serie en una fecha pasada y comprueba si TimesFM habría anticipado lo que ocurrió después.
+            Corta la serie en una fecha pasada y comprueba si el motor habría anticipado lo que ocurrió después.
           </p>
         </div>
       </div>
@@ -247,13 +251,13 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
         </p>
         <p>
           <strong className="text-slate-200">Acierto Direccional:</strong> de cada paso hacia adelante, ¿el modelo acertó
-          si el precio iba a subir o bajar (sin importar cuánto)? 50% es lo que lograría tirar una moneda al aire; por
+          si el valor iba a subir o bajar (sin importar cuánto)? 50% es lo que lograría tirar una moneda al aire; por
           encima de eso, el modelo está capturando algo real sobre la dirección del movimiento.
         </p>
         <p>
           <strong className="text-slate-200">MAPE (Error Porcentual Absoluto Medio):</strong> en promedio, ¿por cuántos
           por ciento se equivocó la proyección respecto al valor real? Un MAPE de 5% significa que, en promedio, la
-          proyección estuvo a un 5% de distancia del precio real en cada punto evaluado.
+          proyección estuvo a un 5% de distancia del valor real en cada punto evaluado.
         </p>
         <p>
           <strong className="text-slate-200">MAE (Error Medio Absoluto):</strong> lo mismo que el MAPE pero en las
@@ -261,9 +265,11 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
           conocés la escala típica del activo.
         </p>
         <p>
-          <strong className="text-slate-200">¿Qué significa el veredicto ("el modelo supera/no supera al Random
-          Walk")?</strong> El Random Walk (paseo aleatorio) es el benchmark más simple posible: "mañana el precio va a
-          ser igual al de hoy". Cualquier modelo serio tiene que superar a ese benchmark ingenuo para justificar su uso —
+          <strong className="text-slate-200">¿Qué significa el veredicto ("el modelo supera/no supera al naive")?</strong>{' '}
+          El naive es el benchmark más simple posible. El random walk dice "el próximo valor va a ser igual al último";
+          en series estacionales también está el naive estacional, "igual que el mismo período del ciclo anterior". El
+          veredicto compara primero contra el más exigente de los dos en ese corte (el de menor error) y da el otro
+          después, como dato secundario. Cualquier modelo serio tiene que superar a ese benchmark ingenuo para justificar su uso —
           si no lo supera, la proyección no está agregando información real, y tomarla en serio como base para decidir
           sería sobrestimar lo que el modelo realmente sabe sobre esa serie particular. Que el modelo supere al Random
           Walk en un cutoff no garantiza que lo haga siempre, pero si ni siquiera le gana ahí, es una señal fuerte de que
@@ -411,8 +417,8 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
 
           <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
             <div className="text-slate-400 text-[11px] uppercase tracking-wider">Error Medio (MAE)</div>
-            <div className="text-xl font-bold font-mono text-indigo-300 mt-1">
-              ${result.metrics.mae.toFixed(2)}
+            <div className="text-xl font-bold font-mono text-indigo-300 mt-1" data-testid="backtest-mae">
+              {formatValue(result.metrics.mae, seriesData)}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">Desviación media absoluta</div>
           </div>

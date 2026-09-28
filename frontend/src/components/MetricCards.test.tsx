@@ -83,17 +83,17 @@ describe('MetricCards unreliable forecast (2.6)', () => {
 describe('MetricCards forecast skill (4.13)', () => {
   const base = { ...monthlyForecast, decision_horizon: 12 };
 
-  it('"aporta": green badge, the point forecast stays the main figure', () => {
+  it('"aporta": the point forecast stays the main figure; the badge is not here (it moved to the chart panel)', () => {
     const fc: ForecastResponse = {
       ...base,
       skill: { state: 'aporta', reason: 'Le gana al naive estacional en 18 de 24 cutoffs, con un error medio 17% menor', naive: 'naive_estacional', wins: 18, n_pairs: 24 },
     };
     render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
-    expect(screen.getByTestId('skill-badge')).toHaveAttribute('data-state', 'aporta');
-    expect(screen.getByTestId('skill-badge')).toHaveTextContent('Aporta sobre el naive');
-    expect(screen.getByTestId('skill-badge')).toHaveTextContent('18 de 24 cutoffs');
+    expect(screen.queryByTestId('skill-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('target-range-first')).not.toBeInTheDocument();
     expect(screen.getByText('110.00')).toBeInTheDocument();
+    expect(screen.getByTestId('cagr-value')).toHaveAttribute('data-secondary', 'false');
+    expect(screen.getByTestId('cagr-value').className).toContain('text-emerald-400');
   });
 
   it('"no aporta": the range becomes the main figure and the point is secondary, with the warning', () => {
@@ -106,7 +106,12 @@ describe('MetricCards forecast skill (4.13)', () => {
     expect(card).toHaveTextContent('[95.00 — 120.00]');
     expect(card).toHaveTextContent('Punto central 110.00');
     expect(card).toHaveTextContent("El pronóstico puntual no supera a 'igual que el último dato'");
-    expect(screen.getByTestId('skill-badge')).toHaveAttribute('data-state', 'no_aporta');
+    // The CAGR comes from the point: secondary too, without green or emphasis.
+    const cagr = screen.getByTestId('cagr-value');
+    expect(cagr).toHaveAttribute('data-secondary', 'true');
+    expect(cagr.className).not.toContain('emerald');
+    expect(cagr.className).not.toContain('font-bold');
+    expect(screen.getByText('Sale del punto central, que no supera al naive')).toBeInTheDocument();
   });
 
   it('"no aporta" against the seasonal naive names that naive', () => {
@@ -115,11 +120,19 @@ describe('MetricCards forecast skill (4.13)', () => {
     expect(screen.getByTestId('target-range-first')).toHaveTextContent("igual que el mismo período del ciclo anterior");
   });
 
-  it('"no evaluado" shows the reason and keeps the normal card', () => {
+  it('"no evaluado" keeps the normal card', () => {
     const fc: ForecastResponse = { ...base, skill: { state: 'no_evaluado', reason: 'Historia insuficiente para evaluar (150 de 186 puntos)' } };
     render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
-    expect(screen.getByTestId('skill-badge')).toHaveTextContent('No evaluado');
-    expect(screen.getByTestId('skill-badge')).toHaveTextContent('150 de 186 puntos');
     expect(screen.queryByTestId('target-range-first')).not.toBeInTheDocument();
+    expect(screen.getByTestId('cagr-value')).toHaveAttribute('data-secondary', 'false');
+  });
+});
+
+describe('MetricCards CAGR color', () => {
+  it('a negative CAGR is not shown in green', () => {
+    const fc: ForecastResponse = { ...monthlyForecast, values: [...Array(11).fill(99), 90] };
+    render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('cagr-value')).toHaveTextContent('-10.0%');
+    expect(screen.getByTestId('cagr-value').className).toContain('text-rose-400');
   });
 });
