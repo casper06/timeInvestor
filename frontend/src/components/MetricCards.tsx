@@ -3,6 +3,7 @@ import { TrendingUp, ShieldAlert, Target, ChevronDown, ChevronUp, BookOpen, Spar
 import type { ThesisResponse, ForecastResponse, TimeSeriesData } from '../services/api';
 import { LLMProviderBadge } from './LLMProviderBadge';
 import { annualizedGrowth, horizonLabel, horizonTag, projectionYears, seriesFrequency } from '../utils/horizon';
+import { seriesMetaText } from '../utils/valueFormat';
 
 interface MetricCardsProps {
   thesisData: ThesisResponse | null;
@@ -70,6 +71,14 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             <span className="text-xs font-medium uppercase tracking-wider">Objetivo +{horizonTag(horizon, frequency)}</span>
             <Target className="h-4 w-4 text-cyan-400" />
           </div>
+          {seriesData?.type === 'macro' && (
+            <div
+              data-testid="card-series-meta"
+              className={`text-[10px] font-mono mb-1 ${seriesData.metadata_source === 'unavailable' ? 'text-amber-400' : 'text-slate-500'}`}
+            >
+              {seriesMetaText(seriesData)}
+            </div>
+          )}
           {noAporta ? (
             <div data-testid="target-range-first">
               <div className="text-lg font-bold font-mono text-slate-100">

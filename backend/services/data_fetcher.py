@@ -91,17 +91,9 @@ class MarketDataFetcher:
             cached, cached_ts = hit
             cached_at_str = datetime.fromtimestamp(cached_ts, tz=timezone.utc).isoformat()
             # Clone preserving the original source of the cached object and set from_cache=True plus cached_at
-            return TimeSeriesData(
-                id=cached.id,
-                name=cached.name,
-                type=cached.type,
-                unit=cached.unit,
-                points=cached.points,
-                source=cached.source,
-                from_cache=True,
-                cached_at=cached_at_str,
-                source_detail=cached.source_detail
-            )
+            # Same object with the cache flags; every other field (metadata
+            # included) as it was stored.
+            return cached.model_copy(update={"from_cache": True, "cached_at": cached_at_str})
 
         logger.info(f"Fetching yfinance history for {clean_ticker} (period={period}, interval={interval})")
         try:
@@ -336,17 +328,9 @@ class FREDDataFetcher:
         if hit:
             cached, cached_ts = hit
             cached_at_str = datetime.fromtimestamp(cached_ts, tz=timezone.utc).isoformat()
-            return TimeSeriesData(
-                id=cached.id,
-                name=cached.name,
-                type=cached.type,
-                unit=cached.unit,
-                points=cached.points,
-                source=cached.source,
-                from_cache=True,
-                cached_at=cached_at_str,
-                source_detail=cached.source_detail
-            )
+            # Same object with the cache flags; every other field (metadata
+            # included) as it was stored.
+            return cached.model_copy(update={"from_cache": True, "cached_at": cached_at_str})
 
         if self.api_key and self.api_key.strip():
             try:
@@ -384,15 +368,13 @@ class FREDDataFetcher:
                                     continue
                         points.reverse()
                         if points:
-                            catalog_entry = self.SERIES_CATALOG.get(series_id, {})
                             series_data = TimeSeriesData(
                                 id=series_id,
-                                name=catalog_entry.get("name", f"FRED Series {series_id}"),
                                 type="macro",
-                                unit=catalog_entry.get("unit", "Index"),
                                 points=points,
                                 source="live",
-                                source_detail="Datos oficiales de St. Louis Fed FRED API"
+                                source_detail="Datos oficiales de St. Louis Fed FRED API",
+                                **self._metadata_fields(series_id),
                             )
                             cache.set(cache_key, series_data)
                             return series_data
@@ -456,6 +438,9 @@ class FREDDataFetcher:
                             "title": entry.get("title", ""),
                             "notes": entry.get("notes", ""),
                             "units": entry.get("units") or None,
+                            "frequency": entry.get("frequency") or None,
+                            "seasonal_adjustment": entry.get("seasonal_adjustment") or None,
+                            "seasonal_adjustment_short": entry.get("seasonal_adjustment_short") or None,
                         }
                         cache.set(cache_key, metadata)
                         return metadata
@@ -473,6 +458,27 @@ class FREDDataFetcher:
         except Exception as e:
             logger.error(f"Failed to query FRED metadata API for {series_id}: {e}")
             raise ValueError(f"No se pudo obtener metadata de FRED para '{series_id}': {str(e)}") from e
+
+    def _metadata_fields(self, series_id: str) -> Dict[str, Any]:
+        """Title, units, frequency and SA/NSA from FRED itself (/fred/series).
+        If FRED doesn't answer, nothing is filled in: no "FRED Series X", no
+        "Index" by default, and no hand-written catalog name either (the
+        catalog called IPG2211A2N "Electric Power Generation, Transmission and
+        Distribution Index"; FRED's title is "Industrial Production: Utilities:
+        Electric and Gas Utilities")."""
+        try:
+            meta = self.get_series_metadata(series_id)
+        except ValueError as e:
+            return {"name": series_id, "unit": None, "metadata_source": "unavailable",
+                    "metadata_note": f"metadatos no disponibles: {e}"}
+        return {
+            "name": meta.get("title") or series_id,
+            "unit": meta.get("units"),
+            "metadata_source": "fred",
+            "source_frequency": meta.get("frequency"),
+            "seasonal_adjustment": meta.get("seasonal_adjustment"),
+            "seasonal_adjustment_short": meta.get("seasonal_adjustment_short"),
+        }
 
     def _generate_reference_series(self, series_id: str, detail: Optional[str] = None) -> TimeSeriesData:
         catalog_entry = self.SERIES_CATALOG.get(series_id, {
@@ -511,10 +517,12 @@ class FREDDataFetcher:
 
         return TimeSeriesData(
             id=series_id,
-            name=f"{catalog_entry['name']} (Referencia Sintética)",
+            name=f"{series_id} (Referencia Sintética)",
             type="macro",
-            unit=catalog_entry["unit"],
+            unit=None,
             points=points,
             source="synthetic",
-            source_detail=detail or "Serie sintética generada por falta de datos reales"
+            source_detail=detail or "Serie sintética generada por falta de datos reales",
+            metadata_source="unavailable",
+            metadata_note="metadatos no disponibles: serie sintética, sin datos de FRED",
         )

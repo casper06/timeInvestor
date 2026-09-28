@@ -7,7 +7,16 @@ export interface TimeSeriesData {
   id: string;
   name: string;
   type: string;
-  unit: string;
+  /** FRED series: where title/unit come from; 'unavailable' = not filled in (never a guessed unit). */
+  metadata_source?: 'fred' | 'unavailable' | null;
+  metadata_note?: string | null;
+  /** FRED's own frequency label (Monthly, Daily, ...). */
+  source_frequency?: string | null;
+  seasonal_adjustment?: string | null;
+  /** SA, NSA, SAAR, ... */
+  seasonal_adjustment_short?: string | null;
+  /** null for a FRED series whose metadata wasn't available. */
+  unit?: string | null;
   points: TimeSeriesPoint[];
   source?: 'live' | 'synthetic';
   from_cache?: boolean;

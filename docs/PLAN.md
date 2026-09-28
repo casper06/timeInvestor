@@ -590,6 +590,9 @@ Rama: una por ítem, a definir.
   cuenta.** Hoy dura 24 h o hasta reiniciar el server.
 - [ ] **4.3 SA vs NSA en series FRED.** Leer `seasonal_adjustment` de la
   metadata de FRED, mostrarlo en la UI y tenerlo en cuenta al elegir el motor.
+  **Leerlo y mostrarlo: hecho** (rama `fix/fred-metadata`, PR abierto;
+  ADR-0029). Falta usarlo al elegir el motor, lo que implica un cambio de
+  criterio.
   Una serie SA ya no tiene el ciclo anual, así que "motor estacional" no aplica.
   Hoy la app no lo lee: solo un comentario de `scripts/benchmark_real_data.py`
   lo menciona.
@@ -636,7 +639,8 @@ Rama: una por ítem, a definir.
     filas dejaba solo CEG y ETN.
   - Pendiente: el fetcher completa "Index" y "FRED Series X" por defecto en
     las series fuera del catálogo, y eso se ve en la UI. Tendría que usar la
-    unidad y el título de `/fred/series`.
+    unidad y el título de `/fred/series`. **Resuelto en `fix/fred-metadata`
+    (ADR-0029).**
 - [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de

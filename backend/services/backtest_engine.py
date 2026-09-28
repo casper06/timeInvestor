@@ -253,6 +253,8 @@ class BacktestEngine:
             rivals.append(("snaive", seasonal_naive_metrics.mae))
         rivals.sort(key=lambda r: r[1])
 
+        unit_txt = f" {data.unit}" if data.unit else ""
+
         def _against(kind: str, rival_mae: float, primary: bool) -> str:
             if kind == "rw":
                 name = "random walk (igual que el último dato)"
@@ -265,9 +267,9 @@ class BacktestEngine:
                     else "" if primary else "Dato secundario: ")
             subj = "el modelo" if lead else "El modelo"
             if mae < rival_mae:
-                return (f"{lead}{subj} supera al {name}: MAE {mae:.2f} contra {rival_mae:.2f} {data.unit} "
+                return (f"{lead}{subj} supera al {name}: MAE {mae:.2f} contra {rival_mae:.2f}{unit_txt} "
                         f"({gap:.1f}% menos{extra}).")
-            return (f"{lead}{subj} NO supera al {name}: MAE {mae:.2f} contra {rival_mae:.2f} {data.unit} "
+            return (f"{lead}{subj} NO supera al {name}: MAE {mae:.2f} contra {rival_mae:.2f}{unit_txt} "
                     f"({-gap:.1f}% más{extra}).")
 
         verdict = " ".join(_against(kind, rival_mae, i == 0) for i, (kind, rival_mae) in enumerate(rivals))
