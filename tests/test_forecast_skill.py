@@ -75,7 +75,9 @@ def test_decision_stores_per_cutoff_errors_and_the_chosen_engine_is_scored(db_se
     d = AutoDiscoveryEngine.decide(db_session, "SKILLED", n_points=500)
     data = json.loads(d.cutoff_errors_json)
     assert data["naive"] == "random_walk" and len(data["cutoffs"]) == len(_FAKE_CUTOFFS)
-    assert data["cutoffs"][0] == {"cutoff": _FAKE_CUTOFFS[0], "base": 1.0, "tfm": 0.5, "naive": 0.9}
+    # v10 (4.17): both naives per cutoff; the fake backtest has no seasonal naive.
+    assert data["cutoffs"][0] == {"cutoff": _FAKE_CUTOFFS[0], "base": 1.0, "tfm": 0.5, "naive": 0.9,
+                                  "rw": 0.9, "snaive": None}
     assert d.engine_choice == "timesfm"
     s = skill_for_decision(d)
     assert s.state == "aporta" and s.wins == len(_FAKE_CUTOFFS)
