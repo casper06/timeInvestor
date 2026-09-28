@@ -115,7 +115,11 @@ GUARD_INTERVAL_LEVEL = 0.80
 #   v9 (2026-09-27, 4.13): same rule; the decision also stores, per cutoff,
 #       the MAE of the baseline, TimesFM and the naive, which the forecast
 #       skill badge reads. Bumped so every decision is re-made with it.
-AUTO_DISCOVERY_CRITERIA_VERSION = 9
+#   v10 (2026-09-28, 4.17): same engine rule; each cutoff also stores the MAE
+#       of BOTH naives (random walk and seasonal naive), so the skill badge of
+#       a seasonal series can compare against the stricter one (lower total
+#       error), as 3.5 did. Pre-registered in docs/PLAN.md 4.17 (24d90b4).
+AUTO_DISCOVERY_CRITERIA_VERSION = 10
 
 # --- v4 decision parameters (2.3), chosen from the variant measurement ---
 # 8 cutoffs: the paired pairs cost ~1.0-1.5 s of CPU per series (measured),
@@ -457,8 +461,12 @@ class AutoDiscoveryEngine:
             holt_maes.append(getattr(holt_res.metrics, "mae", None))
             holt_coverages.append(holt_res.interval_coverage)
             naive_metrics = getattr(holt_res, "seasonal_naive_metrics" if seasonal else "naive_metrics", None)
+            # v10: both naives per cutoff; the badge picks the stricter one.
+            rw_metrics = getattr(holt_res, "naive_metrics", None)
+            sn_metrics = getattr(holt_res, "seasonal_naive_metrics", None)
             row = {"cutoff": cutoff_date, "base": getattr(holt_res.metrics, "mae", None), "tfm": None,
-                   "naive": getattr(naive_metrics, "mae", None)}
+                   "naive": getattr(naive_metrics, "mae", None),
+                   "rw": getattr(rw_metrics, "mae", None), "snaive": getattr(sn_metrics, "mae", None)}
             cutoff_rows.append(row)
 
             if timesfm_engine is not None:

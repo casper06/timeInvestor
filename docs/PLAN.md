@@ -852,8 +852,16 @@ Rama: una por ítem, a definir.
   Hecho cuando: agregar una serie de FRED a mano la carga como macro al
   primer intento, las respuestas viejas se descartan, y hay un test.
 
-- [ ] **4.17 Capacidad contra el más exigente de los dos naives
-  (propuesta, 2026-09-27; no pre-registrada todavía).**
+- [x] **4.17 Capacidad contra el más exigente de los dos naives.** (rama
+  `feat/skill-strictest-naive`, PR abierto; ADR-0032; criterio v10;
+  `docs/results/skill_strictest_naive_2026-09-28.md`)
+  - Validación con 6 series elegidas por la regla: se adopta, porque ningún
+    "aporta" pierde la mayoría contra el otro naive.
+  - CSUSHPINSA y APU0000708111 pasan a "no aporta"; GFDEGDQ188S también,
+    como se había medido.
+  - Desviación corregida: en una primera corrida, una descarga fallida dejó
+    afuera FEDFUNDS y CSUSHPINSA.
+  Propuesta original (2026-09-27):
   - **Problema (medido, criterio v9, copia de la DB):** en las series
     estacionales, el indicador de 4.13 compara solo contra el naive
     estacional.
