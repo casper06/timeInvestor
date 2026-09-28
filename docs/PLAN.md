@@ -495,6 +495,18 @@ verificada.
   - **Límite de la API de FRED:** 120 pedidos por minuto. Unos 27 pedidos
     por serie, espaciados.
 
+  **Resultado (2026-09-28)** (rama `feat/vintage-benchmark`, PR abierto;
+  `docs/results/vintage_benchmark_2026-09-28.md`):
+  - **Se sostienen:** HOUSTNSA, IPG2211A2N y RSAFSNA (el catálogo estacional).
+  - **No se sostienen:** HOUST, INDPRO y JTSJOL. Su capacidad con datos
+    revisados era de TimesFM; en INDPRO el skill cae de +0,42 a +0,08.
+  - **Sin capacidad en ninguna:** PSAVERT y UNRATE.
+  - **Excluida:** MRTSSM4451USN.
+  - **Límites:** cambios de base y de definición (INDPRO, PSAVERT) hacen
+    ininterpretables las combinaciones cruzadas; las ventanas de HOUST,
+    INDPRO y UNRATE mezclan décadas.
+  - No se cambió ningún criterio ni catálogo.
+
 - [x] **3.5 Capacidad de pronóstico por categoría de FRED.** (rama
   `feat/fred-category-benchmark`, PR #40, mergeado;
   `docs/results/fred_category_benchmark_2026-09-27.md`)
