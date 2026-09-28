@@ -20,6 +20,7 @@ from backend.schemas.models import (
     InterpretationResponse,
     HealthResponse,
     ThesisCreateRequest,
+    Falsifier,
     ThesisUpdateRequest,
     ThesisSummaryItem,
     ThesisDetailResponse,
@@ -355,7 +356,13 @@ def create_thesis(payload: ThesisCreateRequest, db: Session = Depends(get_db)):
         status=payload.status or "Activa",
         tickers_json=json.dumps([t.model_dump() for t in payload.tickers]),
         macro_series_json=json.dumps([m.model_dump() for m in payload.macro_series]),
-        rationales_json=json.dumps(payload.rationales or {})
+        rationales_json=json.dumps(payload.rationales or {}),
+        analysis_json=json.dumps({
+            "mechanism": payload.mechanism,
+            "falsifiers": [f.model_dump() for f in payload.falsifiers],
+            "benchmark": payload.benchmark,
+            "prompt_version": payload.prompt_version,
+        }),
     )
     db.add(new_thesis)
     db.commit()
@@ -476,6 +483,7 @@ def _format_thesis_detail(t: ThesisModel) -> ThesisDetailResponse:
     tickers = [TickerSuggestion(**item) for item in json.loads(t.tickers_json or "[]")]
     macro = [MacroSuggestion(**item) for item in json.loads(t.macro_series_json or "[]")]
     rationales = json.loads(t.rationales_json or "{}")
+    analysis = json.loads(t.analysis_json or "{}")
 
     snapshots = [
         ForecastSnapshotResponse(
@@ -515,6 +523,10 @@ def _format_thesis_detail(t: ThesisModel) -> ThesisDetailResponse:
         tickers=tickers,
         macro_series=macro,
         rationales=rationales,
+        mechanism=analysis.get("mechanism"),
+        falsifiers=[Falsifier(**f) for f in analysis.get("falsifiers") or []],
+        benchmark=analysis.get("benchmark"),
+        prompt_version=analysis.get("prompt_version"),
         created_at=t.created_at.isoformat() if t.created_at else "",
         updated_at=t.updated_at.isoformat() if t.updated_at else "",
         snapshots=snapshots,

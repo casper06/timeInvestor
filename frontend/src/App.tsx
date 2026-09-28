@@ -313,6 +313,10 @@ export const App: React.FC = () => {
       tickers: detail.tickers,
       macro_series: detail.macro_series,
       rationales: detail.rationales,
+      mechanism: detail.mechanism,
+      falsifiers: detail.falsifiers,
+      benchmark: detail.benchmark,
+      prompt_version: detail.prompt_version,
       provider_used: 'sqlite-repository',
     });
     setThesisStatus(detail.status);
@@ -562,6 +566,12 @@ export const App: React.FC = () => {
         currentTickers={activeTickers}
         currentMacro={activeMacro}
         currentRationales={thesisData?.rationales || {}}
+        currentAnalysis={{
+          mechanism: thesisData?.mechanism,
+          falsifiers: thesisData?.falsifiers,
+          benchmark: thesisData?.benchmark,
+          prompt_version: thesisData?.prompt_version,
+        }}
         activeSeriesId={selectedSeriesId}
         seriesData={seriesData}
         forecast={forecast}

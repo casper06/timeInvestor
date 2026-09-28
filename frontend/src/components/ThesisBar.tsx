@@ -15,11 +15,13 @@ interface ThesisBarProps {
   macroAddError?: string | null;
 }
 
+// Examples from different sectors (4.10): they used to be all technology,
+// AI and electricity.
 const PRESET_THESES = [
   'Demanda eléctrica por centros de datos de IA',
-  'Superciclo de Capex en semiconductores avanzados y litografía',
-  'Transición y expansión de la red eléctrica con almacenamiento en baterías',
-  'Impacto de tasas de interés y curva de rendimientos en múltiplos tecnológicos',
+  'Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.',
+  'La desaceleración del consumo golpea al comercio minorista',
+  'La sequía encarece los granos y favorece a los productores agrícolas',
 ];
 
 export const ThesisBar: React.FC<ThesisBarProps> = ({

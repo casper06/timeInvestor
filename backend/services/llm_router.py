@@ -21,6 +21,7 @@ from backend.schemas.models import (
     ThesisResponse,
     TickerSuggestion,
     MacroSuggestion,
+    Falsifier,
     InterpretationContext,
     InterpretationResponse,
 )
@@ -286,33 +287,55 @@ async def _call_with_retry(
     assert last_exc is not None
     raise last_exc
 
-SYSTEM_PROMPT = """Eres un analista cuantitativo senior y portfolio manager.
-Tu tarea es traducir una hipótesis de inversión en lenguaje natural a una estructura cuantitativa ejecutable.
+# 4.10, prompt de traducción v2. Order: causal mechanism, measurable FRED
+# drivers, what would refute it, and only then instruments (ETFs, commodities
+# and rates before single stocks), with SPY as the mandatory benchmark. Every
+# variant (JSON-example prompt for Gemini, Gemini CLI, OpenAI and Ollama; the
+# --json-schema one for Claude CLI; the mock) follows it. Evaluated against the
+# old prompt in docs/results/thesis_prompt_v2_2026-09-27.md.
+THESIS_PROMPT_VERSION = 2
+THESIS_BENCHMARK = "SPY"
+
+_THESIS_INSTRUCTIONS = """Tu tarea es traducir una hipótesis de inversión a una estructura verificable, en este orden:
+1. Mecanismo causal: en 2 a 4 frases, qué causa qué y por qué canal.
+2. Drivers medibles: entre 1 y 4 series de FRED que midan eslabones de ese mecanismo (causa, canal o efecto). Usá solo IDs de FRED que existan; para cada una, decí qué eslabón mide.
+3. Qué la refutaría: entre 1 y 3 condiciones observables, cada una con una variable (idealmente una de las series anteriores) y una dirección o un umbral.
+4. Instrumentos: entre 3 y 6, con pesos que sumen 1.0. Preferí ETFs sectoriales, commodities y tasas antes que acciones sueltas; incluí una acción suelta solo si expone algo que ningún ETF cubre. Indicá el tipo de cada uno (etf, commodity, rate, index o stock). El benchmark es SPY, siempre, y no va en la lista.
+Para cada instrumento, el texto dice su rol en el mecanismo. Si afirmás un hecho concreto (cifras, contratos, cuotas de mercado, eventos), poné en "source" de dónde sale; si no tenés una fuente, dejá "source" en null. No inventes fuentes ni IDs de FRED."""
+
+SYSTEM_PROMPT = """Eres un analista cuantitativo senior.
+""" + _THESIS_INSTRUCTIONS + """
 Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema:
 {
-  "summary": "Resumen conciso y riguroso de la tesis en español",
+  "summary": "Resumen conciso de la tesis en español",
+  "mechanism": "Mecanismo causal: qué causa qué y por qué canal",
+  "macro_series": [
+    {
+      "series_id": "FRED_ID existente (ej. IPG2211A2N, MORTGAGE30US, DFII10)",
+      "name": "Nombre del indicador",
+      "category": "Categoría",
+      "expected_correlation": "Positive / Negative",
+      "mechanism_role": "causa / canal / efecto: qué eslabón mide"
+    }
+  ],
+  "falsifiers": [
+    {"condition": "Condición observable con variable y dirección o umbral", "series_id": "FRED_ID o null"}
+  ],
   "tickers": [
     {
       "symbol": "TICKER",
-      "name": "Nombre de la empresa",
-      "sector": "Sector industrial",
+      "name": "Nombre del instrumento",
+      "sector": "Sector",
+      "instrument_type": "etf | commodity | rate | index | stock",
       "weight": 0.25,
-      "thesis_role": "Explicación del rol específico de este activo en la tesis"
-    }
-  ],
-  "macro_series": [
-    {
-      "series_id": "FRED_ID (ej. IPG2211A2N, INDPRO, CPIAUCSL, DGS10, PCU33443344)",
-      "name": "Nombre del indicador",
-      "category": "Categoría (Energía, Macro, Tasas, Semiconductores)",
-      "expected_correlation": "Positive / Negative"
+      "thesis_role": "Rol de este instrumento en el mecanismo",
+      "source": "Fuente de los hechos afirmados, o null"
     }
   ],
   "rationales": {
-    "TICKER": "Racional cuantitativo y de negocio de por qué este activo se beneficia de la tesis"
+    "TICKER": "Por qué este instrumento expone al mecanismo; hechos concretos solo con fuente"
   }
 }
-Devuelve entre 3 y 6 tickers relevantes y entre 1 y 4 series macroeconómicas de FRED. Las ponderaciones de los tickers deben sumar 1.0.
 """
 
 INTERPRETATION_SYSTEM_PROMPT = """Eres un Copiloto Cuantitativo Senior y Director de Análisis Estratégico.
@@ -339,13 +362,7 @@ Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema exacto:
 # so the example block in the original prompts is redundant for this client
 # specifically (the other clients still need it, since they parse free JSON
 # text with no schema enforcement of their own).
-CLAUDE_CLI_SYSTEM_PROMPT = (
-    "Eres un analista cuantitativo senior y portfolio manager. Tu tarea es "
-    "traducir una hipótesis de inversión en lenguaje natural a una estructura "
-    "cuantitativa ejecutable: un resumen, entre 3 y 6 tickers relevantes con "
-    "sus ponderaciones (que deben sumar 1.0) y roles en la tesis, entre 1 y 4 "
-    "series macroeconómicas de FRED relacionadas, y un racional por ticker."
-)
+CLAUDE_CLI_SYSTEM_PROMPT = "Eres un analista cuantitativo senior. " + _THESIS_INSTRUCTIONS
 
 CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT = (
     "Eres un Copiloto Cuantitativo Senior y Director de Análisis Estratégico. "
@@ -355,6 +372,37 @@ CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT = (
     "contradicen la hipótesis, y qué serie o indicador conviene mirar a "
     "continuación.\n"
 ) + COPILOT_RULES
+
+def _thesis_response(thesis: str, data: dict, provider_used: str,
+                     default_summary: str = "Análisis de tesis cuantitativa") -> ThesisResponse:
+    """ThesisResponse from any client's parsed JSON (prompt v2, 4.10). SPY is
+    the benchmark whatever the model answered: it's mandatory, not optional."""
+    falsifiers = []
+    for f in data.get("falsifiers") or []:
+        if isinstance(f, dict) and f.get("condition"):
+            falsifiers.append(Falsifier(condition=f["condition"], series_id=f.get("series_id") or None))
+        elif isinstance(f, str) and f.strip():
+            falsifiers.append(Falsifier(condition=f.strip()))
+    tickers = []
+    for t in data.get("tickers", []):
+        t = dict(t)
+        if t.get("instrument_type") not in (None, "etf", "commodity", "rate", "index", "stock"):
+            t["instrument_type"] = None
+        t["source"] = t.get("source") or None
+        tickers.append(TickerSuggestion(**t))
+    return ThesisResponse(
+        thesis=thesis,
+        summary=data.get("summary") or default_summary,
+        mechanism=data.get("mechanism") or None,
+        tickers=tickers,
+        macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
+        falsifiers=falsifiers,
+        benchmark=THESIS_BENCHMARK,
+        rationales=data.get("rationales", {}) or {},
+        prompt_version=THESIS_PROMPT_VERSION,
+        provider_used=provider_used,
+    )
+
 
 class BaseLLMClient(abc.ABC):
     """Abstract interface for Semantic Router translating investment thesis to structured assets and copilot interpretation."""
@@ -428,17 +476,7 @@ class GeminiLLMClient(BaseLLMClient):
                 logger.error(f"Gemini returned non-JSON response despite response_mime_type=application/json. Raw text: {raw_json!r}")
                 raise
 
-            tickers = [TickerSuggestion(**t) for t in data.get("tickers", [])]
-            macro_series = [MacroSuggestion(**m) for m in data.get("macro_series", [])]
-
-            return ThesisResponse(
-                thesis=thesis,
-                summary=data.get("summary", "Análisis de tesis cuantitativa"),
-                tickers=tickers,
-                macro_series=macro_series,
-                rationales=data.get("rationales", {}),
-                provider_used="gemini-3.6-flash"
-            )
+            return _thesis_response(thesis, data, "gemini-3.6-flash")
 
         except Exception as e:
             reason = _format_fallback_reason("Gemini", e)
@@ -537,14 +575,7 @@ class OpenAILLMClient(BaseLLMClient):
             content = result["choices"][0]["message"]["content"]
             data = json.loads(content)
 
-            return ThesisResponse(
-                thesis=thesis,
-                summary=data.get("summary", ""),
-                tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
-                macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
-                rationales=data.get("rationales", {}),
-                provider_used="openai-gpt-4o-mini"
-            )
+            return _thesis_response(thesis, data, "openai-gpt-4o-mini", default_summary="")
         except Exception as e:
             reason = _format_fallback_reason("OpenAI", e)
             category = classify_fallback_category(e)
@@ -621,14 +652,7 @@ class OllamaLLMClient(BaseLLMClient):
             resp_json = await _call_with_retry("Ollama", _attempt)
             data = json.loads(resp_json.get("response", "{}"))
 
-            return ThesisResponse(
-                thesis=thesis,
-                summary=data.get("summary", "Análisis local Ollama"),
-                tickers=[TickerSuggestion(**t) for t in data.get("tickers", [])],
-                macro_series=[MacroSuggestion(**m) for m in data.get("macro_series", [])],
-                rationales=data.get("rationales", {}),
-                provider_used=f"ollama-{self.model}"
-            )
+            return _thesis_response(thesis, data, f"ollama-{self.model}", default_summary="Análisis local Ollama")
         except Exception as e:
             reason = _format_fallback_reason("Ollama", e)
             category = classify_fallback_category(e)
@@ -1093,17 +1117,7 @@ class GeminiCliLLMClient(BaseLLMClient):
             data = await _call_with_retry("Gemini CLI", _attempt)
 
             provider_used = data.pop("_provider_used", "gemini-cli")
-            tickers = [TickerSuggestion(**t) for t in data.get("tickers", [])]
-            macro_series = [MacroSuggestion(**m) for m in data.get("macro_series", [])]
-
-            return ThesisResponse(
-                thesis=thesis,
-                summary=data.get("summary", "Análisis de tesis cuantitativa"),
-                tickers=tickers,
-                macro_series=macro_series,
-                rationales=data.get("rationales", {}),
-                provider_used=provider_used,
-            )
+            return _thesis_response(thesis, data, provider_used)
         except Exception as e:
             category, reason = _gemini_cli_fallback(e)
             logger.error(f"Gemini CLI error: {e}. Falling back to MockLLMClient.")
@@ -1307,20 +1321,7 @@ class ClaudeCliLLMClient(BaseLLMClient):
             "type": "object",
             "properties": {
                 "summary": {"type": "string"},
-                "tickers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "symbol": {"type": "string"},
-                            "name": {"type": "string"},
-                            "sector": {"type": "string"},
-                            "weight": {"type": "number"},
-                            "thesis_role": {"type": "string"},
-                        },
-                        "required": ["symbol", "name", "sector", "weight", "thesis_role"],
-                    },
-                },
+                "mechanism": {"type": "string"},
                 "macro_series": {
                     "type": "array",
                     "items": {
@@ -1330,13 +1331,41 @@ class ClaudeCliLLMClient(BaseLLMClient):
                             "name": {"type": "string"},
                             "category": {"type": "string"},
                             "expected_correlation": {"type": "string"},
+                            "mechanism_role": {"type": "string"},
                         },
-                        "required": ["series_id", "name", "category"],
+                        "required": ["series_id", "name", "category", "mechanism_role"],
+                    },
+                },
+                "falsifiers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "condition": {"type": "string"},
+                            "series_id": {"type": ["string", "null"]},
+                        },
+                        "required": ["condition"],
+                    },
+                },
+                "tickers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": {"type": "string"},
+                            "name": {"type": "string"},
+                            "sector": {"type": "string"},
+                            "instrument_type": {"type": "string", "enum": ["etf", "commodity", "rate", "index", "stock"]},
+                            "weight": {"type": "number"},
+                            "thesis_role": {"type": "string"},
+                            "source": {"type": ["string", "null"]},
+                        },
+                        "required": ["symbol", "name", "sector", "instrument_type", "weight", "thesis_role"],
                     },
                 },
                 "rationales": {"type": "object"},
             },
-            "required": ["summary", "tickers", "macro_series", "rationales"],
+            "required": ["summary", "mechanism", "macro_series", "falsifiers", "tickers", "rationales"],
         }
         try:
             async def _attempt():
@@ -1345,17 +1374,7 @@ class ClaudeCliLLMClient(BaseLLMClient):
             data = await _call_with_retry("Claude CLI", _attempt)
 
             provider_used = data.pop("_provider_used", f"claude-cli-{self.model}")
-            tickers = [TickerSuggestion(**t) for t in data.get("tickers", [])]
-            macro_series = [MacroSuggestion(**m) for m in data.get("macro_series", [])]
-
-            return ThesisResponse(
-                thesis=thesis,
-                summary=data.get("summary", "Análisis de tesis cuantitativa"),
-                tickers=tickers,
-                macro_series=macro_series,
-                rationales=data.get("rationales", {}),
-                provider_used=provider_used,
-            )
+            return _thesis_response(thesis, data, provider_used)
         except Exception as e:
             unwrapped = _unwrap_retries_exhausted(e)
             if isinstance(unwrapped, CliProcessError):
@@ -1461,197 +1480,152 @@ class MockLLMClient(BaseLLMClient):
     """Deterministic, domain-aware financial semantic parser with zero external API dependencies."""
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
-        normalized = thesis.lower()
+        """Local keyword template, no LLM (4.10 structure): mechanism, FRED
+        drivers, what would refute it, instruments ETF-first, SPY as benchmark.
+        Every FRED ID and instrument here was checked to exist (/fred/series,
+        yfinance quoteType) on 2026-09-27. It claims no company facts."""
+        normalized = f" {thesis.lower()} "
+        T = TickerSuggestion
+        M = MacroSuggestion
+        F = Falsifier
+        role = "Plantilla local (sin LLM): exposición al mecanismo, sin afirmaciones de hecho sobre la empresa."
+        local = "Plantilla local por palabras clave, sin análisis de un LLM. "
 
-        # Topic: AI, Datacenters, Power, Electricity
-        if any(w in normalized for w in ["electric", "eléctric", "datacenter", "centro de datos", "energ", "ia", "ai", "nuclear", "potencia", "power"]):
+        # A bubble / valuation thesis isn't a topic the keywords can read: it
+        # goes to the generic template, which says so, instead of matching " ia ".
+        generic = any(w in normalized for w in ["burbuja", "bubble", "sobrevalu"])
+        if generic:
+            pass
+        elif any(w in normalized for w in ["hipotec", "vivienda", "inmobiliari", "housing", "mortgage"]):
+            mechanism = local + ("Tasas hipotecarias más altas encarecen el crédito para comprar y construir; "
+                                 "caen los permisos y los inicios de obra, y con ellos la actividad de las constructoras.")
+            macro = [
+                M(series_id="MORTGAGE30US", name="30-Year Fixed Rate Mortgage Average", category="Tasas",
+                  expected_correlation="Negative", mechanism_role="causa: costo del crédito hipotecario"),
+                M(series_id="PERMIT", name="New Housing Units Authorized (permits)", category="Vivienda",
+                  expected_correlation="Positive", mechanism_role="canal: permisos de construcción"),
+                M(series_id="HOUST", name="New Privately-Owned Housing Units Started", category="Vivienda",
+                  expected_correlation="Positive", mechanism_role="efecto: inicios de obra"),
+            ]
+            falsifiers = [
+                F(condition="Si los inicios de obra (HOUST) suben interanualmente mientras la tasa hipotecaria "
+                            "(MORTGAGE30US) se mantiene alta, la tesis no se sostiene.", series_id="HOUST"),
+                F(condition="Si los permisos (PERMIT) no caen tras 6 meses de tasas en alza.", series_id="PERMIT"),
+            ]
             tickers = [
-                TickerSuggestion(
-                    symbol="NVDA",
-                    name="NVIDIA Corporation",
-                    sector="Semiconductors",
-                    weight=0.25,
-                    thesis_role="Cálculo acelerado y plataformas de cómputo para inferencia/entrenamiento en datacenters"
-                ),
-                TickerSuggestion(
-                    symbol="CEG",
-                    name="Constellation Energy Corp",
-                    sector="Utilities / Nuclear",
-                    weight=0.25,
-                    thesis_role="Generación nuclear limpia para suministro directo (behind-the-meter) a hiperescaladores"
-                ),
-                TickerSuggestion(
-                    symbol="VST",
-                    name="Vistra Corp",
-                    sector="Independent Power Producers",
-                    weight=0.20,
-                    thesis_role="Generación eléctrica flexible y almacenamiento en batería para picos de demanda energética"
-                ),
-                TickerSuggestion(
-                    symbol="MSFT",
-                    name="Microsoft Corporation",
-                    sector="Cloud / Software",
-                    weight=0.15,
-                    thesis_role="Mayor inversor de Capex en infraestructura de nube y acuerdos PPA de energía limpia"
-                ),
-                TickerSuggestion(
-                    symbol="NEE",
-                    name="NextEra Energy Inc",
-                    sector="Renewable Utilities",
-                    weight=0.15,
-                    thesis_role="Líder en contratos renovables corporativos y expansión de líneas de transmisión"
-                ),
+                T(symbol="ITB", name="iShares U.S. Home Construction ETF", sector="Construcción residencial",
+                  instrument_type="etf", weight=0.4, thesis_role=role),
+                T(symbol="XHB", name="SPDR S&P Homebuilders ETF", sector="Construcción residencial",
+                  instrument_type="etf", weight=0.35, thesis_role=role),
+                T(symbol="TLT", name="iShares 20+ Year Treasury Bond ETF", sector="Tasas",
+                  instrument_type="rate", weight=0.25, thesis_role=role),
             ]
-            macro_series = [
-                MacroSuggestion(
-                    series_id="IPG2211A2N",
-                    name="Electric Power Generation, Transmission & Distribution",
-                    category="Energy Demand",
-                    expected_correlation="Positive"
-                ),
-                MacroSuggestion(
-                    series_id="INDPRO",
-                    name="Industrial Production Index",
-                    category="Macro Activity",
-                    expected_correlation="Positive"
-                ),
-                MacroSuggestion(
-                    series_id="PCU33443344",
-                    name="PPI: Semiconductor & Electronic Component Manufacturing",
-                    category="Tech Supply Chain",
-                    expected_correlation="Positive"
-                ),
+        elif any(w in normalized for w in ["tasa", "interés", "interes", "rendimiento", "múltiplo", "multiplo", "bono"]):
+            mechanism = local + ("Tasas reales más altas elevan la tasa de descuento de flujos lejanos; las "
+                                 "empresas tecnológicas, con más valor en el futuro, pierden múltiplo.")
+            macro = [
+                M(series_id="DFII10", name="10-Year TIPS Yield (real rate)", category="Tasas",
+                  expected_correlation="Negative", mechanism_role="causa: tasa real de descuento"),
+                M(series_id="DGS10", name="10-Year Treasury Yield", category="Tasas",
+                  expected_correlation="Negative", mechanism_role="causa: tasa nominal"),
+                M(series_id="NFCI", name="Chicago Fed National Financial Conditions Index", category="Condiciones financieras",
+                  expected_correlation="Negative", mechanism_role="canal: condiciones financieras"),
             ]
-            rationales = {
-                "NVDA": "Demanda inelástica por aceleradores Blackwell y redes InfiniBand; catalizador primario de la densidad térmica y consumo de MW por rack.",
-                "CEG": "Mayor operador nuclear de EE. UU.; acuerdos directos a largo plazo con primas tarifarias sustanciales para datacenters 24/7.",
-                "VST": "Flotas de gas natural y activos de almacenamiento de baterías con alto apalancamiento operativo ante el encarecimiento de la energía en mercados mayoristas como PJM y ERCOT.",
-                "MSFT": "Compromiso de capital multimillonario en nuevos centros de datos para Azure e integración de copilots empresariales.",
-                "NEE": "Capacidad de interconexión rápida a la red y cartera diversificada de proyectos eólicos y solares con PPAs comerciales."
-            }
-            summary = "Tesis centrada en el cuello de botella energético de la Inteligencia Artificial: la expansión exponencial de centros de datos requiere generación de carga base (nuclear y gas) e infraestructura de red crítica."
-
-        # Topic: Semiconductors, Hardware, Chip Capex
+            falsifiers = [
+                F(condition="Si la tasa real a 10 años (DFII10) sube 1 punto en 12 meses y el ETF tecnológico "
+                            "(XLK) le gana al benchmark SPY en ese período.", series_id="DFII10"),
+            ]
+            tickers = [
+                T(symbol="XLK", name="Technology Select Sector SPDR", sector="Tecnología", instrument_type="etf",
+                  weight=0.4, thesis_role=role),
+                T(symbol="QQQ", name="Invesco QQQ Trust", sector="Tecnología / Nasdaq-100", instrument_type="etf",
+                  weight=0.3, thesis_role=role),
+                T(symbol="TLT", name="iShares 20+ Year Treasury Bond ETF", sector="Tasas", instrument_type="rate",
+                  weight=0.3, thesis_role=role),
+            ]
         elif any(w in normalized for w in ["semiconductor", "chip", "tsmc", "hardware", "asml", "litograf", "fundic"]):
+            mechanism = local + ("Más demanda de cómputo lleva a más producción de semiconductores; si la "
+                                 "capacidad no alcanza, suben los precios del sector.")
+            macro = [
+                M(series_id="IPG3344S", name="Industrial Production: Semiconductor and Other Electronic Components",
+                  category="Semiconductores", expected_correlation="Positive", mechanism_role="efecto: producción"),
+                M(series_id="PCU33443344", name="PPI: Semiconductor and Other Electronic Components",
+                  category="Semiconductores", expected_correlation="Positive", mechanism_role="canal: precios del sector"),
+            ]
+            falsifiers = [
+                F(condition="Si la producción de semiconductores (IPG3344S) cae interanualmente dos trimestres seguidos.",
+                  series_id="IPG3344S"),
+            ]
             tickers = [
-                TickerSuggestion(
-                    symbol="NVDA",
-                    name="NVIDIA Corporation",
-                    sector="Semiconductors",
-                    weight=0.30,
-                    thesis_role="Monopolio fáctico en GPUs de cómputo avanzado para IA"
-                ),
-                TickerSuggestion(
-                    symbol="TSM",
-                    name="Taiwan Semiconductor Mfg",
-                    sector="Foundry",
-                    weight=0.30,
-                    thesis_role="Fabricante exclusivo de nodos avanzados de 3nm y empaquetado CoWoS"
-                ),
-                TickerSuggestion(
-                    symbol="ASML",
-                    name="ASML Holding NV",
-                    sector="Semiconductor Equipment",
-                    weight=0.25,
-                    thesis_role="Único proveedor global de máquinas de litografía ultravioleta extrema (EUV)"
-                ),
-                TickerSuggestion(
-                    symbol="AMAT",
-                    name="Applied Materials",
-                    sector="Semiconductor Equipment",
-                    weight=0.15,
-                    thesis_role="Equipamiento indispensable para deposición y grabado en nuevos nodos"
-                ),
+                T(symbol="SMH", name="VanEck Semiconductor ETF", sector="Semiconductores", instrument_type="etf",
+                  weight=0.4, thesis_role=role),
+                T(symbol="TSM", name="Taiwan Semiconductor Manufacturing", sector="Semiconductores",
+                  instrument_type="stock", weight=0.2, thesis_role=role),
+                T(symbol="NVDA", name="NVIDIA Corporation", sector="Semiconductores", instrument_type="stock",
+                  weight=0.2, thesis_role=role),
+                T(symbol="ASML", name="ASML Holding", sector="Semiconductores", instrument_type="stock",
+                  weight=0.2, thesis_role=role),
             ]
-            macro_series = [
-                MacroSuggestion(
-                    series_id="PCU33443344",
-                    name="PPI: Semiconductor Manufacturing",
-                    category="Semiconductors",
-                    expected_correlation="Positive"
-                ),
-                MacroSuggestion(
-                    series_id="INDPRO",
-                    name="Industrial Production",
-                    category="Macro Activity",
-                    expected_correlation="Positive"
-                )
+        elif any(w in normalized for w in ["electric", "eléctric", "datacenter", "centro de datos", "energ",
+                                            " ia ", " ai ", "nuclear", "potencia", "power"]):
+            mechanism = local + ("Más centros de datos aumentan la demanda de electricidad; si la generación no "
+                                 "acompaña, suben los precios mayoristas y se amplía la inversión en red y generación.")
+            macro = [
+                M(series_id="IPG2211A2N", name="Industrial Production: Electric and Gas Utilities", category="Energía",
+                  expected_correlation="Positive", mechanism_role="efecto: producción eléctrica"),
+                M(series_id="PCU221110221110", name="PPI: Electric Power Generation", category="Energía",
+                  expected_correlation="Positive", mechanism_role="canal: precio de la generación"),
             ]
-            rationales = {
-                "NVDA": "Poder de fijación de precios superior en chips de centros de datos y márgenes brutos por encima del 70%.",
-                "TSM": "Capacidad de utilización al 100% en nodos de 3nm con demanda comprometida por los principales hiperescaladores.",
-                "ASML": "Barrera de entrada insuperable en litografía avanzada High-NA para la próxima generación de chips.",
-                "AMAT": "Exposición diversificada al ciclo de inversión global de fundiciones y memoria HBM."
-            }
-            summary = "Tesis orientada al superciclo de inversión en semiconductores avanzados, empaquetado CoWoS y memoria HBM para satisfacer la infraestructura de cómputo mundial."
-
-        # Default / Macro / Tech thesis
-        else:
+            falsifiers = [
+                F(condition="Si la producción de electricidad y gas (IPG2211A2N) no crece interanualmente durante 12 meses.",
+                  series_id="IPG2211A2N"),
+                F(condition="Si el precio al productor de la generación eléctrica (PCU221110221110) cae interanualmente.",
+                  series_id="PCU221110221110"),
+            ]
             tickers = [
-                TickerSuggestion(
-                    symbol="NVDA",
-                    name="NVIDIA Corporation",
-                    sector="Information Technology",
-                    weight=0.25,
-                    thesis_role="Líder de infraestructura de cómputo acelerado"
-                ),
-                TickerSuggestion(
-                    symbol="MSFT",
-                    name="Microsoft Corporation",
-                    sector="Cloud / Software",
-                    weight=0.25,
-                    thesis_role="Hiperescalador con despliegue enterprise a gran escala"
-                ),
-                TickerSuggestion(
-                    symbol="GOOG",
-                    name="Alphabet Inc",
-                    sector="Technology / Search",
-                    weight=0.25,
-                    thesis_role="Integración vertical completa: modelos, silicio TPU y nube"
-                ),
-                TickerSuggestion(
-                    symbol="CEG",
-                    name="Constellation Energy Corp",
-                    sector="Energy / Utilities",
-                    weight=0.25,
-                    thesis_role="Proveedor de energía firme y descarbonizada para datacenters"
-                ),
+                T(symbol="XLU", name="Utilities Select Sector SPDR", sector="Utilities", instrument_type="etf",
+                  weight=0.35, thesis_role=role),
+                T(symbol="GRID", name="First Trust NASDAQ Clean Edge Smart Grid Infrastructure", sector="Red eléctrica",
+                  instrument_type="etf", weight=0.25, thesis_role=role),
+                T(symbol="NVDA", name="NVIDIA Corporation", sector="Semiconductores", instrument_type="stock",
+                  weight=0.15, thesis_role=role),
+                T(symbol="CEG", name="Constellation Energy", sector="Utilities / Nuclear", instrument_type="stock",
+                  weight=0.15, thesis_role=role),
+                T(symbol="VST", name="Vistra Corp.", sector="Utilities", instrument_type="stock",
+                  weight=0.10, thesis_role=role),
             ]
-            macro_series = [
-                MacroSuggestion(
-                    series_id="INDPRO",
-                    name="Industrial Production Index",
-                    category="Macro Growth",
-                    expected_correlation="Positive"
-                ),
-                MacroSuggestion(
-                    series_id="DGS10",
-                    name="10-Year Treasury Constant Maturity",
-                    category="Interest Rates",
-                    expected_correlation="Negative"
-                ),
-                MacroSuggestion(
-                    series_id="IPG2211A2N",
-                    name="Electric Power Generation Index",
-                    category="Power Demand",
-                    expected_correlation="Positive"
-                ),
+        if generic or not any(w in normalized for w in [
+                "hipotec", "vivienda", "inmobiliari", "housing", "mortgage", "tasa", "interés", "interes",
+                "rendimiento", "múltiplo", "multiplo", "bono", "semiconductor", "chip", "tsmc", "hardware", "asml",
+                "litograf", "fundic", "electric", "eléctric", "datacenter", "centro de datos", "energ", " ia ",
+                " ai ", "nuclear", "potencia", "power"]):
+            mechanism = local + ("No reconoció el tema: devuelve una estructura genérica de mercado amplio, "
+                                 "sin un mecanismo específico. Usá un proveedor LLM para analizar esta tesis.")
+            macro = [
+                M(series_id="INDPRO", name="Industrial Production: Total Index", category="Macro",
+                  expected_correlation="Positive", mechanism_role="actividad general (sin mecanismo específico)"),
+                M(series_id="DGS10", name="10-Year Treasury Yield", category="Tasas",
+                  expected_correlation="Negative", mechanism_role="tasa de descuento (sin mecanismo específico)"),
             ]
-            rationales = {
-                "NVDA": "Crecimiento estructural de ingresos y expansión sostenida del flujo de caja libre.",
-                "MSFT": "Alta recurrencia de ingresos por suscripción en Azure y Office 365 con márgenes operativos sólidos.",
-                "GOOG": "Innovación acelerada en modelos de lenguaje y ventaja de costes con chips TPU propios.",
-                "CEG": "Generación de energía limpia y acuerdos estratégicos de largo plazo para suministro a grandes tecnológicos."
-            }
-            summary = f"Tesis analizada para: '{thesis}'. Selección cuantitativa optimizada de activos de alta convicción y métricas macroeconómicas de referencia."
+            falsifiers = []
+            tickers = [
+                T(symbol="VTI", name="Vanguard Total Stock Market ETF", sector="Mercado amplio", instrument_type="etf",
+                  weight=0.7, thesis_role=role),
+                T(symbol="TLT", name="iShares 20+ Year Treasury Bond ETF", sector="Tasas", instrument_type="rate",
+                  weight=0.3, thesis_role=role),
+            ]
 
         return ThesisResponse(
             thesis=thesis,
-            summary=summary,
+            summary=mechanism,
+            mechanism=mechanism,
             tickers=tickers,
-            macro_series=macro_series,
-            rationales=rationales,
-            provider_used="mock-semantic-engine"
+            macro_series=macro,
+            falsifiers=falsifiers,
+            benchmark=THESIS_BENCHMARK,
+            rationales={t.symbol: t.thesis_role for t in tickers},
+            prompt_version=THESIS_PROMPT_VERSION,
+            provider_used="mock-semantic-engine",
         )
 
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:

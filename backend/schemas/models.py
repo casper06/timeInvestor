@@ -28,6 +28,8 @@ class TickerSuggestion(BaseModel):
     sector: str = Field(..., description="Industry sector")
     weight: float = Field(default=0.2, description="Suggested allocation weight (0.0 to 1.0)")
     thesis_role: str = Field(..., description="Specific role or angle in the investment thesis")
+    instrument_type: Optional[Literal["etf", "commodity", "rate", "index", "stock"]] = Field(default=None, description="Tipo de instrumento (4.10): ETFs, commodities y tasas antes que acciones sueltas")
+    source: Optional[str] = Field(default=None, description="Fuente que cita el LLM para los hechos de su texto; None = afirmación del LLM sin fuente. La app no la verifica")
 
 class FredSeriesMetadata(BaseModel):
     series_id: str
@@ -40,6 +42,13 @@ class MacroSuggestion(BaseModel):
     name: str = Field(..., description="Series description")
     category: str = Field(..., description="Category (Energy, Tech, Inflation, Rates, etc.)")
     expected_correlation: str = Field(default="Positive", description="Expected correlation with thesis")
+    mechanism_role: Optional[str] = Field(default=None, description="Qué eslabón del mecanismo mide (causa, canal o efecto)")
+
+
+class Falsifier(BaseModel):
+    """An observable condition that would refute the thesis (4.10)."""
+    condition: str = Field(..., description="Condición observable, con una variable y una dirección o umbral")
+    series_id: Optional[str] = Field(default=None, description="Serie (idealmente de FRED) que la mide")
 
 class ThesisRequest(BaseModel):
     thesis: str = Field(..., min_length=3, description="Free-text investment thesis")
@@ -50,6 +59,10 @@ class ThesisResponse(BaseModel):
     tickers: List[TickerSuggestion]
     macro_series: List[MacroSuggestion]
     rationales: Dict[str, str]
+    mechanism: Optional[str] = Field(default=None, description="Mecanismo causal (4.10)")
+    falsifiers: List[Falsifier] = Field(default_factory=list, description="Qué dato refutaría la tesis (4.10)")
+    benchmark: Optional[str] = Field(default=None, description="Benchmark obligatorio (SPY) contra el que comparar; no va en los pesos")
+    prompt_version: Optional[int] = Field(default=None, description="Versión del prompt de traducción (2 = 4.10)")
     provider_used: str
     fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
     fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "content_filtered", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient), si requiere intervención (auth_or_config), o si el proveedor bloqueó la respuesta por su filtro de contenido (content_filtered — no se arregla ni esperando ni reconfigurando). None si mock fue elegido explícitamente (sin fallback_reason)")
@@ -250,6 +263,10 @@ class ThesisCreateRequest(BaseModel):
     tickers: List[TickerSuggestion] = Field(default_factory=list)
     macro_series: List[MacroSuggestion] = Field(default_factory=list)
     rationales: Optional[Dict[str, str]] = Field(default_factory=dict)
+    mechanism: Optional[str] = None
+    falsifiers: List[Falsifier] = Field(default_factory=list)
+    benchmark: Optional[str] = None
+    prompt_version: Optional[int] = None
 
 class ThesisUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -279,6 +296,10 @@ class ThesisDetailResponse(BaseModel):
     tickers: List[TickerSuggestion]
     macro_series: List[MacroSuggestion]
     rationales: Dict[str, str]
+    mechanism: Optional[str] = None
+    falsifiers: List[Falsifier] = Field(default_factory=list)
+    benchmark: Optional[str] = None
+    prompt_version: Optional[int] = None
     created_at: str
     updated_at: str
     snapshots: List[ForecastSnapshotResponse] = Field(default_factory=list)
