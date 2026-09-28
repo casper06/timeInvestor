@@ -9,12 +9,19 @@ class TimeSeriesData(BaseModel):
     id: str = Field(..., description="Identifier for the series (e.g. NVDA, IPG2211A2N)")
     name: str = Field(..., description="Human-readable title or label")
     type: str = Field(..., description="Type of series: equity, macro, or fundamental")
-    unit: str = Field(default="USD", description="Unit of measurement")
+    unit: Optional[str] = Field(default="USD", description="Unidad. En series FRED, la que informa FRED (/fred/series); None si esos metadatos no están disponibles (nunca un 'Index' por defecto)")
     points: List[TimeSeriesPoint] = Field(default_factory=list)
     source: Literal["live", "synthetic"] = Field(default="live", description="Data provenance: where the data came from originally")
     from_cache: bool = Field(default=False, description="Whether the series was served from local in-memory cache")
     cached_at: Optional[str] = Field(default=None, description="ISO timestamp of when the series was cached")
     source_detail: Optional[str] = Field(default=None, description="Diagnostic detail if synthetic")
+    # FRED metadata (/fred/series), only for macro series. When FRED can't be
+    # asked, metadata_source = "unavailable" and title/unit are NOT filled in.
+    metadata_source: Optional[Literal["fred", "unavailable"]] = Field(default=None, description="De dónde salen nombre y unidad de una serie FRED: 'fred' o 'unavailable' (no se inventan)")
+    metadata_note: Optional[str] = Field(default=None, description="Por qué no hay metadatos, si no los hay")
+    source_frequency: Optional[str] = Field(default=None, description="Frecuencia según FRED (Monthly, Daily, ...)")
+    seasonal_adjustment: Optional[str] = Field(default=None, description="Ajuste estacional según FRED (Not Seasonally Adjusted, ...)")
+    seasonal_adjustment_short: Optional[str] = Field(default=None, description="SA, NSA, SAAR, ...")
 
     @computed_field(description="daily | weekly | monthly | quarterly | annual, inferida de las fechas (irregular -> daily). Unidad de los horizontes de esta serie")
     @property
@@ -34,6 +41,9 @@ class FredSeriesMetadata(BaseModel):
     title: str
     notes: str
     units: Optional[str] = Field(default=None, description="Unidad que informa FRED (/fred/series), p. ej. 'Percent'")
+    frequency: Optional[str] = Field(default=None, description="Frecuencia según FRED, p. ej. 'Monthly'")
+    seasonal_adjustment: Optional[str] = Field(default=None, description="p. ej. 'Not Seasonally Adjusted'")
+    seasonal_adjustment_short: Optional[str] = Field(default=None, description="p. ej. 'NSA'")
 
 class MacroSuggestion(BaseModel):
     series_id: str = Field(..., description="FRED or Macro series ID (e.g. IPG2211A2N)")
@@ -118,6 +128,7 @@ class MacroEvidence(BaseModel):
     name: Optional[str] = None
     unit: Optional[str] = None
     frequency: Optional[str] = None
+    seasonal_adjustment_short: Optional[str] = Field(default=None, description="SA / NSA según FRED")
     last_date: Optional[str] = None
     last_value: Optional[float] = None
     prior_date: Optional[str] = Field(default=None, description="Observación de ~12 meses antes")

@@ -9,7 +9,7 @@ import type {
   PortfolioOptimizeResponse,
 } from '../services/api';
 import { horizonLabel, seriesFrequency } from './horizon';
-import { formatValue, isPriceSeries } from './valueFormat';
+import { formatValue, isPriceSeries, seriesMetaText } from './valueFormat';
 
 const SKILL_TEXT = {
   aporta: 'aporta sobre el naive',
@@ -92,7 +92,8 @@ export function generateMarkdownReport(data: ReportData): string {
 
   addSection(
     `Telemetría y Proyección Temporal (${sd?.id || 'Activo Central'})`,
-    `- **${price ? 'Último precio real' : 'Último valor'}:** ${fmt(lastPrice)}\n` +
+    (sd?.type === 'macro' ? `- **Serie:** ${sd.name} (${seriesMetaText(sd)})\n` : '') +
+      `- **${price ? 'Último precio real' : 'Último valor'}:** ${fmt(lastPrice)}\n` +
       projection +
       (skill ? `- **Capacidad de pronóstico:** ${SKILL_TEXT[skill.state]} — ${skill.reason}\n` : '') +
       (data.forecast?.reliable === false

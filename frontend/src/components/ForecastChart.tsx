@@ -16,6 +16,7 @@ import type { TimeSeriesData, ForecastResponse } from '../services/api';
 import { HORIZON_OPTIONS, horizonButton, horizonTag, seriesFrequency } from '../utils/horizon';
 import { FredInfoTooltip } from './FredInfoTooltip';
 import { SkillBadge } from './SkillBadge';
+import { seriesMetaText } from '../utils/valueFormat';
 
 ChartJS.register(
   CategoryScale,
@@ -232,7 +233,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           label: (context) => {
             const val = context.parsed.y;
             if (val === null || val === undefined) return '';
-            const unit = isNormalized ? 'pts (Base 100)' : (seriesData?.unit ?? '');
+            const unit = isNormalized ? 'pts (Base 100)' : (seriesData?.unit ?? '');  // no unit when FRED gave none
             return ` ${context.dataset.label}: ${val.toFixed(2)} ${unit}`;
           },
         },
@@ -255,7 +256,11 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
         },
         title: {
           display: true,
-          text: isNormalized ? 'Índice (Base 100)' : `${seriesData?.unit ?? ''}`,
+          text: isNormalized
+            ? 'Índice (Base 100)'
+            : seriesData?.metadata_source === 'unavailable'
+            ? 'unidad no disponible'
+            : `${seriesData?.unit ?? ''}`,
           color: '#64748b',
           font: { size: 11 },
         },
@@ -406,6 +411,15 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
             <span>
               Serie: <span className="text-slate-300">{seriesData.name}</span> ({seriesData.type.toUpperCase()})
             </span>
+            {seriesData.type === 'macro' && (
+              <span
+                data-testid="series-meta"
+                className={seriesData.metadata_source === 'unavailable' ? 'text-amber-400' : 'text-slate-400'}
+                title={seriesData.metadata_note || seriesData.seasonal_adjustment || undefined}
+              >
+                {seriesMetaText(seriesData)}
+              </span>
+            )}
             {seriesData.from_cache && seriesData.source === 'live' && (
               <span
                 className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 font-mono inline-flex items-center gap-1"
@@ -417,7 +431,7 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
             )}
           </div>
           <div className="flex items-center space-x-3">
-            <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit}</strong></span>
+            <span>Último: <strong className="text-cyan-400">{lastHistVal?.toFixed(2)} {isNormalized ? 'pts' : seriesData.unit ?? ''}</strong></span>
             {forecast && (
               <span>
                 Proyección +{horizonTag(horizon, frequency)}: <strong className="text-amber-400">{forecast.values[forecast.values.length - 1]?.toFixed(2)}</strong>
