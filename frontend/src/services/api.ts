@@ -120,6 +120,8 @@ export interface InterpretationContext {
   /** Date the projection points at. */
   target_date?: string;
   fundamentals?: FundamentalsMetric[];
+  /** Tickers the user added by hand; the rest were picked by the LLM. */
+  user_added_tickers?: string[];
 }
 
 export interface InterpretationResponse {

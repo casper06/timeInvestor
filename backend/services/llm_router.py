@@ -1707,9 +1707,16 @@ class MockLLMClient(BaseLLMClient):
             thesis_alignment += f" Sin datos de: {', '.join(no_data)}."
         companies = list(dict.fromkeys(([active_sym] if ctx.series_type == "equity" else []) + [t.upper() for t in ctx.other_tickers]))
         if companies:
+            user_added = {t.upper() for t in ctx.user_added_tickers}
+            by_llm = [t for t in companies if t not in user_added]
+            by_user = [t for t in companies if t in user_added]
+            who = []
+            if by_llm:
+                who.append(f"{', '.join(by_llm)} las eligió el LLM al traducir la tesis")
+            if by_user:
+                who.append(f"{', '.join(by_user)} las agregó el usuario")
             thesis_alignment += (
-                f" Las empresas ({', '.join(companies)}) las eligió el LLM al traducir la tesis: no son una muestra "
-                f"representativa y sus números no la confirman."
+                f" De las empresas, {'; '.join(who)}: no son una muestra representativa y sus números no la confirman."
             )
             missing = [t for t in companies if t not in _fundamentals_by_ticker(ctx)]
             if missing:

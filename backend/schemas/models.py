@@ -144,6 +144,7 @@ class InterpretationContext(BaseModel):
     last_observation_date: Optional[str] = Field(default=None, description="Fecha del último dato de la serie activa")
     target_date: Optional[str] = Field(default=None, description="Fecha a la que apunta la proyección")
     fundamentals: Optional[List[FundamentalsMetric]] = Field(default=None, description="Fundamentales con su período (ejercicio fiscal)")
+    user_added_tickers: List[str] = Field(default_factory=list, description="Tickers que agregó el usuario a mano ('+ Ticker'); el resto los eligió el LLM al traducir la tesis")
     macro_evidence: Optional[List[MacroEvidence]] = Field(default=None, description="Lo completa el servidor: último valor y cambio a 12 meses de cada serie FRED de la tesis")
     reliability_warning: Optional[str] = Field(default=None, description="Si el pronóstico fue marcado no confiable (ForecastResponse.reliability_warning), el texto; el copiloto tiene que decirlo")
 

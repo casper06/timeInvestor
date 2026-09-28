@@ -103,7 +103,7 @@ export function generateMarkdownReport(data: ReportData): string {
     };
     const tickers = [...new Set([...thesisTickers, ...Object.keys(byTicker)])];
     let fundBody =
-      `*Empresas seleccionadas por el LLM al traducir la tesis, no una muestra representativa: sus números no confirman la tesis.*\n\n` +
+      `*Empresas que eligió el LLM al traducir la tesis (y las que se agregaron a mano), no una muestra representativa: sus números no confirman la tesis.*\n\n` +
       `| Ticker | Capex (último ejercicio cerrado) | Ingresos (último ejercicio cerrado) |\n| :--- | :--- | :--- |\n`;
     tickers.forEach((t) => {
       const rows = byTicker[t] || [];

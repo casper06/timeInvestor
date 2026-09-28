@@ -89,7 +89,26 @@ Problemas:
 - DGS10 está en 5,18 al 2026-09-24.
 - Capex e ingresos 2025 mayores que 2024 en las 5 empresas (10 de 10 pares).
 
-**Imprecisión que queda:** dice "seleccionada manualmente"; las eligió el LLM.
+**Imprecisión de esta corrida:** dice "seleccionada manualmente", pero las eligió
+el LLM. Ningún texto nuestro decía "manual": lo agregó el modelo. Se corrigió
+así:
+- **Regla 3:** ahora dice explícitamente que no se diga "manualmente", "por un
+  analista" ni "con un criterio sistemático".
+- **Tickers agregados a mano ("+ Ticker"):** se rotulaban también como
+  elegidos por el LLM. Ahora el contexto los separa ("Agregadas a mano por el
+  usuario") y el mock también.
+
+**Corrida con la corrección** (misma tesis y mismos números, Gemini):
+
+> …En el ámbito corporativo, la lista de empresas elegidas por el LLM (CEG,
+> VST, GEV, ETN, EQIX) muestra incrementos de capex e ingresos en el último
+> ejercicio cerrado 2025 respecto de 2024. …las métricas de capex e ingresos
+> de CEG, VST, GEV, ETN y EQIX corresponden a empresas elegidas por el LLM al
+> traducir la tesis, por lo que no son una muestra representativa ni
+> confirman cuantitativamente la hipótesis.
+
+Además sugiere mirar TCU (utilización de capacidad), una serie que no estaba
+en el contexto. Es una sugerencia de qué mirar, no una afirmación sobre datos.
 
 ## Fundamentales: por qué el informe traía solo CEG y ETN
 

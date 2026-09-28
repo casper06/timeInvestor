@@ -29,7 +29,7 @@ COPILOT_RULES = """
 Reglas obligatorias:
 1. Afirmá solo lo que está en los datos recibidos. No agregues cifras, hechos, tendencias ni noticias que no estén en el contexto; si algo no está, decí que no está.
 2. Si faltan datos de algún activo o serie (líneas "Sin fundamentales" o "sin datos"), decilo explícitamente.
-3. La evidencia a favor o en contra de la tesis sale de los indicadores del mundo (series de FRED y similares). El capex y los ingresos de las empresas listadas son de empresas seleccionadas por el LLM, no una muestra representativa: presentalos así, nunca como confirmación de la tesis.
+3. La evidencia a favor o en contra de la tesis sale de los indicadores del mundo (series de FRED y similares). El capex y los ingresos de las empresas listadas son de empresas que eligió el LLM al traducir la tesis (o que agregó el usuario, si así se indica), no una muestra representativa: presentalos así, nunca como confirmación de la tesis. No digas que se eligieron "manualmente", por un analista ni con un criterio sistemático: las eligió el LLM.
 4. Todo dato tiene fecha: usá la fecha de hoy y el período de cada dato (por ejemplo, "capex: último ejercicio cerrado 2025"). La proyección es la salida de un modelo estadístico, no un dato observado.
 """
 
@@ -174,9 +174,13 @@ def interpretation_context_text(ctx: InterpretationContext, today: Optional[date
         ([ctx.active_series_id.upper()] if ctx.series_type == "equity" else []) + [t.upper() for t in ctx.other_tickers]
     ))
     by_ticker = _fundamentals_by_ticker(ctx)
-    lines += ["", "Empresas seleccionadas por el LLM al traducir la tesis (no una muestra representativa; "
-                  "sus números no confirman la tesis):"]
-    lines.append(f"- Activos: {', '.join(tickers) if tickers else 'ninguno'}")
+    user_added = {t.upper() for t in ctx.user_added_tickers}
+    by_llm = [t for t in tickers if t not in user_added]
+    by_user = [t for t in tickers if t in user_added]
+    lines += ["", "Empresas de la cartera (no una muestra representativa; sus números no confirman la tesis):"]
+    lines.append(f"- Elegidas por el LLM al traducir la tesis: {', '.join(by_llm) if by_llm else 'ninguna'}")
+    if by_user:
+        lines.append(f"- Agregadas a mano por el usuario: {', '.join(by_user)}")
     with_data = [t for t in tickers if t in by_ticker] + [t for t in by_ticker if t not in tickers]
     if with_data:
         lines.append("- Fundamentales recibidos (dólares, ejercicios fiscales):")

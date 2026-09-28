@@ -88,6 +88,9 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
         last_observation_date: lastTs?.slice(0, 10),
         target_date: forecast?.timestamps[forecast.timestamps.length - 1]?.slice(0, 10),
         fundamentals,
+        // Added with "+ Ticker" (App.handleAddTicker marks them 'Custom Asset'):
+        // not the LLM's picks, and the copilot must not say they are.
+        user_added_tickers: activeTickers.filter((t) => t.sector === 'Custom Asset').map((t) => t.symbol),
       };
 
       const res = await interpretSituation(ctx);

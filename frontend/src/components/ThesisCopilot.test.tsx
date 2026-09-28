@@ -36,7 +36,8 @@ describe('ThesisCopilot context (fix/copilot-context)', () => {
         horizon={60}
         confidence={0.95}
         activeTickers={[{ symbol: 'CEG', name: 'CEG', sector: 'x', weight: 0.5, thesis_role: 'x' },
-                        { symbol: 'VST', name: 'VST', sector: 'x', weight: 0.5, thesis_role: 'x' }]}
+                        { symbol: 'VST', name: 'VST', sector: 'x', weight: 0.5, thesis_role: 'x' },
+                        { symbol: 'PWR', name: 'PWR Equity', sector: 'Custom Asset', weight: 0.1, thesis_role: 'Activo agregado manualmente' }]}
         activeMacro={[{ series_id: 'IPG2211A2N', name: 'x', category: 'x', expected_correlation: 'Positive' }]}
         fundamentals={fundamentals}
         onSelectSeries={vi.fn()}
@@ -49,7 +50,9 @@ describe('ThesisCopilot context (fix/copilot-context)', () => {
     expect(ctx.last_observation_date).toBe('2026-09-25');
     expect(ctx.target_date).toBe('2026-12-18');
     expect(ctx.fundamentals).toEqual(fundamentals);
-    expect(ctx.other_tickers).toEqual(['VST']);
+    expect(ctx.other_tickers).toEqual(['VST', 'PWR']);
+    // PWR was added with "+ Ticker": the copilot must not call it an LLM pick.
+    expect(ctx.user_added_tickers).toEqual(['PWR']);
     expect(ctx.macro_series).toEqual(['IPG2211A2N']);
   });
 });

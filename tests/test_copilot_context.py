@@ -61,7 +61,8 @@ def test_context_has_today_and_the_period_of_every_figure():
 
 def test_llm_picked_companies_are_labeled_and_missing_data_is_said():
     text = interpretation_context_text(_ctx())
-    assert "Empresas seleccionadas por el LLM al traducir la tesis (no una muestra representativa" in text
+    assert "Empresas de la cartera (no una muestra representativa; sus números no confirman la tesis):" in text
+    assert "- Elegidas por el LLM al traducir la tesis: CEG, ETN, VST, GEV, PWR" in text
     assert "Sin fundamentales: VST, GEV, PWR (no se recibieron datos)." in text
 
 
@@ -212,3 +213,27 @@ def test_evidence_uses_freds_title_and_units_never_a_guessed_unit(monkeypatch):
     assert "PCUX (título no informado): último dato 4.4 (unidad no informada)" in text
     mock = asyncio.run(lr.MockLLMClient().interpret_situation(_ctx(macro_evidence=[rate])))
     assert "RATEX subió +0.60 puntos porcentuales en 12 meses" in mock.thesis_alignment
+
+
+# ---- who picked the companies: the LLM (or the user), never "manually" ----
+
+def test_user_added_tickers_are_not_called_llm_picks():
+    text = interpretation_context_text(_ctx(user_added_tickers=["PWR"]))
+    assert "- Elegidas por el LLM al traducir la tesis: CEG, ETN, VST, GEV" in text
+    assert "- Agregadas a mano por el usuario: PWR" in text
+    mock = asyncio.run(lr.MockLLMClient().interpret_situation(_ctx(user_added_tickers=["PWR"])))
+    assert "CEG, ETN, VST, GEV las eligió el LLM al traducir la tesis; PWR las agregó el usuario" in mock.thesis_alignment
+
+
+@pytest.mark.parametrize("prompt", [lr.INTERPRETATION_SYSTEM_PROMPT, lr.CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT])
+def test_every_system_prompt_forbids_calling_the_pick_manual(prompt):
+    assert 'No digas que se eligieron "manualmente", por un analista ni con un criterio sistemático: las eligió el LLM.' in prompt
+
+
+def test_nothing_we_write_calls_the_pick_manual():
+    """The only "manual" allowed is the prohibition in the rules, and the
+    user's own additions ("Agregadas a mano")."""
+    text = interpretation_context_text(_ctx())
+    mock = asyncio.run(lr.MockLLMClient().interpret_situation(_ctx()))
+    for t in (text, mock.what_data_says, mock.thesis_alignment, mock.next_series_suggestion):
+        assert "manual" not in t.lower()
