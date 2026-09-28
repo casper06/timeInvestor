@@ -67,6 +67,23 @@ el prompt nuevo no alcanzó ninguna corrida.
 | sonnet | viejo | 16/16 | 15/16 | 0/4 | 51% | 2/4 | 12/12 | 36, 48, 26, 35 |
 | sonnet | nuevo | 16/16 | 15/16 | 4/4 | 18% | 4/4 | 1/4 | 72, 60, 38, 31 |
 
+## Latencia por modelo (segundos por traducción de tesis)
+
+Es el tiempo de pared de `parse_thesis`, reintentos internos incluidos.
+
+| Modelo | Prompt | n | Mediana | Máxima |
+|---|---|---|---|---|
+| Gemini | viejo | 5 (principal T1–T2 + complementaria T1–T3) | 29,3 | 31,0 |
+| Gemini | nuevo | 0 | sin dato | sin dato |
+| Haiku | viejo | 4 | 31,8 | 169,8 (T2; timeout de 45 s y reintentos) |
+| Haiku | nuevo | 4 | 89,4 | 191,0 |
+| Sonnet | viejo | 4 | 35,3 | 48,1 |
+| Sonnet | nuevo | 4 | 48,9 | 72,1 |
+
+La mediana supera los 30 s en todos los casos con datos salvo Gemini con el
+prompt viejo (29,3). Por eso la UI muestra un indicador de progreso mientras
+traduce ("Traduciendo la tesis con <proveedor>…" y el tiempo transcurrido).
+
 ## Lectura
 
 - **C2 y C3 cambian con el prompt en los dos modelos:**

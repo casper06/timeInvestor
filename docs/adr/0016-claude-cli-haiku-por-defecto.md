@@ -23,7 +23,7 @@ ese mismo cupo por llamada".
 
 ## Estado
 
-Aceptada.
+Reemplazada por ADR-0031 (sonnet por defecto, 2026-09-28).
 
 ## Referencias
 

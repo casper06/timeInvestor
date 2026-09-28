@@ -44,6 +44,17 @@ import type {
   PortfolioOptimizeResponse,
 } from './services/api';
 
+// Readable name of the active LLM provider (health.llm_provider).
+const PROVIDER_LABEL: Record<string, string> = {
+  gemini: 'Gemini API',
+  gemini_cli: 'Gemini CLI',
+  claude_cli: 'Claude CLI',
+  openai: 'OpenAI',
+  ollama: 'Ollama',
+  mock: 'el motor local (sin LLM)',
+};
+const providerLabel = (id?: string | null): string | undefined => (id ? PROVIDER_LABEL[id] ?? id : undefined);
+
 export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -437,6 +448,7 @@ export const App: React.FC = () => {
           onRemoveTicker={handleRemoveTicker}
           onAddMacro={handleAddMacro}
           macroAddError={macroAddError}
+          providerLabel={providerLabel(health?.llm_provider)}
           onRemoveMacro={handleRemoveMacro}
         />
 

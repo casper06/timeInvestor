@@ -201,7 +201,7 @@ Las credenciales quedan cacheadas localmente:
 LLM_PROVIDER=gemini_cli
 # o
 LLM_PROVIDER=claude_cli
-CLAUDE_CLI_MODEL=haiku   # o "sonnet" para mejor calidad a costa de más cupo compartido
+CLAUDE_CLI_MODEL=sonnet  # default (ADR-0031); "haiku" gasta menos cupo compartido, con peor calidad medida
 ```
 
 Ninguno de los dos es el default en `.env.example` — ambos requieren

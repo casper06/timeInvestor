@@ -1251,13 +1251,10 @@ class ClaudeCliLLMClient(BaseLLMClient):
             raise CliNotInstalledError(
                 "Claude Code CLI no está instalado. Instalalo con: npm install -g @anthropic-ai/claude-code"
             )
-        # Haiku by default: this project's own EngineSelector/AutoDiscoveryEngine
-        # precedent (backend/services/auto_discovery.py) already established the
-        # pattern of defaulting to the cheapest option that gets the job done
-        # when a shared/limited budget is at stake — here that budget is the
-        # user's shared 5h/weekly Claude usage window, not a benchmark's compute
-        # time, but the reasoning is the same: minimize consumption by default,
-        # let the user opt into a heavier option (sonnet) via config.
+        # Sonnet by default (ADR-0031, replacing ADR-0016's haiku): the 4.10
+        # evaluation found haiku's translations with irrelevant or nonexistent
+        # FRED series and factual errors. CLAUDE_CLI_MODEL=haiku still spends
+        # less of the user's shared 5h/weekly Claude window.
         self.model = model or settings.CLAUDE_CLI_MODEL
 
     def _build_args(self, system_prompt: Optional[str] = None, json_schema: Optional[dict] = None) -> List[str]:

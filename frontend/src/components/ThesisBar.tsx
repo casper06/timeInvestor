@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Tag, ArrowRight } from 'lucide-react';
 import type { TickerSuggestion, MacroSuggestion } from '../services/api';
 
@@ -13,6 +13,8 @@ interface ThesisBarProps {
   onRemoveMacro: (seriesId: string) => void;
   /** Why the last "+ FRED ID" wasn't added (e.g. it doesn't exist on FRED). */
   macroAddError?: string | null;
+  /** Who translates the thesis, shown while it runs (4.10: a translation takes 30-190 s). */
+  providerLabel?: string;
 }
 
 // Examples from different sectors (4.10): they used to be all technology,
@@ -24,6 +26,23 @@ const PRESET_THESES = [
   'La sequía encarece los granos y favorece a los productores agrícolas',
 ];
 
+/** Seconds since the translation started (median 30-90 s depending on the
+ * model, docs/results/thesis_prompt_v2_2026-09-28.md): said, not a spinner
+ * alone. Mounted only while translating, so each run starts at 0. */
+const TranslatingIndicator: React.FC<{ providerLabel?: string }> = ({ providerLabel }) => {
+  const [startedAt] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  return (
+    <p data-testid="translating-indicator" role="status" className="text-xs text-cyan-300 font-mono">
+      Traduciendo la tesis con {providerLabel || 'el proveedor configurado'}… {elapsed} s
+    </p>
+  );
+};
+
 export const ThesisBar: React.FC<ThesisBarProps> = ({
   onAnalyze,
   loading,
@@ -34,8 +53,10 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
   onAddMacro,
   onRemoveMacro,
   macroAddError = null,
+  providerLabel,
 }) => {
   const [thesisText, setThesisText] = useState('');
+
   const [newTicker, setNewTicker] = useState('');
   const [newMacro, setNewMacro] = useState('');
 
@@ -97,6 +118,7 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
           )}
         </button>
       </form>
+      {loading && <TranslatingIndicator providerLabel={providerLabel} />}
 
       {/* Preset Suggestions */}
       <div className="flex items-center flex-wrap gap-2 text-xs">

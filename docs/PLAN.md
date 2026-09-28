@@ -617,7 +617,10 @@ Rama: una por ítem, a definir.
   (2026-09-28):** con el prompt nuevo, Sonnet sin errores de hecho y con series
   relevantes (15/16); Haiku con series irrelevantes e inexistentes en T1, mal
   uso de `source` y errores de hecho, y no más rápido. Propuesta: Sonnet por
-  defecto en Claude CLI. Gemini no se pudo evaluar (cupo). Decide el usuario. Con
+  defecto en Claude CLI. Gemini no se pudo evaluar (cupo). Decide el usuario.
+  **Decidido (2026-09-28): `CLAUDE_CLI_MODEL=sonnet` por defecto** (rama
+  `feat/thesis-prompt-v2`; ADR-0031, reemplaza a ADR-0016). Falta Gemini con
+  el prompt nuevo. Con
   `CLAUDE_CLI_MODEL=haiku`, la tesis "Demanda eléctrica por centros de datos
   de IA" dio como series FRED TOTALSA, GPDI, INDPRO y DFEDTARU, ninguna
   eléctrica. Comparar Haiku contra Sonnet con las mismas 3–4 tesis y
@@ -641,6 +644,16 @@ Rama: una por ítem, a definir.
     las series fuera del catálogo, y eso se ve en la UI. Tendría que usar la
     unidad y el título de `/fred/series`. **Resuelto en `fix/fred-metadata`
     (ADR-0029).**
+- [ ] **4.21 Validación de instrumentos.** Para cada ticker que propone el
+  LLM, traer de yfinance el nombre oficial y el tipo (acción o ETF). Para los
+  ETF, también el emisor y, si está disponible, el apalancamiento y si es
+  inverso. Si la descripción del LLM contradice esos datos, marcarlo en la UI
+  junto al texto de la empresa.
+  - Caso de prueba: "PSQ: inverso 3x Nasdaq-100 de Direxion" (Haiku, 4.10).
+    En realidad es de ProShares y −1x.
+  - También: el ETF "IPO" usado como exposición a semiconductores.
+  Hecho cuando: el caso PSQ aparece marcado, con el emisor y el
+  apalancamiento reales, y hay un test.
 - [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de

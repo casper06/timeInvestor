@@ -26,7 +26,7 @@ reemplace y se actualiza el estado de la anterior.
 | [0013](0013-marca-no-confiable.md) | Marca "no confiable" sin recortar los números | Aceptada | #37 |
 | [0014](0014-db-aislada-y-verificacion-sobre-copia.md) | DB aislada en los tests y verificación sobre una copia | Aceptada | #21, #30 |
 | [0015](0015-pre-registro-de-criterios.md) | Pre-registro de criterios antes de medir | Aceptada | #36, #37 |
-| [0016](0016-claude-cli-haiku-por-defecto.md) | `CLAUDE_CLI_MODEL=haiku` por defecto | Aceptada | #10 |
+| [0016](0016-claude-cli-haiku-por-defecto.md) | `CLAUDE_CLI_MODEL=haiku` por defecto | Reemplazada por 0031 | #10 |
 | [0017](0017-sin-correccion-de-sesgo-de-holt.md) | No corregir el sesgo positivo de Holt | Aceptada | #26 |
 | [0018](0018-v4-se-mantiene-v5-y-c-con-3-5.md) | v4 se mantiene; v5 y la variante C se evalúan solo con las series de 3.5 | Reemplazada por 0019 en lo que toca a v5; C no se adopta | #36, #37 |
 | [0019](0019-v5-decidir-en-el-horizonte-canonico.md) | Criterio v5: decidir en el horizonte canónico (trimestral 4 por uso); C no se adopta | Aceptada; ampliada por 0020 (v6) | #40, #42 |
@@ -41,3 +41,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0028](0028-contexto-del-copiloto.md) | Contexto del copiloto: fechas, evidencia de FRED, empresas elegidas por el LLM (no confirman) | Aceptada | 4.20 |
 | [0029](0029-metadatos-reales-de-fred.md) | Metadatos reales de FRED (título, unidad, frecuencia, SA/NSA); "metadatos no disponibles" en vez de inventar | Aceptada | 4.3 (parte visible) |
 | [0030](0030-prompt-de-traduccion-v2.md) | Prompt de traducción de tesis v2: mecanismo, drivers FRED, refutación, instrumentos ETF primero, SPY | Propuesta | 4.10 |
+| [0031](0031-claude-cli-sonnet-por-defecto.md) | `CLAUDE_CLI_MODEL=sonnet` por defecto (reemplaza 0016) | Aceptada | 4.6 |

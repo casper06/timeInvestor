@@ -261,7 +261,7 @@ def test_claude_cli_parses_json_schema_output(monkeypatch):
 
     with patch("subprocess.run", return_value=_fake_completed_process(0, stdout, "")):
         with patch("backend.services.llm_router._log_claude_cli_cost") as mock_log:
-            client = ClaudeCliLLMClient()
+            client = ClaudeCliLLMClient(model="haiku")
             resp = asyncio.run(client.parse_thesis("Demanda de cómputo IA"))
 
     assert resp.summary == "Tesis vía Claude CLI"
@@ -351,6 +351,16 @@ def test_get_llm_client_factory_accepts_new_providers(monkeypatch):
 
     claude_client = get_llm_client("claude_cli")
     assert isinstance(claude_client, ClaudeCliLLMClient)
+
+
+def test_claude_cli_default_model_is_sonnet(monkeypatch):
+    """ADR-0031: sonnet when CLAUDE_CLI_MODEL isn't set (it replaced haiku)."""
+    from backend import config
+    assert config.CLAUDE_CLI_DEFAULT_MODEL == "sonnet"
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(config.settings, "CLAUDE_CLI_MODEL", config.CLAUDE_CLI_DEFAULT_MODEL)
+    args = ClaudeCliLLMClient()._build_args()
+    assert args[args.index("--model") + 1] == "sonnet"
 
 
 def test_claude_cli_model_is_configurable(monkeypatch):
