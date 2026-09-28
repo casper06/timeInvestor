@@ -36,6 +36,8 @@ def main():
     ap.add_argument("--model", required=True, choices=["gemini", "haiku", "sonnet"])
     ap.add_argument("--out", required=True)
     ap.add_argument("--gap", type=int, default=20, help="seconds between theses (Gemini free tier: 5/min)")
+    ap.add_argument("--cli-timeout", type=int, default=120,
+                    help="Claude CLI timeout, the SAME for both code versions (main had 45 s, this branch 120 s)")
     args = ap.parse_args()
 
     assert "eval" in os.environ.get("DATABASE_URL", ""), "DATABASE_URL tiene que ser una COPIA (con 'eval' en el nombre)"
@@ -43,6 +45,14 @@ def main():
     import logging
     logging.disable(logging.CRITICAL)
     from backend.services import llm_router as lr
+
+    # Same CLI timeout for old and new code, so the comparison is about the prompt.
+    original_run = lr._run_cli_subprocess
+
+    def run_with_timeout(*a, **k):
+        k["timeout"] = args.cli_timeout
+        return original_run(*a, **k)
+    lr._run_cli_subprocess = run_with_timeout
 
     raw = {}
     if hasattr(lr, "_thesis_response"):          # new code: keep the model's raw JSON too
