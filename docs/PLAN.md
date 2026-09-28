@@ -618,6 +618,21 @@ Rama: una por ítem, a definir.
   benchmark automático.
   Hecho cuando: hay una tabla tesis × modelo con tickers y series elegidos, y
   una conclusión sobre qué modelo usar por defecto.
+- [x] **4.20 Contexto del copiloto.** (rama `fix/copilot-context`, PR abierto;
+  ADR-0028; `docs/results/copilot_context_2026-09-27.md`)
+  - Un solo contexto para todos los clientes: fecha de hoy y período de cada
+    dato.
+  - Evidencia de FRED (último valor y cambio a 12 meses), que agrega el
+    servidor.
+  - Las empresas se presentan como elegidas por el LLM, no representativas.
+  - Se dice qué datos faltan.
+  - Las reglas "afirmar solo lo recibido" van en todos los prompts.
+  - El mock ya no confirma la tesis.
+  - El informe trae fundamentales de todas las empresas: el corte de 15
+    filas dejaba solo CEG y ETN.
+  - Pendiente: el fetcher completa "Index" y "FRED Series X" por defecto en
+    las series fuera del catálogo, y eso se ve en la UI. Tendría que usar la
+    unidad y el título de `/fred/series`.
 - [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de

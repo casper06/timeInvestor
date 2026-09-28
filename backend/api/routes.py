@@ -268,6 +268,11 @@ async def interpret_thesis_situation(payload: InterpretationContext):
     of active curves, thesis alignment, and next suggested series to inspect.
     """
     try:
+        if payload.macro_evidence is None:
+            import asyncio
+            from backend.services.copilot_context import build_macro_evidence
+            ids = list(payload.macro_series) + ([payload.active_series_id] if payload.series_type == "macro" else [])
+            payload.macro_evidence = await asyncio.to_thread(build_macro_evidence, ids)
         client = get_llm_client()
         return await client.interpret_situation(payload)
     except Exception as e:

@@ -12,15 +12,11 @@ import httpx
 from backend.config import settings
 from backend.services.llm_availability import mark_account_rejected
 from backend.services.horizons import format_horizon
+from backend.services.copilot_context import (
+    COPILOT_RULES, _fundamentals_by_ticker, interpretation_context_text, is_percent_unit,
+)
 
 
-def _reliability_line(ctx) -> str:
-    """The unreliable-forecast warning (2.6) as a prompt line, so the model
-    doesn't narrate an implausible projection as if it were a real one."""
-    if not ctx.reliability_warning:
-        return ""
-    return (f"- ADVERTENCIA DEL SISTEMA: {ctx.reliability_warning} No interpretes el objetivo ni el CAGR "
-            f"como una proyección válida; decilo explícitamente.\n")
 from backend.schemas.models import (
     ThesisResponse,
     TickerSuggestion,
@@ -328,7 +324,7 @@ Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema exacto:
   "next_series_suggestion": "Justificación concisa de qué serie o indicador mirar a continuación para validar cuellos de botella...",
   "suggested_series_id": "TICKER_O_FRED_ID_SUGERIDO"
 }
-"""
+""" + COPILOT_RULES
 
 # Domain-only variants for ClaudeCliLLMClient's --json-schema path, WITHOUT the
 # embedded example-JSON block the two prompts above carry. Verified
@@ -357,8 +353,8 @@ CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT = (
     "estado de una tesis de inversión cuantitativa a partir de la telemetría "
     "proyectiva y fundamental actual: qué dicen los datos, si confirman o "
     "contradicen la hipótesis, y qué serie o indicador conviene mirar a "
-    "continuación."
-)
+    "continuación.\n"
+) + COPILOT_RULES
 
 class BaseLLMClient(abc.ABC):
     """Abstract interface for Semantic Router translating investment thesis to structured assets and copilot interpretation."""
@@ -464,15 +460,7 @@ class GeminiLLMClient(BaseLLMClient):
             prompt = (
                 f"{INTERPRETATION_SYSTEM_PROMPT}\n\n"
                 f"Contexto Cuantitativo:\n"
-                f"- Tesis: {ctx.thesis}\n"
-                f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
-                f"- Último precio real: {ctx.last_price:,.4f}\n"
-                f"- Objetivo proyectado (+{format_horizon(ctx.horizon, ctx.frequency or 'daily')}): {ctx.projected_target:,.4f} (CAGR: {ctx.cagr:.1f}%)\n"
-                f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound:,.4f} - {ctx.upper_bound:,.4f}]\n"
-                f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
-                f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
-                f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
-                f"{_reliability_line(ctx)}"
+                f"{interpretation_context_text(ctx)}"
             )
 
             async def _attempt():
@@ -577,7 +565,7 @@ class OpenAILLMClient(BaseLLMClient):
                 "model": "gpt-4o-mini",
                 "messages": [
                     {"role": "system", "content": INTERPRETATION_SYSTEM_PROMPT},
-                    {"role": "user", "content": f"Contexto: {ctx.model_dump_json()}"}
+                    {"role": "user", "content": f"Contexto Cuantitativo:\n{interpretation_context_text(ctx)}"}
                 ],
                 "response_format": {"type": "json_object"}
             }
@@ -655,7 +643,7 @@ class OllamaLLMClient(BaseLLMClient):
         try:
             payload = {
                 "model": self.model,
-                "prompt": f"{INTERPRETATION_SYSTEM_PROMPT}\n\nContexto: {ctx.model_dump_json()}",
+                "prompt": f"{INTERPRETATION_SYSTEM_PROMPT}\n\nContexto Cuantitativo:\n{interpretation_context_text(ctx)}",
                 "stream": False,
                 "format": "json"
             }
@@ -1129,15 +1117,7 @@ class GeminiCliLLMClient(BaseLLMClient):
         prompt = (
             f"{INTERPRETATION_SYSTEM_PROMPT}\n\n"
             f"Contexto Cuantitativo:\n"
-            f"- Tesis: {ctx.thesis}\n"
-            f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
-            f"- Último precio real: {ctx.last_price:,.4f}\n"
-            f"- Objetivo proyectado (+{format_horizon(ctx.horizon, ctx.frequency or 'daily')}): {ctx.projected_target:,.4f} (CAGR: {ctx.cagr:.1f}%)\n"
-            f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound:,.4f} - {ctx.upper_bound:,.4f}]\n"
-            f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
-            f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
-            f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
-            f"{_reliability_line(ctx)}\n"
+            f"{interpretation_context_text(ctx)}\n"
             f"Responde ÚNICAMENTE con el JSON pedido, sin texto adicional ni explicaciones."
         )
         try:
@@ -1397,15 +1377,7 @@ class ClaudeCliLLMClient(BaseLLMClient):
     async def interpret_situation(self, ctx: InterpretationContext) -> InterpretationResponse:
         user_prompt = (
             f"Contexto Cuantitativo:\n"
-            f"- Tesis: {ctx.thesis}\n"
-            f"- Activo analizado: {ctx.active_series_id} ({ctx.active_series_name})\n"
-            f"- Último precio real: {ctx.last_price:,.4f}\n"
-            f"- Objetivo proyectado (+{format_horizon(ctx.horizon, ctx.frequency or 'daily')}): {ctx.projected_target:,.4f} (CAGR: {ctx.cagr:.1f}%)\n"
-            f"- Bandas {int(ctx.confidence * 100)}%: [{ctx.lower_bound:,.4f} - {ctx.upper_bound:,.4f}]\n"
-            f"- Otros activos en tesis: {', '.join(ctx.other_tickers)}\n"
-            f"- Series macro en tesis: {', '.join(ctx.macro_series)}\n"
-            f"- Capex resumido: {json.dumps(ctx.capex_summary or {})}\n"
-            f"{_reliability_line(ctx)}"
+            f"{interpretation_context_text(ctx)}"
         )
         schema = {
             "type": "object",
@@ -1688,15 +1660,19 @@ class MockLLMClient(BaseLLMClient):
         cone_width = ctx.upper_bound - ctx.lower_bound
         cone_pct = (cone_width / ctx.projected_target) * 100 if ctx.projected_target > 0 else 0
 
-        # a) Qué dicen los datos
+        # a) Qué dicen los datos: only the numbers received, each with its date.
         direction = "expansión alcista" if pct_delta >= 0 else "contracción correctiva"
+        target = f"${ctx.projected_target:.2f}" if ctx.series_type == "equity" else f"{ctx.projected_target:,.2f}"
         what_data_says = (
-            f"La curva proyectiva para **{ctx.active_series_id}** ({ctx.active_series_name or 'Activo analizado'}) "
-            f"señala una {direction} del {pct_delta:+.1f}% hacia un precio objetivo de ${ctx.projected_target:.2f} "
-            f"en un horizonte de {format_horizon(ctx.horizon, ctx.frequency or 'daily')} (CAGR anualizado implícito del {ctx.cagr:+.1f}%). "
-            f"El cono de incertidumbre al {int(ctx.confidence * 100)}% abarca el intervalo [{ctx.lower_bound:.2f}, {ctx.upper_bound:.2f}], "
-            f"lo que representa una dispersión del {cone_pct:.1f}% respecto al objetivo central, "
-            f"denotando una volatilidad {'moderada' if cone_pct < 25 else 'elevada y sensible a anuncios de Capex'}."
+            f"La proyección del modelo para **{ctx.active_series_id}** ({ctx.active_series_name or 'Activo analizado'}) "
+            f"señala una {direction} del {pct_delta:+.1f}% hacia {target} "
+            f"en un horizonte de {format_horizon(ctx.horizon, ctx.frequency or 'daily')}"
+            + (f" (al {ctx.target_date})" if ctx.target_date else "")
+            + (f", desde el último dato del {ctx.last_observation_date}" if ctx.last_observation_date else "")
+            + f" (CAGR anualizado implícito del {ctx.cagr:+.1f}%). "
+            f"El cono al {int(ctx.confidence * 100)}% abarca [{ctx.lower_bound:.2f}, {ctx.upper_bound:.2f}], "
+            f"una dispersión del {cone_pct:.1f}% respecto al objetivo central: incertidumbre "
+            f"{'moderada' if cone_pct < 25 else 'elevada'}. Es la salida de un modelo estadístico, no un dato."
         )
         if ctx.reliability_warning:
             # 2.6: an implausible projection is said to be one, not narrated.
@@ -1705,41 +1681,49 @@ class MockLLMClient(BaseLLMClient):
                 f"**{ctx.active_series_id}** (valor proyectado tal como salió: {ctx.projected_target:,.2f})."
             )
 
-        # b) Alineación con tu tesis
-        is_power_related = any(w in ctx.thesis.lower() for w in ["electric", "eléctric", "datacenter", "ia", "potencia", "energia", "energía"])
+        # b) Alineación con tu tesis: only from the world's indicators received
+        # (FRED); the LLM-picked companies are said to be that, never evidence.
         active_sym = ctx.active_series_id.upper()
-
-        if active_sym in ("NVDA", "TSM", "ASML"):
+        evidence = [e for e in (ctx.macro_evidence or []) if not e.missing_reason and e.change_abs is not None]
+        if evidence:
+            moves = "; ".join(
+                f"{e.series_id} {'subió' if e.change_abs > 0 else 'bajó' if e.change_abs < 0 else 'no cambió'}"
+                + (f" {e.change_abs:+.2f} puntos porcentuales" if is_percent_unit(e.unit)
+                   else f" {e.change_pct:+.1f}%" if e.change_pct is not None else f" {e.change_abs:+,.4g}")
+                + f" en 12 meses (último dato {e.last_date})"
+                for e in evidence
+            )
             thesis_alignment = (
-                f"Las series proyectadas para {active_sym} confirman la fase de aceleración de infraestructura. "
-                f"Sin embargo, el crecimiento sostenido de Capex reportado por los hiperescaladores "
-                f"requiere que la demanda de capacidad de cómputo no se frene por restricciones de potencia eléctrica en sitio."
-            )
-            suggested_id = "CEG" if "CEG" in ctx.other_tickers else ("IPG2211A2N" if "IPG2211A2N" in ctx.macro_series else "VST")
-            next_series_suggestion = (
-                f"Conviene conmutar a **{suggested_id}** (productor de energía firme/nuclear o índice de generación eléctrica) "
-                f"para verificar si la oferta energética y tarifas mayoristas están acompañando la absorción proyectada."
-            )
-        elif active_sym in ("CEG", "VST", "NEE", "IPG2211A2N"):
-            thesis_alignment = (
-                f"La serie {active_sym} refleja el traspaso del cuello de botella hacia la generación eléctrica de carga base. "
-                f"Las proyecciones respaldan directamente la hipótesis de escasez de megavatios y primas contractuales favorables para los proveedores de energía."
-            )
-            suggested_id = "NVDA" if "NVDA" in ctx.other_tickers else "MSFT"
-            next_series_suggestion = (
-                f"Examina ahora **{suggested_id}** para contrastar cómo el crecimiento en el gasto de capital (Capex) "
-                f"de los proveedores de cómputo valida el flujo de ingresos esperado hacia el sector energético."
+                f"Evidencia de indicadores del mundo (FRED): {moves}. Si eso va a favor o en contra de la tesis "
+                f"depende del mecanismo que la tesis supone; este asistente automático no lo evalúa."
             )
         else:
             thesis_alignment = (
-                f"Los datos muestran coherencia direccional con la hipótesis planteada ('{ctx.thesis}'). "
-                f"La persistencia de la tendencia proyectada dependerá de que las tasas de reinversión en Capex se mantengan en los niveles históricos observados."
+                "No hay evidencia de indicadores del mundo en el contexto (ninguna serie de FRED con datos): con lo "
+                "recibido no se puede decir si los datos confirman o contradicen la tesis."
             )
-            candidates = [t for t in ctx.other_tickers if t != active_sym] + ctx.macro_series
-            suggested_id = candidates[0] if candidates else "IPG2211A2N"
-            next_series_suggestion = (
-                f"Se recomienda alternar a **{suggested_id}** para cruzar la proyección del activo con indicadores macroeconómicos clave."
+        no_data = [e.series_id for e in (ctx.macro_evidence or []) if e.missing_reason]
+        if no_data:
+            thesis_alignment += f" Sin datos de: {', '.join(no_data)}."
+        companies = list(dict.fromkeys(([active_sym] if ctx.series_type == "equity" else []) + [t.upper() for t in ctx.other_tickers]))
+        if companies:
+            thesis_alignment += (
+                f" Las empresas ({', '.join(companies)}) las eligió el LLM al traducir la tesis: no son una muestra "
+                f"representativa y sus números no la confirman."
             )
+            missing = [t for t in companies if t not in _fundamentals_by_ticker(ctx)]
+            if missing:
+                thesis_alignment += f" Faltan fundamentales de: {', '.join(missing)}."
+
+        # c) Qué mirar después: a world indicator first, then another asset.
+        macro_candidates = [m for m in ctx.macro_series if m.upper() != active_sym]
+        other = [t for t in ctx.other_tickers if t.upper() != active_sym]
+        suggested_id = (macro_candidates or other or ["IPG2211A2N"])[0]
+        next_series_suggestion = (
+            f"Mirá **{suggested_id}**: "
+            + ("es un indicador del mundo (FRED) de la tesis, que es de donde sale la evidencia."
+               if macro_candidates else "es otro activo de la cartera; no hay otra serie de FRED en la tesis.")
+        )
 
         return InterpretationResponse(
             what_data_says=what_data_says,

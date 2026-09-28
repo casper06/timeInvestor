@@ -63,13 +63,6 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
   const lastTs = seriesData?.points[seriesData.points.length - 1]?.timestamp;
   const cagr = annualizedGrowth(lastPrice, projectedTarget, projectionYears(lastTs, forecast?.timestamps, horizon, frequency));
 
-  // Build Capex summary
-  const capexSummary: Record<string, number> = {};
-  fundamentals
-    .filter((m) => m.metric.includes('Capex'))
-    .forEach((m) => {
-      capexSummary[`${m.ticker}_${m.period}`] = m.value;
-    });
 
   const handleRunInterpretation = async () => {
     setLoading(true);
@@ -89,7 +82,12 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
         cagr,
         other_tickers: activeTickers.map((t) => t.symbol).filter((s) => s !== activeSeriesId),
         macro_series: activeMacro.map((m) => m.series_id).filter((s) => s !== activeSeriesId),
-        capex_summary: capexSummary,
+        // Every figure with its date: the series' last observation, the
+        // projection's target date, each fundamental's fiscal year.
+        series_type: seriesData?.type === 'macro' ? 'macro' : 'equity',
+        last_observation_date: lastTs?.slice(0, 10),
+        target_date: forecast?.timestamps[forecast.timestamps.length - 1]?.slice(0, 10),
+        fundamentals,
       };
 
       const res = await interpretSituation(ctx);

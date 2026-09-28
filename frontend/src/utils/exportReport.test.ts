@@ -173,3 +173,28 @@ describe('generateMarkdownReport — undefined MAPE (2.10)', () => {
     expect(md).toContain('**MAPE:** no definido (MAPE no definido: algún valor real del período evaluado es 0)');
   });
 });
+
+describe('generateMarkdownReport — fundamentals of every company', () => {
+  it('lists all five companies (a fixed 15-row cut used to keep only CEG and ETN) and labels them', () => {
+    const tickers = ['CEG', 'ETN', 'VST', 'GEV', 'PWR'];
+    const fundamentals = tickers.flatMap((t, i) =>
+      ['2025', '2024', '2023', '2022'].flatMap((y) => [
+        { ticker: t, metric: 'Capex (Billions USD)', period: y, value: i + 1 },
+        { ticker: t, metric: 'Revenue (Billions USD)', period: y, value: 10 * (i + 1) },
+      ])
+    );
+    const md = generateMarkdownReport({
+      ...baseData,
+      thesis: {
+        ...baseData.thesis!,
+        tickers: [...tickers, 'NEE'].map((symbol) => ({ symbol, name: symbol, sector: 'x', weight: 1 / 6, thesis_role: 'x' })),
+      },
+      fundamentals,
+    });
+    const section = md.split('Fundamentales de las empresas seleccionadas')[1].split('\n---\n')[0];
+    for (const t of tickers) expect(section).toContain(`| ${t} | $`);
+    expect(section).toContain('| VST | $3.00B (ej. 2025) · $3.00B (2024) | $30.00B (ej. 2025) · $30.00B (2024) |');
+    expect(section).toContain('no una muestra representativa');
+    expect(section).toContain('Sin fundamentales: NEE.');
+  });
+});
