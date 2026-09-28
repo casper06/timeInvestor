@@ -688,6 +688,72 @@ Rama: una por ítem, a definir.
     4.6 (Haiku vs Sonnet): tabla tesis × prompt × modelo con instrumentos,
     series, mecanismo y falsador. Evaluación manual.
   Hecho cuando: esa tabla existe y se decidió qué prompt queda.
+
+  **Evaluación PRE-REGISTRADA el 2026-09-27**, en commit propio, antes de
+  escribir el prompt nuevo (rama `feat/thesis-prompt-v2`). Se reporta tal como
+  salga; no se cambian los criterios después de ver resultados, y no se elige
+  ganador antes de tener la tabla completa.
+  - **Tesis:**
+    - T1 "Demanda eléctrica por centros de datos de IA";
+    - T2 "La IA es una burbuja";
+    - T3 "Impacto de tasas de interés en múltiplos tecnológicos";
+    - T4 (no tecnológica, elegida acá) "Las tasas hipotecarias altas frenan la
+      construcción de viviendas en EE.UU.".
+  - **Matriz:** prompt {viejo = código de `main`, nuevo = esta rama} × modelo
+    {Gemini API `gemini-3.6-flash`, Claude CLI `haiku`, Claude CLI `sonnet` si
+    responde} × 4 tesis. Una corrida por celda, sin re-sortear.
+    - Si una llamada falla (429, 503, CLI), se reintenta hasta 3 veces con al
+      menos 60 s entre intentos. Si sigue fallando, la celda queda "sin
+      dato", con el motivo.
+    - Una respuesta del mock (fallback) nunca cuenta como del modelo: la celda
+      es "sin dato".
+    - La DB es una copia (Claude CLI registra su uso).
+  - **Criterios por corrida:**
+    - **C1 Series FRED relevantes al mecanismo.**
+      - C1a: cuántas de las propuestas existen en FRED (`/fred/series`;
+        mecánico).
+      - C1b: de las que existen, cuántas miden una variable de la cadena
+        causal (causa, canal o efecto), con una línea de justificación cada
+        una (juicio manual). Mecanismo de referencia, escrito antes de correr:
+        - T1: demanda o consumo eléctrico; generación o capacidad; precios o
+          tarifas de electricidad; construcción o inversión en centros de
+          datos; equipos eléctricos.
+        - T2: valuaciones o precios de activos tecnológicos; inversión o capex
+          tecnológico; crédito y condiciones financieras; productividad o
+          adopción; ganancias corporativas.
+        - T3: tasas (nominales, reales, curva); valuaciones o precios de
+          acciones tecnológicas o índices; prima de riesgo o condiciones
+          financieras.
+        - T4: tasas hipotecarias; inicios y permisos de construcción; ventas
+          y precios de viviendas; empleo en construcción; costo de
+          materiales.
+    - **C2 Criterios de refutación:**
+      - 0 = no hay;
+      - 1 = hay, pero no medibles (no nombran una variable);
+      - 2 = al menos uno medible: una variable o serie y una dirección o
+        umbral.
+      - El prompt viejo no los pide: un 0 ahí es por construcción, y se
+        reporta igual.
+    - **C3 Instrumentos:**
+      - C3a: SPY aparece como benchmark (en el viejo cuenta si aparece en
+        cualquier parte de la salida);
+      - C3b: peso en acciones sueltas. Suma de pesos de los instrumentos cuyo
+        `quoteType` de yfinance es `EQUITY`. ETF, índice, futuro o
+        commodity no suman.
+      - C3c: el primer instrumento listado no es una acción suelta.
+    - **C4 Textos de cada empresa** (solo acciones sueltas): cuántos textos
+      afirman hechos concretos (cifras, contratos, cuotas, eventos) sin fuente
+      ni marca de "afirmación del LLM". Se reporta n de m. Juicio manual, con
+      la frase afectada citada.
+  - **Sesgo conocido:** quien juzga (Claude) escribió el prompt nuevo.
+    Mitigación:
+    - C1a, C3a, C3b y C3c son mecánicos;
+    - C1b, C2 y C4 llevan su justificación escrita;
+    - las salidas crudas quedan versionadas en `docs/results/` para
+      re-juzgarlas.
+  - **Salida:** una tabla tesis × prompt × modelo con C1a, C1b, C2, C3a, C3b,
+    C3c y C4. Con la tabla completa se propone qué prompt queda (4.10) y qué
+    modelo por defecto (4.6), y lo decide el usuario.
 - [ ] **4.11 IDs de FRED anclados en datos reales.** El LLM propone
   *conceptos*; `fred/series/search` devuelve candidatas reales con metadata, y
   se elige entre esas. Nunca un ID generado por el LLM sin verificar contra
