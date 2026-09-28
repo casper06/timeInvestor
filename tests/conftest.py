@@ -31,6 +31,18 @@ def _offline_series_routing(monkeypatch):
     monkeypatch.setattr(series_routing, "_fred_knows", lambda series_id: None)
 
 
+@pytest.fixture(autouse=True)
+def _offline_copilot_evidence(monkeypatch):
+    """The copilot's FRED evidence is fetched server side; the suite never
+    does that over the network (tests/test_copilot_context.py fakes it)."""
+    from backend.services import copilot_context
+
+    def offline(series_id):
+        raise ValueError("sin red en los tests")
+    monkeypatch.setattr(copilot_context, "_fetch_series", offline)
+    monkeypatch.setattr(copilot_context, "_fetch_metadata", lambda series_id: {})
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _isolated_test_database():
     """Refuses to run if the app's engine isn't the temporary database (e.g.

@@ -33,6 +33,7 @@ class FredSeriesMetadata(BaseModel):
     series_id: str
     title: str
     notes: str
+    units: Optional[str] = Field(default=None, description="Unidad que informa FRED (/fred/series), p. ej. 'Percent'")
 
 class MacroSuggestion(BaseModel):
     series_id: str = Field(..., description="FRED or Macro series ID (e.g. IPG2211A2N)")
@@ -109,6 +110,22 @@ class FundamentalsResponse(BaseModel):
     metrics: List[FundamentalsMetric] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
+class MacroEvidence(BaseModel):
+    """A FRED indicator's last value and 12-month change, fetched by the server
+    for the copilot (fix/copilot-context): the thesis' evidence comes from
+    indicators of the world, not from the companies the LLM picked."""
+    series_id: str
+    name: Optional[str] = None
+    unit: Optional[str] = None
+    frequency: Optional[str] = None
+    last_date: Optional[str] = None
+    last_value: Optional[float] = None
+    prior_date: Optional[str] = Field(default=None, description="Observación de ~12 meses antes")
+    prior_value: Optional[float] = None
+    change_abs: Optional[float] = None
+    change_pct: Optional[float] = None
+    missing_reason: Optional[str] = Field(default=None, description="Por qué no hay datos (la serie queda en la lista igual)")
+
 class InterpretationContext(BaseModel):
     thesis: str = Field(..., description="Tesis original ingresada por el usuario")
     active_series_id: str = Field(..., description="Ticker o ID de serie activa")
@@ -123,7 +140,13 @@ class InterpretationContext(BaseModel):
     cagr: float = Field(default=0.0, description="CAGR anualizado proyectado")
     other_tickers: List[str] = Field(default_factory=list, description="Otros tickers en la cartera")
     macro_series: List[str] = Field(default_factory=list, description="Series macro en la tesis")
-    capex_summary: Optional[Dict[str, float]] = Field(default=None, description="Resumen de Capex por ticker")
+    capex_summary: Optional[Dict[str, float]] = Field(default=None, description="Resumen de Capex por ticker (clientes viejos: {'TICKER_PERIODO': valor}); `fundamentals` lo reemplaza")
+    series_type: Optional[Literal["equity", "macro"]] = Field(default=None, description="Tipo de la serie activa: 'precio' solo para acciones")
+    last_observation_date: Optional[str] = Field(default=None, description="Fecha del último dato de la serie activa")
+    target_date: Optional[str] = Field(default=None, description="Fecha a la que apunta la proyección")
+    fundamentals: Optional[List[FundamentalsMetric]] = Field(default=None, description="Fundamentales con su período (ejercicio fiscal)")
+    user_added_tickers: List[str] = Field(default_factory=list, description="Tickers que agregó el usuario a mano ('+ Ticker'); el resto los eligió el LLM al traducir la tesis")
+    macro_evidence: Optional[List[MacroEvidence]] = Field(default=None, description="Lo completa el servidor: último valor y cambio a 12 meses de cada serie FRED de la tesis")
     reliability_warning: Optional[str] = Field(default=None, description="Si el pronóstico fue marcado no confiable (ForecastResponse.reliability_warning), el texto; el copiloto tiene que decirlo")
 
 class InterpretationResponse(BaseModel):

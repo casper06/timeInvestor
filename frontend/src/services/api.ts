@@ -114,7 +114,16 @@ export interface InterpretationContext {
   cagr: number;
   other_tickers: string[];
   macro_series: string[];
+  /** Older clients; `fundamentals` (with each figure's fiscal year) replaces it. */
   capex_summary?: Record<string, number>;
+  series_type?: 'equity' | 'macro';
+  /** Date of the active series' last observation. */
+  last_observation_date?: string;
+  /** Date the projection points at. */
+  target_date?: string;
+  fundamentals?: FundamentalsMetric[];
+  /** Tickers the user added by hand; the rest were picked by the LLM. */
+  user_added_tickers?: string[];
 }
 
 export interface InterpretationResponse {

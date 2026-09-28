@@ -112,12 +112,31 @@ export function generateMarkdownReport(data: ReportData): string {
     );
   }
 
+  const thesisTickers = (data.thesis?.tickers || []).map((t) => t.symbol);
   if (data.fundamentals.length > 0) {
-    let fundBody = `| Ticker | Métrica | Periodo | Valor ($B USD) |\n| :--- | :--- | :--- | :--- |\n`;
-    data.fundamentals.slice(0, 15).forEach((f) => {
-      fundBody += `| ${f.ticker} | ${f.metric} | ${f.period} | $${f.value.toFixed(2)}B |\n`;
+    // One row per company with its last closed fiscal year (and the one
+    // before), for EVERY company: a fixed cut of 15 rows used to leave out all
+    // but the first two (8 rows each), e.g. only CEG and ETN of five.
+    const byTicker: Record<string, typeof data.fundamentals> = {};
+    data.fundamentals.forEach((f) => {
+      (byTicker[f.ticker] ||= []).push(f);
     });
-    addSection('Fundamentales Clave (Capex e Ingresos)', fundBody + '\n');
+    const cell = (rows: typeof data.fundamentals, key: string) => {
+      const r = rows.filter((f) => f.metric.toLowerCase().includes(key)).sort((a, b) => b.period.localeCompare(a.period));
+      if (r.length === 0) return 'sin datos';
+      return `$${r[0].value.toFixed(2)}B (ej. ${r[0].period})` + (r[1] ? ` · $${r[1].value.toFixed(2)}B (${r[1].period})` : '');
+    };
+    const tickers = [...new Set([...thesisTickers, ...Object.keys(byTicker)])];
+    let fundBody =
+      `*Empresas que eligió el LLM al traducir la tesis (y las que se agregaron a mano), no una muestra representativa: sus números no confirman la tesis.*\n\n` +
+      `| Ticker | Capex (último ejercicio cerrado) | Ingresos (último ejercicio cerrado) |\n| :--- | :--- | :--- |\n`;
+    tickers.forEach((t) => {
+      const rows = byTicker[t] || [];
+      fundBody += `| ${t} | ${cell(rows, 'capex')} | ${cell(rows, 'revenue')} |\n`;
+    });
+    const missing = tickers.filter((t) => !byTicker[t]);
+    if (missing.length > 0) fundBody += `\nSin fundamentales: ${missing.join(', ')}.\n`;
+    addSection('Fundamentales de las empresas seleccionadas (Capex e Ingresos)', fundBody + '\n');
   }
 
   // The three sections below only appear if the user actually ran that

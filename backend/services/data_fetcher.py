@@ -455,6 +455,7 @@ class FREDDataFetcher:
                             "series_id": series_id,
                             "title": entry.get("title", ""),
                             "notes": entry.get("notes", ""),
+                            "units": entry.get("units") or None,
                         }
                         cache.set(cache_key, metadata)
                         return metadata
