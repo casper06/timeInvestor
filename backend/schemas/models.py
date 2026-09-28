@@ -324,6 +324,10 @@ class CorrelationRequest(BaseModel):
     series_ids: List[str] = Field(..., min_length=2)
     period: str = Field(default="2y")
     mode: Literal["returns", "levels"] = Field(default="returns", description="returns (log-diff/pct_change) or levels")
+    series_types: Optional[Dict[str, Literal["equity", "macro"]]] = Field(
+        default=None,
+        description="Tipo de cada serie ({id: 'equity' | 'macro'}). Sin él, se decide por el catálogo y después "
+                    "preguntándole a FRED; un ID de FRED nunca se busca en yfinance")
 
 class CorrelationMatrixResponse(BaseModel):
     series_ids: List[str]

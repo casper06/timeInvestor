@@ -32,13 +32,19 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
     ...activeTickers.map((t) => t.symbol),
     ...activeMacro.map((m) => m.series_id),
   ];
+  // Each series' source, so the backend doesn't guess from a fixed catalog
+  // (a FRED ID outside it used to be looked up in yfinance).
+  const seriesTypes: Record<string, 'equity' | 'macro'> = {
+    ...Object.fromEntries(activeTickers.map((t) => [t.symbol, 'equity' as const])),
+    ...Object.fromEntries(activeMacro.map((m) => [m.series_id, 'macro' as const])),
+  };
 
   const loadCorrelations = async () => {
     if (seriesIds.length < 2) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchCorrelations(seriesIds, period);
+      const res = await fetchCorrelations(seriesIds, period, 'returns', seriesTypes);
       setData(res);
       onResult?.(res);
     } catch (err) {
