@@ -39,3 +39,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0026](0026-ruteo-fred-yfinance.md) | Ruteo FRED / yfinance por tipo y por FRED, no por catálogo fijo | Aceptada | 4.11 parcial |
 | [0027](0027-riesgo-centrado-y-semilla.md) | Riesgo sin tendencia por defecto (retornos centrados) y semilla nueva y visible en cada simulación | Aceptada | 4.19 |
 | [0028](0028-contexto-del-copiloto.md) | Contexto del copiloto: fechas, evidencia de FRED, empresas elegidas por el LLM (no confirman) | Aceptada | 4.20 |
+| [0029](0029-metadatos-reales-de-fred.md) | Metadatos reales de FRED (título, unidad, frecuencia, SA/NSA); "metadatos no disponibles" en vez de inventar | Aceptada | 4.3 (parte visible) |

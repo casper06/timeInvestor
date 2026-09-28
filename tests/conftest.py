@@ -40,7 +40,6 @@ def _offline_copilot_evidence(monkeypatch):
     def offline(series_id):
         raise ValueError("sin red en los tests")
     monkeypatch.setattr(copilot_context, "_fetch_series", offline)
-    monkeypatch.setattr(copilot_context, "_fetch_metadata", lambda series_id: {})
 
 
 @pytest.fixture(scope="session", autouse=True)

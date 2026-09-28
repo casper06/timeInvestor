@@ -40,17 +40,6 @@ def _fetch_series(series_id: str):
     return FREDDataFetcher().get_series(series_id)
 
 
-def _fetch_metadata(series_id: str) -> dict:
-    """FRED's own title and units (/fred/series). A series outside the catalog
-    otherwise arrives named "FRED Series X" with the unit "Index" filled in
-    by default: a guess, which the copilot must not state as data."""
-    from backend.services.data_fetcher import FREDDataFetcher
-    try:
-        return FREDDataFetcher().get_series_metadata(series_id)
-    except ValueError:
-        return {}
-
-
 def is_percent_unit(unit: Optional[str]) -> bool:
     """Rates and shares (DGS10, UNRATE): their change reads in points, not in %."""
     return bool(unit) and unit.strip().lower().startswith("percent")
@@ -67,11 +56,11 @@ def build_macro_evidence(series_ids: List[str]) -> List[MacroEvidence]:
         except ValueError as e:
             out.append(MacroEvidence(series_id=sid, missing_reason=str(e)))
             continue
-        from backend.services.data_fetcher import FREDDataFetcher
-        meta = _fetch_metadata(sid)
-        in_catalog = sid in FREDDataFetcher.SERIES_CATALOG
-        name = meta.get("title") or (data.name if in_catalog else None)
-        unit = meta.get("units") or (data.unit if in_catalog else None)
+        # Title, unit and SA/NSA as FRED reports them (fix/fred-metadata);
+        # nothing when FRED's metadata wasn't available.
+        from_fred = data.metadata_source == "fred"
+        name = data.name if from_fred else None
+        unit = data.unit if from_fred else None
         pts = sorted(data.points, key=lambda p: p.timestamp)
         if not pts:
             out.append(MacroEvidence(series_id=sid, missing_reason="la serie no trajo observaciones"))
@@ -81,7 +70,8 @@ def build_macro_evidence(series_ids: List[str]) -> List[MacroEvidence]:
         prior = next((p for p in reversed(pts) if p.timestamp[:10] <= a_year_before), None)
         ev = MacroEvidence(
             series_id=sid, name=name, unit=unit,
-            frequency=infer_frequency([p.timestamp for p in pts]) if len(pts) > 2 else None,
+            frequency=(data.source_frequency or infer_frequency([p.timestamp for p in pts])) if len(pts) > 2 else data.source_frequency,
+            seasonal_adjustment_short=data.seasonal_adjustment_short if from_fred else None,
             last_date=last.timestamp[:10], last_value=last.value,
         )
         if prior is not None:
@@ -125,6 +115,8 @@ def _macro_line(ev: MacroEvidence) -> str:
         return f"- {ev.series_id}: sin datos ({ev.missing_reason})"
     unit = f" {ev.unit}" if ev.unit else " (unidad no informada)"
     freq = f", {ev.frequency}" if ev.frequency else ""
+    if ev.seasonal_adjustment_short:
+        freq += f", {ev.seasonal_adjustment_short}"
     name = ev.name or "título no informado"
     line = f"- {ev.series_id} ({name}): último dato {ev.last_value:,.4g}{unit} ({ev.last_date}{freq})"
     if ev.prior_value is not None:

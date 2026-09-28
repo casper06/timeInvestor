@@ -200,15 +200,18 @@ def test_mock_without_world_evidence_says_it_cannot_tell():
 def test_evidence_uses_freds_title_and_units_never_a_guessed_unit(monkeypatch):
     def fake(sid):
         pts = [TimeSeriesPoint(timestamp=f"{2025 + (m // 12)}-{m % 12 + 1:02d}-01", value=3.5 + m * 0.05) for m in range(19)]
-        return TimeSeriesData(id=sid, name=f"FRED Series {sid}", type="macro", unit="Index", points=pts, source="live")
+        if sid == "RATEX":   # FRED answered its metadata (fix/fred-metadata)
+            return TimeSeriesData(id=sid, name="Market Yield on 10-Year", type="macro", unit="Percent", points=pts,
+                                  source="live", metadata_source="fred", source_frequency="Monthly",
+                                  seasonal_adjustment_short="NSA")
+        return TimeSeriesData(id=sid, name=sid, type="macro", unit=None, points=pts, source="live",
+                              metadata_source="unavailable", metadata_note="metadatos no disponibles: x")
     monkeypatch.setattr(copilot_context, "_fetch_series", fake)
-    monkeypatch.setattr(copilot_context, "_fetch_metadata",
-                        lambda sid: {"title": "Market Yield on 10-Year", "units": "Percent"} if sid == "RATEX" else {})
     rate, unknown = build_macro_evidence(["RATEX", "PCUX"])
-    assert rate.name == "Market Yield on 10-Year" and rate.unit == "Percent"
+    assert rate.name == "Market Yield on 10-Year" and rate.unit == "Percent" and rate.seasonal_adjustment_short == "NSA"
     assert unknown.name is None and unknown.unit is None   # not "FRED Series PCUX" / "Index"
     text = interpretation_context_text(_ctx(macro_evidence=[rate, unknown]))
-    assert "RATEX (Market Yield on 10-Year): último dato 4.4 Percent" in text
+    assert "RATEX (Market Yield on 10-Year): último dato 4.4 Percent (2026-07-01, Monthly, NSA)" in text
     assert "cambio +0.60 puntos porcentuales" in text and "%" not in text.split("RATEX")[1].split("\n")[0].replace("Percent", "")
     assert "PCUX (título no informado): último dato 4.4 (unidad no informada)" in text
     mock = asyncio.run(lr.MockLLMClient().interpret_situation(_ctx(macro_evidence=[rate])))

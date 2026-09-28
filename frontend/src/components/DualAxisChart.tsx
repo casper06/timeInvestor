@@ -13,6 +13,7 @@ import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { GitCompare } from 'lucide-react';
 import { fetchMarketData, fetchMacroData } from '../services/api';
+import { seriesMetaText } from '../utils/valueFormat';
 import type { TimeSeriesData } from '../services/api';
 import { ExplainerPanel } from './ExplainerPanel';
 
@@ -98,7 +99,7 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
     labels: recentDates,
     datasets: [
       {
-        label: `${primarySeriesData.id} (${isNormalized ? 'Base 100' : primarySeriesData.unit})`,
+        label: `${primarySeriesData.id} (${isNormalized ? 'Base 100' : seriesMetaText(primarySeriesData)})`,
         data: pValues,
         borderColor: '#38bdf8', // Cyan
         backgroundColor: '#38bdf8',
@@ -112,7 +113,7 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
       ...(secondaryData
         ? [
             {
-              label: `${secondaryData.id} (${isNormalized ? 'Base 100' : secondaryData.unit})`,
+              label: `${secondaryData.id} (${isNormalized ? 'Base 100' : seriesMetaText(secondaryData)})`,
               data: sValues,
               borderColor: '#f59e0b', // Amber
               backgroundColor: '#f59e0b',
@@ -170,14 +171,14 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
             position: 'left',
             grid: { color: 'rgba(51, 65, 85, 0.25)' },
             ticks: { color: '#38bdf8', font: { size: 10, family: 'monospace' } },
-            title: { display: true, text: `${primarySeriesData.id} (${primarySeriesData.unit})`, color: '#38bdf8' },
+            title: { display: true, text: `${primarySeriesData.id} (${seriesMetaText(primarySeriesData)})`, color: '#38bdf8' },
           },
           ySecondary: {
             type: 'linear',
             position: 'right',
             grid: { drawOnChartArea: false },
             ticks: { color: '#f59e0b', font: { size: 10, family: 'monospace' } },
-            title: { display: true, text: `${secondaryData?.id || ''} (${secondaryData?.unit || ''})`, color: '#f59e0b' },
+            title: { display: true, text: `${secondaryData?.id || ''} (${seriesMetaText(secondaryData)})`, color: '#f59e0b' },
           },
         },
   };
@@ -263,8 +264,12 @@ export const DualAxisChart: React.FC<DualAxisChartProps> = ({
 
       {/* Footer Info */}
       <div className="flex justify-between items-center text-[11px] text-slate-500 font-mono pt-1">
-        <span>Eje Izquierdo (Cyan): {primarySeriesData.name}</span>
-        <span>Eje Derecho (Ámbar): {secondaryData?.name || 'Selecciona una serie'}</span>
+        <span data-testid="dual-left">
+          Eje Izquierdo (Cyan): {primarySeriesData.name} — {seriesMetaText(primarySeriesData)}
+        </span>
+        <span data-testid="dual-right">
+          Eje Derecho (Ámbar): {secondaryData ? `${secondaryData.name} — ${seriesMetaText(secondaryData)}` : 'Selecciona una serie'}
+        </span>
       </div>
     </div>
   );

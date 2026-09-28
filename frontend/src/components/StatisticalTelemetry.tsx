@@ -2,7 +2,7 @@ import React from 'react';
 import { Gauge, ArrowUpRight, ArrowDownRight, Minus, Activity, ShieldAlert, Compass } from 'lucide-react';
 import type { TimeSeriesData, ForecastResponse } from '../services/api';
 import { horizonLabel, seriesFrequency } from '../utils/horizon';
-import { formatValue, isPriceSeries } from '../utils/valueFormat';
+import { formatValue, isPriceSeries, seriesMetaText } from '../utils/valueFormat';
 
 interface StatisticalTelemetryProps {
   seriesData: TimeSeriesData | null;
@@ -85,6 +85,11 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
           <h3 className="text-sm font-semibold text-slate-200">
             Telemetría y Resumen Estadístico ({seriesData.id})
           </h3>
+          {seriesData.type === 'macro' && (
+            <span data-testid="telemetry-series-meta" className="text-[10px] font-mono text-slate-500">
+              {seriesMetaText(seriesData)}
+            </span>
+          )}
         </div>
         <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
           Puro Dato • Sin Sesgo
