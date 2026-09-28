@@ -388,6 +388,8 @@ class PortfolioRiskRequest(BaseModel):
     method: Literal["bootstrap", "student_t", "gaussian"] = Field(default="bootstrap", description="Simulation engine method")
     n_simulations: int = Field(default=10_000, ge=1_000, le=100_000, description="Number of Monte Carlo paths")
     block_size: Optional[int] = Field(default=None, ge=2, le=100, description="Block size for bootstrap")
+    seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1, description="Semilla de la simulación. Sin ella, cada pedido usa una nueva; la usada vuelve en la respuesta para reproducirla")
+    drift: Literal["centered", "historical"] = Field(default="centered", description="centered: retornos centrados en 0 (sin la tendencia del período histórico); historical: con la media histórica, como antes")
 
 
 class RiskMetricDetail(BaseModel):
@@ -419,6 +421,9 @@ class PortfolioRiskResponse(BaseModel):
     prob_loss_30pct: float
     histogram: HistogramData
     warnings: List[str] = Field(default_factory=list)
+    seed_used: int = Field(..., description="Semilla con la que se simuló: mandarla de nuevo reproduce el resultado")
+    drift_used: Literal["centered", "historical"] = Field(..., description="Si se simuló sin tendencia (centered) o con la del período histórico")
+    historical_drift_annual: float = Field(..., description="Tendencia media anual de la cartera en el período histórico (log, ×252): lo que 'centered' quita")
 
 
 # Dynamic Rebalancing Backtest Schemas

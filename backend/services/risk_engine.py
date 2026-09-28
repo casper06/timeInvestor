@@ -12,6 +12,7 @@ Implements multi-asset risk evaluation:
 """
 
 import logging
+import secrets
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
@@ -255,21 +256,35 @@ class RiskEngine:
 
         warnings_list = []
 
+        # A new seed on every request unless one is given: the same click used
+        # to give the same numbers forever (seed 42). The one used goes back in
+        # the response, so any result can be reproduced.
+        seed = int(req.seed) if req.seed is not None else secrets.randbits(32)
+
+        # Trend: the historical mean return of the period (e.g. two years of a
+        # rally) is not a forecast. By default the returns are centered on 0
+        # per asset, so the simulated losses come from the volatility and the
+        # co-movement, not from assuming the past trend repeats. "historical"
+        # keeps it, as before. Measured in docs/results/risk_drift_2026-09-27.md.
+        historical_drift_annual = float(np.dot(returns_arr.mean(axis=0), w_vec) * 252.0)
+        if req.drift == "centered":
+            returns_arr = returns_arr - returns_arr.mean(axis=0, keepdims=True)
+
         # 3. Simulate return distribution over horizon H
         if req.method == "bootstrap":
             portfolio_returns = cls.simulate_bootstrap(
-                returns_arr, w_vec, req.horizon_days, req.n_simulations, req.block_size
+                returns_arr, w_vec, req.horizon_days, req.n_simulations, req.block_size, seed=seed
             )
         elif req.method == "student_t":
             portfolio_returns, warn = cls.simulate_student_t(
-                returns_arr, w_vec, req.horizon_days, req.n_simulations
+                returns_arr, w_vec, req.horizon_days, req.n_simulations, seed=seed
             )
             if warn:
                 warnings_list.append(warn)
         else:
             # Gaussian
             portfolio_returns, warn = cls.simulate_gaussian(
-                returns_arr, w_vec, req.horizon_days, req.n_simulations
+                returns_arr, w_vec, req.horizon_days, req.n_simulations, seed=seed
             )
             warnings_list.append(warn)
 
@@ -345,5 +360,8 @@ class RiskEngine:
             prob_loss_20pct=round(prob_loss_20, 4),
             prob_loss_30pct=round(prob_loss_30, 4),
             histogram=hist_data,
-            warnings=warnings_list
+            warnings=warnings_list,
+            seed_used=seed,
+            drift_used=req.drift,
+            historical_drift_annual=round(historical_drift_annual, 4),
         )
