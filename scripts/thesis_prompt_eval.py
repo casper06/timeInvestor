@@ -21,6 +21,14 @@ import os
 import sys
 import time
 
+def is_daily_quota(text) -> bool:
+    """Gemini's 429 for the DAILY quota (quotaId ...PerDay..., e.g.
+    GenerateRequestsPerDayPerProjectPerModel-FreeTier): retrying it only burns
+    requests until the next day. A per-minute 429 (...PerMinute...) is worth
+    retrying. Decided from the error body, not the status code (both are 429)."""
+    return "PerDay" in str(text or "")
+
+
 THESES = [
     "Demanda eléctrica por centros de datos de IA",
     "La IA es una burbuja",
@@ -54,6 +62,15 @@ def main():
         return original_run(*a, **k)
     lr._run_cli_subprocess = run_with_timeout
 
+    # The evaluation never retries a daily-quota 429 (production's
+    # _call_with_retry retries every 429 twice): each retry costs a request of
+    # the same exhausted daily quota. Per-minute 429s keep being retried.
+    original_retryable = lr._is_retryable
+
+    def retryable(exc):
+        return False if is_daily_quota(exc) else original_retryable(exc)
+    lr._is_retryable = retryable
+
     raw = {}
     if hasattr(lr, "_thesis_response"):          # new code: keep the model's raw JSON too
         original = lr._thesis_response
@@ -69,12 +86,18 @@ def main():
         return lr.ClaudeCliLLMClient(model=args.model)
 
     results = []
+    daily_quota_hit = None
     for i, thesis in enumerate(THESES):
-        if i:
+        if i and not daily_quota_hit:
             time.sleep(args.gap)
         attempts = []
         cell = None
         for attempt in range(3):
+            if daily_quota_hit:
+                # Daily quota exhausted: no more requests today; the cell is
+                # "sin dato" with that reason, never a mix of days.
+                attempts.append({"seconds": 0.0, "fallback_reason": f"no se intentó: cupo diario agotado ({daily_quota_hit})"})
+                break
             if attempt:
                 time.sleep(65)
             t0 = time.time()
@@ -82,9 +105,12 @@ def main():
             seconds = round(time.time() - t0, 1)
             if r.provider_used == "mock-semantic-engine" or r.fallback_reason:
                 attempts.append({"seconds": seconds, "fallback_reason": r.fallback_reason})
+                if is_daily_quota(r.fallback_reason):
+                    daily_quota_hit = time.strftime("%Y-%m-%d %H:%M")
                 continue
             cell = r.model_dump()
             cell["seconds"] = seconds
+            cell["run_at"] = time.strftime("%Y-%m-%d %H:%M")
             break
         results.append({"thesis": thesis, "label": args.label, "model": args.model,
                         "status": "ok" if cell else "sin dato", "response": cell,
