@@ -94,6 +94,7 @@ class ForecastResponse(BaseModel):
     reliable: bool = Field(default=True, description="False si el pronóstico es implausible: se mueve más de 2 veces lo máximo que la serie se movió en ese horizonte en su historia (backend/services/reliability.py). Los números no se tocan")
     reliability_warning: Optional[str] = Field(default=None, description="Por qué el pronóstico no es confiable (None si lo es)")
     skill: Optional[ForecastSkill] = Field(default=None, description="Capacidad de pronóstico contra el naive (4.13)")
+    seasonality: Optional["SeasonalityInfo"] = Field(default=None, description="Detector de 3.0a sobre los puntos pronosticados: la UI oculta la 'inercia' en series estacionales")
 
 class FundamentalsMetric(BaseModel):
     ticker: str
@@ -317,6 +318,7 @@ class BacktestResponse(BaseModel):
     cutoff_date: str
     horizon: int
     frequency: Optional[str] = Field(default=None, description="Frecuencia de la serie inferida de las fechas: unidad de `horizon`")
+    unit: Optional[str] = Field(default=None, description="Unidad de la serie evaluada (la del MAE): el informe no la toma de otra serie")
     historical_dates: List[str]
     historical_values: List[float]
     future_actual_dates: List[str]
@@ -345,6 +347,10 @@ class CorrelationRequest(BaseModel):
     series_ids: List[str] = Field(..., min_length=2)
     period: str = Field(default="2y")
     mode: Literal["returns", "levels"] = Field(default="returns", description="returns (log-diff/pct_change) or levels")
+    series_types: Optional[Dict[str, Literal["equity", "macro"]]] = Field(
+        default=None,
+        description="Tipo de cada serie ({id: 'equity' | 'macro'}). Sin él, se decide por el catálogo y después "
+                    "preguntándole a FRED; un ID de FRED nunca se busca en yfinance")
 
 class CorrelationMatrixResponse(BaseModel):
     series_ids: List[str]
@@ -405,6 +411,8 @@ class PortfolioRiskRequest(BaseModel):
     method: Literal["bootstrap", "student_t", "gaussian"] = Field(default="bootstrap", description="Simulation engine method")
     n_simulations: int = Field(default=10_000, ge=1_000, le=100_000, description="Number of Monte Carlo paths")
     block_size: Optional[int] = Field(default=None, ge=2, le=100, description="Block size for bootstrap")
+    seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1, description="Semilla de la simulación. Sin ella, cada pedido usa una nueva; la usada vuelve en la respuesta para reproducirla")
+    drift: Literal["centered", "historical"] = Field(default="centered", description="centered: retornos centrados en 0 (sin la tendencia del período histórico); historical: con la media histórica, como antes")
 
 
 class RiskMetricDetail(BaseModel):
@@ -436,6 +444,9 @@ class PortfolioRiskResponse(BaseModel):
     prob_loss_30pct: float
     histogram: HistogramData
     warnings: List[str] = Field(default_factory=list)
+    seed_used: int = Field(..., description="Semilla con la que se simuló: mandarla de nuevo reproduce el resultado")
+    drift_used: Literal["centered", "historical"] = Field(..., description="Si se simuló sin tendencia (centered) o con la del período histórico")
+    historical_drift_annual: float = Field(..., description="Tendencia media anual de la cartera en el período histórico (log, ×252): lo que 'centered' quita")
 
 
 # Dynamic Rebalancing Backtest Schemas
@@ -491,3 +502,6 @@ class RebalanceBacktestResponse(BaseModel):
     verdict: str
     warnings: List[str] = Field(default_factory=list)
 
+
+# ForecastResponse.seasonality refers to SeasonalityInfo, defined further down.
+ForecastResponse.model_rebuild()

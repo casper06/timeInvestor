@@ -101,6 +101,12 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
   const [riskHorizon, setRiskHorizon] = useState<number>(30);
   const [initialCapital, setInitialCapital] = useState<number>(100000);
   const [simMethod, setSimMethod] = useState<'bootstrap' | 'student_t' | 'gaussian'>('bootstrap');
+  // Centered by default: the period's trend (e.g. two years of a rally) is not
+  // a forecast, and keeping it shrinks the simulated losses
+  // (docs/results/risk_drift_2026-09-27.md).
+  const [simDrift, setSimDrift] = useState<'centered' | 'historical'>('centered');
+  // Empty = a new seed on every click; a number reproduces that run.
+  const [seedInput, setSeedInput] = useState<string>('');
   const [simulating, setSimulating] = useState(false);
   const [riskResult, setRiskResult] = useState<PortfolioRiskResponse | null>(null);
   const [riskError, setRiskError] = useState<string | null>(null);
@@ -189,6 +195,8 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         initial_capital: initialCapital,
         method: simMethod,
         n_simulations: 10000,
+        drift: simDrift,
+        seed: seedInput.trim() === '' ? undefined : Number(seedInput),
       });
       setRiskResult(res);
     } catch (err: any) {
@@ -885,6 +893,34 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
                 />
               </div>
 
+              {/* Trend: centered (default) or historical */}
+              <div>
+                <label className="block text-slate-400 mb-1">Tendencia</label>
+                <select
+                  data-testid="risk-drift-select"
+                  value={simDrift}
+                  onChange={(e) => setSimDrift(e.target.value as 'centered' | 'historical')}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200 focus:outline-none"
+                >
+                  <option value="centered">Sin tendencia (centrado)</option>
+                  <option value="historical">Con la tendencia histórica</option>
+                </select>
+              </div>
+
+              {/* Seed: empty = new each run */}
+              <div>
+                <label className="block text-slate-400 mb-1">Semilla</label>
+                <input
+                  data-testid="risk-seed-input"
+                  type="number"
+                  min="0"
+                  placeholder="nueva en cada clic"
+                  value={seedInput}
+                  onChange={(e) => setSeedInput(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-200 font-mono focus:outline-none placeholder:font-sans placeholder:text-slate-500"
+                />
+              </div>
+
               {/* Initial Capital */}
               <div className="col-span-2">
                 <label className="block text-slate-400 mb-1">Capital Inicial (USD)</label>
@@ -925,8 +961,35 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
                   Métricas a {riskResult.horizon_days} días (Capital: ${riskResult.initial_capital.toLocaleString()})
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  10,000 caminos • {riskResult.method_used}
+                  {riskResult.n_simulations.toLocaleString()} caminos • {riskResult.method_used}
                 </span>
+              </div>
+
+              {/* Which trend and which seed produced these numbers */}
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <span
+                  data-testid="risk-drift-label"
+                  className={`px-2 py-0.5 rounded-md border ${
+                    riskResult.drift_used === 'centered'
+                      ? 'bg-slate-800/80 border-slate-700 text-slate-300'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  }`}
+                >
+                  {riskResult.drift_used === 'centered'
+                    ? `Sin tendencia: retornos centrados en 0 (se quitó la tendencia histórica de ${(riskResult.historical_drift_annual * 100).toFixed(1)}% anual)`
+                    : `Con la tendencia histórica del período (${(riskResult.historical_drift_annual * 100).toFixed(1)}% anual): supone que se repite`}
+                </span>
+                <span data-testid="risk-seed" className="font-mono text-slate-400">
+                  semilla {riskResult.seed_used}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSeedInput(String(riskResult.seed_used))}
+                  className="text-cyan-400 hover:text-cyan-300 underline-offset-2 hover:underline cursor-pointer"
+                  title="Fija esta semilla: la próxima simulación repite exactamente estos números"
+                >
+                  reproducir
+                </button>
               </div>
 
               {/* VaR and CVaR Badges */}

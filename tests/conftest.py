@@ -22,6 +22,16 @@ from backend.database import connection  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
+def _offline_series_routing(monkeypatch):
+    """series_routing asks FRED whether an untyped ID is a FRED series. The
+    suite never does that over the network: by default FRED "can't be asked"
+    (same as no key). tests/test_series_routing.py replaces it with fakes."""
+    from backend.services import series_routing
+    series_routing.clear_routing_cache()
+    monkeypatch.setattr(series_routing, "_fred_knows", lambda series_id: None)
+
+
+@pytest.fixture(autouse=True)
 def _offline_copilot_evidence(monkeypatch):
     """The copilot's FRED evidence is fetched server side; the suite never
     does that over the network (tests/test_copilot_context.py fakes it)."""

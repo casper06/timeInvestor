@@ -49,6 +49,7 @@ from backend.schemas.models import (
 )
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError
+from backend.services.series_routing import is_fred_series
 from backend.services.llm_router import get_llm_client
 from backend.services.engine_selector import EngineSelector
 from backend.services.forecast_engine import HoltWintersForecastEngine, NotSeasonalError
@@ -535,9 +536,9 @@ def run_backtest(payload: BacktestRequest):
             cutoff_date=payload.cutoff_date,
             horizon=payload.horizon,
             confidence=payload.confidence,
-            # FRED series outside FREDDataFetcher.SERIES_CATALOG (UNRATE) only
-            # reach FRED if the caller says what the series is (2.7).
-            is_macro=payload.series_type == "macro",
+            # The caller's type decides (2.7); without one, series_routing asks
+            # the catalog and then FRED itself (4.11, partial).
+            is_macro=is_fred_series(payload.series_id, payload.series_type),
             engine_override=HoltWintersForecastEngine() if payload.engine == "holt_winters" else None,
         )
     except NotSeasonalError as nse:
@@ -548,7 +549,8 @@ def run_backtest(payload: BacktestRequest):
             raise HTTPException(status_code=422, detail=err_msg)
         if payload.series_type is None and "yfinance" in err_msg:
             err_msg = (err_msg.rstrip(". ") + ". La serie se buscó en yfinance porque el pedido no dice de qué "
-                       "tipo es: si es una serie de FRED, mandá series_type='macro'.")
+                       "tipo es y FRED no la reconoció (o no se pudo consultar): si es una serie de FRED, "
+                       "mandá series_type='macro'.")
         raise HTTPException(status_code=400, detail=err_msg)
     except Exception as e:
         logger.error(f"Error running backtest: {e}", exc_info=True)
@@ -563,7 +565,8 @@ def compute_correlations(payload: CorrelationRequest):
         return CorrelationEngine.calculate_correlations(
             series_ids=payload.series_ids,
             period=payload.period,
-            mode=payload.mode
+            mode=payload.mode,
+            series_types=payload.series_types,
         )
     except ValueError as ve:
         err_msg = str(ve)

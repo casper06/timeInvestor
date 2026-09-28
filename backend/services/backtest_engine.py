@@ -244,35 +244,35 @@ class BacktestEngine:
                 f"está sustancialmente por debajo del nivel nominal del intervalo ({nominal_coverage:.0f}%)."
             )
 
-        if mae < naive_mae:
-            mae_improvement = ((naive_mae - mae) / (naive_mae + epsilon)) * 100.0
-            verdict = (
-                f"El modelo supera al benchmark naive (Random Walk) reduciendo el MAE un {mae_improvement:.1f}% "
-                f"(MAE Modelo: {mae:.2f} vs Naive: {naive_mae:.2f} {data.unit}). "
-                f"Acierto direccional paso a paso: {directional_accuracy:.1f}%, Cobertura: {interval_coverage:.1f}%."
-            )
-        else:
-            verdict = (
-                f"El modelo NO supera al benchmark naive (Random Walk). "
-                f"El error del modelo (MAE {mae:.2f} {data.unit}) es superior a la persistencia naive ({naive_mae:.2f} {data.unit}). "
-                f"Calibración deficiente frente a la inercia del último precio observado."
-            )
-
+        # The verdict leads with the MORE DEMANDING naive, the one with the lower
+        # error on this cutoff (3.5's criterion, capability() in
+        # scripts/fred_category_benchmark.py); the other one follows as
+        # secondary data. A tie keeps the random walk first.
+        rivals = [("rw", naive_mae)]
         if seasonal_naive_metrics is not None:
-            snaive_mae = seasonal_naive_metrics.mae
-            if mae < snaive_mae:
-                verdict += (
-                    f" Serie estacional (m={seasonality.period}): frente al naive estacional (mismo período "
-                    f"del ciclo anterior) el modelo también gana, reduciendo el MAE un "
-                    f"{(snaive_mae - mae) / (snaive_mae + epsilon) * 100:.1f}% "
-                    f"({_mase_s_text(mase_seasonal)})."
-                )
+            rivals.append(("snaive", seasonal_naive_metrics.mae))
+        rivals.sort(key=lambda r: r[1])
+
+        def _against(kind: str, rival_mae: float, primary: bool) -> str:
+            if kind == "rw":
+                name = "random walk (igual que el último dato)"
+                extra = ""
             else:
-                verdict += (
-                    f" Serie estacional (m={seasonality.period}): el modelo NO supera al naive estacional "
-                    f"(MAE {mae:.2f} vs {snaive_mae:.2f} {data.unit}; {_mase_s_text(mase_seasonal)}). "
-                    f"Repetir el mismo período del ciclo anterior predice mejor."
-                )
+                name = f"naive estacional (mismo período del ciclo anterior, m={seasonality.period})"
+                extra = f"; {_mase_s_text(mase_seasonal)}"
+            gap = (rival_mae - mae) / (rival_mae + epsilon) * 100.0
+            lead = ("Frente al naive más exigente en este corte, " if primary and len(rivals) > 1
+                    else "" if primary else "Dato secundario: ")
+            subj = "el modelo" if lead else "El modelo"
+            if mae < rival_mae:
+                return (f"{lead}{subj} supera al {name}: MAE {mae:.2f} contra {rival_mae:.2f} {data.unit} "
+                        f"({gap:.1f}% menos{extra}).")
+            return (f"{lead}{subj} NO supera al {name}: MAE {mae:.2f} contra {rival_mae:.2f} {data.unit} "
+                    f"({-gap:.1f}% más{extra}).")
+
+        verdict = " ".join(_against(kind, rival_mae, i == 0) for i, (kind, rival_mae) in enumerate(rivals))
+        verdict += (f" Acierto direccional paso a paso: {directional_accuracy:.1f}%, "
+                    f"cobertura: {interval_coverage:.1f}% (nivel nominal {nominal_coverage:.0f}%).")
 
         display_train = train_points[-120:]
 
@@ -281,6 +281,7 @@ class BacktestEngine:
             cutoff_date=cutoff_date,
             horizon=eval_horizon,
             frequency=frequency,
+            unit=data.unit,
             historical_dates=[p.timestamp for p in display_train],
             historical_values=[p.value for p in display_train],
             future_actual_dates=[p.timestamp for p in actual_eval_points],

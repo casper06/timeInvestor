@@ -262,3 +262,50 @@ describe('ForecastChart horizon in the series unit (4.14)', () => {
     }
   });
 });
+
+describe('ForecastChart forecast skill badge (4.13, moved next to "Serie activa")', () => {
+  const fc = (state: 'aporta' | 'no_aporta', reason: string) => ({
+    timestamps: ['2026-01-04'],
+    values: [256],
+    lower_bound: [240],
+    upper_bound: [270],
+    model_name: 'damped-holt-mle',
+    skill: { state, reason, naive: 'random_walk' as const },
+  });
+
+  it('shows the selected series verdict in the chart panel and changes with the series', () => {
+    const first = render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={cegSeriesData}
+        forecast={fc('no_aporta', 'le gana en 6 de 8 cutoffs, 7% menos')}
+        selectedSeriesId="CEG"
+        allSeriesList={allSeriesList}
+      />
+    );
+    const badge = screen.getByTestId('skill-badge');
+    expect(badge).toHaveAttribute('data-state', 'no_aporta');
+    expect(badge).toHaveAttribute('data-series', 'CEG');
+    expect(badge).toHaveTextContent('Capacidad de pronóstico (CEG): No aporta más que el naive');
+    expect(badge).toHaveTextContent('6 de 8 cutoffs');
+
+    const ipg = { ...cegSeriesData, id: 'IPG2211N', name: 'Electric Power', type: 'macro', unit: 'Index' };
+    first.unmount(); // a chart.js re-render doesn't run in jsdom; a fresh render is the same props change
+    render(
+      <ForecastChart
+        {...baseProps}
+        seriesData={ipg}
+        forecast={fc('aporta', 'le gana en 18 de 24 cutoffs')}
+        selectedSeriesId="IPG2211N"
+        allSeriesList={allSeriesList}
+      />
+    );
+    expect(screen.getByTestId('skill-badge')).toHaveAttribute('data-state', 'aporta');
+    expect(screen.getByTestId('skill-badge')).toHaveTextContent('Capacidad de pronóstico (IPG2211N): Aporta sobre el naive');
+  });
+
+  it('shows no badge while the selected series has no forecast yet', () => {
+    render(<ForecastChart {...baseProps} seriesData={cegSeriesData} selectedSeriesId="CEG" allSeriesList={allSeriesList} />);
+    expect(screen.queryByTestId('skill-badge')).not.toBeInTheDocument();
+  });
+});

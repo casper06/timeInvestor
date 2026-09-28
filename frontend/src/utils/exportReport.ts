@@ -9,6 +9,13 @@ import type {
   PortfolioOptimizeResponse,
 } from '../services/api';
 import { horizonLabel, seriesFrequency } from './horizon';
+import { formatValue, isPriceSeries } from './valueFormat';
+
+const SKILL_TEXT = {
+  aporta: 'aporta sobre el naive',
+  no_aporta: 'no aporta más que el naive',
+  no_evaluado: 'no evaluado',
+} as const;
 
 export interface ReportData {
   thesis: ThesisResponse | null;
@@ -65,11 +72,29 @@ export function generateMarkdownReport(data: ReportData): string {
   });
   addSection('Asignación de Activos y Ponderaciones', allocationBody + '\n');
 
+  // "$" and "Precio" only for equities; a macro series is a value in its unit.
+  const sd = data.seriesData;
+  const price = isPriceSeries(sd);
+  const fmt = (v: number) => formatValue(v, sd);
+  const hLabel = horizonLabel(data.horizon, seriesFrequency(sd?.frequency));
+  const pct = `${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%`;
+  const band = `[${fmt(lb)} — ${fmt(ub)}]`;
+  const skill = data.forecast?.skill;
+  const naiveWords =
+    skill?.naive === 'naive_estacional' ? 'igual que el mismo período del ciclo anterior' : 'igual que el último dato';
+  // When the point forecast doesn't beat the naive, the range goes first (4.13).
+  const projection =
+    skill?.state === 'no_aporta'
+      ? `- **Rango proyectado (+${hLabel}, ${Math.round(data.confidence * 100)}% CI):** ${band}\n` +
+        `- **Punto central (secundario):** ${fmt(target)} (${pct}). El pronóstico puntual no supera a '${naiveWords}'.\n`
+      : `- **${price ? 'Precio objetivo proyectado' : 'Valor proyectado'} (+${hLabel}):** ${fmt(target)} (${pct})\n` +
+        `- **Banda de Confianza (${Math.round(data.confidence * 100)}% CI):** ${band}\n`;
+
   addSection(
-    `Telemetría y Proyección Temporal (${data.seriesData?.id || 'Activo Central'})`,
-    `- **Último Precio Real:** $${lastPrice.toFixed(2)} ${data.seriesData?.unit || 'USD'}\n` +
-      `- **Precio Objetivo Proyectado (+${horizonLabel(data.horizon, seriesFrequency(data.seriesData?.frequency))}):** $${target.toFixed(2)} (${deltaPct >= 0 ? '+' : ''}${deltaPct.toFixed(1)}%)\n` +
-      `- **Banda de Confianza (${Math.round(data.confidence * 100)}% CI):** [$${lb.toFixed(2)} — $${ub.toFixed(2)}]\n` +
+    `Telemetría y Proyección Temporal (${sd?.id || 'Activo Central'})`,
+    `- **${price ? 'Último precio real' : 'Último valor'}:** ${fmt(lastPrice)}\n` +
+      projection +
+      (skill ? `- **Capacidad de pronóstico:** ${SKILL_TEXT[skill.state]} — ${skill.reason}\n` : '') +
       (data.forecast?.reliable === false
         ? `- **⚠ ${data.forecast.reliability_warning || 'Pronóstico no confiable.'}**\n`
         : '') +
@@ -120,8 +145,10 @@ export function generateMarkdownReport(data: ReportData): string {
   // seen there), rather than being silent about analyses the user DID run.
   if (data.lastBacktest) {
     const bt = data.lastBacktest;
+    // The last Reality Check may be of another series than the one on screen:
+    // named in the title, and its MAE in ITS unit, never the on-screen one's.
     addSection(
-      'Reality Check (Backtest Histórico)',
+      `Reality Check (Backtest Histórico, ${bt.series_id})`,
       `**Veredicto:** ${bt.verdict}\n\n` +
         `- **Fecha de corte evaluada:** ${bt.cutoff_date} (horizonte: ${horizonLabel(bt.horizon, seriesFrequency(bt.frequency))})\n` +
         `- **Acierto direccional:** ${bt.metrics.directional_accuracy.toFixed(1)}%\n` +
@@ -129,8 +156,12 @@ export function generateMarkdownReport(data: ReportData): string {
           bt.metrics.mape != null
             ? `${bt.metrics.mape.toFixed(2)}%`
             : `no definido (${bt.metrics.undefined?.mape || 'sin motivo informado'})`
-        } • **MAE:** ${bt.metrics.mae.toFixed(2)}\n` +
-        (bt.interval_coverage !== undefined ? `- **Cobertura del intervalo:** ${bt.interval_coverage.toFixed(1)}%\n` : '') +
+        } • **MAE:** ${bt.metrics.mae.toFixed(2)}${bt.unit ? ` ${bt.unit}` : ''}\n` +
+        (bt.interval_coverage !== undefined
+          ? `- **Cobertura del intervalo:** ${bt.interval_coverage.toFixed(1)}%` +
+            (bt.interval_level != null ? ` (nivel nominal ${Math.round(bt.interval_level * 100)}%)` : '') +
+            `\n`
+          : '') +
         `\n`
     );
   }

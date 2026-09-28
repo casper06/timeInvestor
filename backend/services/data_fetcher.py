@@ -73,6 +73,12 @@ class SimpleCache:
 cache = SimpleCache(ttl_seconds=settings.CACHE_TTL_SECONDS)
 
 
+class MarketDataUnavailableError(ValueError):
+    """yfinance returned no data and synthetic data isn't allowed. Its own type
+    so get_history's catch-all doesn't wrap it a second time (the message used
+    to end in "y ALLOW_SYNTHETIC_DATA=false y ALLOW_SYNTHETIC_DATA=false")."""
+
+
 class MarketDataFetcher:
     """Ingests market and financial statement data using yfinance."""
 
@@ -106,7 +112,8 @@ class MarketDataFetcher:
                 detail = f"yfinance devolvió dataframe vacío para {clean_ticker}"
                 logger.warning(detail)
                 if not settings.ALLOW_SYNTHETIC_DATA:
-                    raise ValueError(f"No se pudieron obtener datos de mercado para '{clean_ticker}' ({detail}) y ALLOW_SYNTHETIC_DATA=false")
+                    raise MarketDataUnavailableError(
+                        f"No se pudieron obtener datos de mercado para '{clean_ticker}' ({detail}) y ALLOW_SYNTHETIC_DATA=false")
                 return MarketDataFetcher._generate_synthetic_equity(clean_ticker, period, detail=detail)
 
             points: List[TimeSeriesPoint] = []
@@ -139,6 +146,8 @@ class MarketDataFetcher:
             cache.set(cache_key, series_data)
             return series_data
 
+        except MarketDataUnavailableError:
+            raise
         except Exception as e:
             detail = f"Error al consultar yfinance para {clean_ticker}: {str(e)}"
             logger.error(detail)

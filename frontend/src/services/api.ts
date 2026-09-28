@@ -71,6 +71,8 @@ export interface ForecastResponse {
   reliability_warning?: string | null;
   /** Does the forecast beat the naive? (4.13) */
   skill?: ForecastSkill | null;
+  /** 3.0a detector on the forecast points (the UI hides 'inercia' on seasonal series). */
+  seasonality?: SeasonalityInfo | null;
 }
 
 export interface ForecastSkill {
@@ -402,6 +404,8 @@ export interface BacktestResponse {
   horizon: number;
   /** Unit of `horizon`, inferred from the series' dates. */
   frequency?: string | null;
+  /** Unit of the evaluated series (the MAE's). */
+  unit?: string | null;
   historical_dates: string[];
   historical_values: number[];
   future_actual_dates: string[];
@@ -572,7 +576,9 @@ export async function runBacktest(
 export async function fetchCorrelations(
   seriesIds: string[],
   period = '2y',
-  mode: 'returns' | 'levels' = 'returns'
+  mode: 'returns' | 'levels' = 'returns',
+  /** Where each series lives: a FRED ID is never looked up in yfinance. */
+  seriesTypes?: Record<string, 'equity' | 'macro'>
 ): Promise<CorrelationMatrixResponse> {
   const res = await fetch(`${API_BASE}/correlation`, {
     method: 'POST',
@@ -581,6 +587,7 @@ export async function fetchCorrelations(
       series_ids: seriesIds,
       period,
       mode,
+      series_types: seriesTypes,
     }),
   });
   if (!res.ok) {
@@ -645,6 +652,12 @@ export interface PortfolioRiskResponse {
   prob_loss_30pct: number;
   histogram: HistogramData;
   warnings: string[];
+  /** Seed the simulation used: sending it again reproduces the result. */
+  seed_used: number;
+  /** centered = returns centered on 0 (no historical trend); historical = with it. */
+  drift_used: 'centered' | 'historical';
+  /** The portfolio's mean annual (log) trend in the historical period: what "centered" removes. */
+  historical_drift_annual: number;
 }
 
 export interface RebalanceCurvePoint {
@@ -731,6 +744,9 @@ export async function evaluatePortfolioRisk(params: {
   method?: 'bootstrap' | 'student_t' | 'gaussian';
   n_simulations?: number;
   block_size?: number;
+  /** Omitted: a new seed on every run (the one used comes back in seed_used). */
+  seed?: number;
+  drift?: 'centered' | 'historical';
 }): Promise<PortfolioRiskResponse> {
   const res = await fetch(`${API_BASE}/portfolio/risk`, {
     method: 'POST',

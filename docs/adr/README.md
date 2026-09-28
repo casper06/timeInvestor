@@ -35,4 +35,7 @@ reemplace y se actualiza el estado de la anterior.
 | [0022](0022-motores-sin-redondeo.md) | Motores y backtest sin redondeo; el redondeo es solo de presentación (criterio v8) | Aceptada | 2.11 |
 | [0023](0023-capacidad-de-pronostico-visible.md) | Capacidad de pronóstico visible por serie (aporta / no aporta / no evaluado; criterio v9) | Aceptada | 4.13 |
 | [0024](0024-cargas-de-series-y-fred-inexistente.md) | Series de FRED agregadas a mano (validadas contra FRED) y cargas superpuestas (número de pedido) | Aceptada | 4.16 |
+| [0025](0025-lote-de-honestidad-de-la-ui.md) | Lote de honestidad de la UI: capacidad junto a la serie, nivel real de la banda, naive más exigente primero, sin "$" en macro, inercia oculta en estacionales | Aceptada | 4.18 |
+| [0026](0026-ruteo-fred-yfinance.md) | Ruteo FRED / yfinance por tipo y por FRED, no por catálogo fijo | Aceptada | 4.11 parcial |
+| [0027](0027-riesgo-centrado-y-semilla.md) | Riesgo sin tendencia por defecto (retornos centrados) y semilla nueva y visible en cada simulación | Aceptada | 4.19 |
 | [0028](0028-contexto-del-copiloto.md) | Contexto del copiloto: fechas, evidencia de FRED, empresas elegidas por el LLM (no confirman) | Aceptada | 4.20 |
