@@ -49,8 +49,23 @@ IA y electricidad.
   - La relevancia de las series cambia poco.
   - Haiku con el prompt nuevo usó `source` para afirmaciones y cometió
     errores de hecho; Sonnet no.
-- **No evaluado con Gemini**, el proveedor configurado hoy: se agotó el cupo
-  gratuito diario. Queda pendiente antes de adoptarlo con Gemini.
+- **Evaluado parcialmente con Gemini**, el proveedor configurado hoy. En la
+  corrida del 28/9 se agotó el cupo gratuito diario. En la complementaria del
+  29/9, con presupuesto cerrado (tope de 6 pedidos, un intento por celda), se
+  usaron 4 pedidos y se cubrió **1 de las 4 tesis**: T1–T3 cayeron por `503
+  UNAVAILABLE` (alta demanda del lado de Google), no por cupo — quedaban 16
+  pedidos de los 20 diarios.
+  - El desvío del protocolo (sin reintentos, por el presupuesto cerrado) es lo
+    que convirtió esos 503 en "sin dato": el 28/9, con reintentos, los mismos
+    503 se absorbían.
+  - La única celda con respuesta tiene **formato válido** (ETFs primero,
+    `instrument_type`, driver de FRED). Ninguna celda rompió el formato.
+  - Sin tabla por criterio para Gemini con 1 de 4 tesis.
+  - **Incompleto pero no bloqueante:** el cliente de Gemini fuerza la salida
+    JSON con `response_mime_type="application/json"`
+    (`backend/services/llm_router.py:527`), la respuesta obtenida es válida, y
+    en producción los 503 se reintentan (el intento único vive solo en el
+    arnés de evaluación).
 - La decisión de qué prompt queda y qué modelo usar por defecto (4.6) es del
   usuario, con la tabla completa.
 

@@ -136,16 +136,89 @@ traduce ("Traduciendo la tesis con <proveedor>…" y el tiempo transcurrido).
      y sus 4 celdas quedan "sin dato".
    - La pasada complementaria del día siguiente volvió a agotar el cupo antes
      de llegar al prompt nuevo.
-   - **No hay datos de Gemini con el prompt nuevo.**
+   - El 29/9, con presupuesto cerrado (un intento por celda), se cubrió **1 de
+     las 4 tesis** del prompt nuevo: las otras tres cayeron por `503` de alta
+     demanda, no por cupo. Ver "Corrida complementaria de Gemini (29/9/2026)".
+   - **Gemini con el prompt nuevo queda con 1 de 4 tesis**, sin tabla por
+     criterio.
+
+## Corrida complementaria de Gemini (29/9/2026, 18:42–18:43 hora local)
+
+Presupuesto cerrado, arnés de `a8fd978`: tope de 6 pedidos HTTP, **un intento
+por celda, sin reintentos automáticos**. Solo el prompt nuevo, las 4 tesis en
+el orden pre-registrado.
+
+**Pedidos usados: 4 de 6** (0 rechazados por el tope).
+
+| # | Tesis | Pedido | Hora | Estado |
+|---|-------|--------|------|--------|
+| T1 | Demanda eléctrica por centros de datos de IA | 1 | 18:42:26 | sin dato (503) |
+| T2 | La IA es una burbuja | 2 | 18:42:41 | sin dato (503) |
+| T3 | Impacto de tasas de interés en múltiplos tecnológicos | 3 | 18:42:56 | sin dato (503) |
+| T4 | Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU. | 4 | 18:43:11 | **ok**, formato válido |
+
+**Tesis cubiertas: 1 de 4.** Crudo en
+`thesis_prompt_v2_gemini_complementaria_2026-09-29.json`.
+
+- **El corte no fue por cupo.** Las tres fallas son `503 UNAVAILABLE`, *"This
+  model is currently experiencing high demand"*: indisponibilidad del lado de
+  Google. El cupo diario se había renovado (04:00 hora local) y quedó en 4 de
+  20 pedidos usados. Un agotamiento de cupo se habría visto como el `429` con
+  `quotaId ...PerDay...` que cortó la corrida del 28/9, y no aparece.
+- **Formato:** la única celda con respuesta (T4) es válida y muestra el prompt
+  nuevo funcionando — 4 instrumentos ETF primero (ITB, XHB, WOOD, TLT),
+  `instrument_type` poblado y `MORTGAGE30US` como driver de FRED. **Ninguna
+  celda rompió el formato**; T1–T3 no tienen formato que validar porque no
+  hubo respuesta.
+- **Sin tabla por criterio para Gemini.** Con 1 de 4 tesis, ponerla al lado de
+  Haiku y Sonnet (4 de 4 cada uno) invita a leer una diferencia de prompt
+  donde solo hay ruido de disponibilidad del proveedor.
+
+### Desvío respecto del protocolo original
+
+El pre-registro reintentaba cada falla hasta 3 veces con 60 s de espera. El
+presupuesto cerrado lo reemplaza por **un solo intento por celda**, para que
+el gasto sea acotado y conocido de antemano.
+
+Ese desvío es exactamente lo que convirtió estos 503 en "sin dato". El 28/9,
+con reintentos, los mismos 503 se absorbían: T1 falló dos veces con 503 y aun
+así terminó `ok` al tercer intento. Hoy, el primer 503 mata la celda. El arnés
+hizo lo que dice hacer; lo que faltó fue margen para un proveedor inestable.
+
+### Condiciones de la corrida
+
+- Clave de Gemini **exclusiva de TimeInvestor** (termina en `omgw`). Se
+  verificó que el otro proyecto local ("Asistente de inversiones") no usa
+  Gemini, comparando solo los últimos 4 caracteres.
+- **Sin consumo concurrente**: no había otro proceso con acceso a la clave.
+- **DB real intacta**: la corrida usó una COPIA en el scratchpad
+  (`DATABASE_URL` con "eval" en el nombre, como exige el arnés).
+
+### Conclusión
+
+**Evaluación de Gemini incompleta, y no bloqueante para 4.10.** Tres razones:
+
+1. el cliente de Gemini **fuerza la salida JSON** con
+   `response_mime_type="application/json"` (`llm_router.py:527`), así que el
+   modo de falla de formato que sí tuvo Haiku con el CLI no aplica acá;
+2. la única respuesta obtenida es **válida y bien formada** con el prompt
+   nuevo;
+3. en producción los 503 **se reintentan** (`_call_with_retry`, con backoff);
+   el intento único existe solo dentro del arnés de evaluación.
+
+Queda pendiente, si se quiere la tabla completa de Gemini, correr T1–T3 un día
+con el proveedor estable.
 
 ## Propuesta (la decisión es del usuario)
 
 - **4.10, qué prompt queda:** el nuevo.
   - Mejora C2 y C3 en los dos modelos con datos, sin empeorar C1.
-  - Queda sin evaluar con Gemini, que es el proveedor configurado hoy en la
-    app.
-  - Antes de adoptarlo como default con Gemini, correr las 4 celdas nuevas
-    de Gemini con cupo disponible (o con un plan pago).
+  - Con Gemini queda evaluado en 1 de 4 tesis (29/9): esa celda salió con
+    formato válido. Es incompleto, pero **no bloqueante**: el cliente de
+    Gemini fuerza el JSON con `response_mime_type` y en producción los 503 se
+    reintentan.
+  - Si se quiere la tabla completa de Gemini, correr T1–T3 un día con el
+    proveedor estable.
 - **4.6, qué modelo de Claude CLI por defecto:** Sonnet, si el costo de
   tiempo y uso es aceptable.
   - Con el prompt nuevo, Haiku propuso series irrelevantes e inexistentes
