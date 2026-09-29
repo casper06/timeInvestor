@@ -1,0 +1,21 @@
+{
+ "_nota": "Pasada complementaria de Gemini, FUERA del protocolo pre-registrado: se corrió el 2026-09-28 después de que se renovara el cupo diario gratuito. Solo alcanzó al prompt viejo (T1-T3); con el prompt nuevo no hubo ninguna corrida (cupo de 20 pedidos/día agotado otra vez). Sirve para 4.6 (modelos con el prompt viejo), no para comparar prompts. Mismos criterios y juez que la pasada principal.",
+ "viejo|gemini|Demanda eléctrica por centros de datos de IA": {
+  "C1b": "2/3", "C1b_why": {"IPG2211A2N": "producción eléctrica", "CUUR0000SEHF01": "IPC de electricidad (precio de la electricidad)", "DGS10": "no está en el mecanismo"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "5/5", "C4_why": {"CEG": "'mayor flota nuclear no regulada'", "VST": "plantas cerca de nodos de ERCOT/PJM", "ETN": "'súper ciclo de pedidos'", "VRT": "'proveedor indiscutible', 'potencia por rack supera los 100 kW'", "GEV": "'fabricante dominante'"},
+  "obs": ""
+ },
+ "viejo|gemini|La IA es una burbuja": {
+  "C1b": "2/3", "C1b_why": {"VIXCLS": "condiciones financieras", "DGS10": "condiciones financieras", "PCU3344133441": "precio al productor de semiconductores: precio de bienes, no de activos tecnológicos", "IPB53100S": "no existe en FRED"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "1/1", "C4_why": {"BRK-B": "'alta posición de caja', 'enorme liquidez'"},
+  "obs": ""
+ },
+ "viejo|gemini|Impacto de tasas de interés en múltiplos tecnológicos": {
+  "C1b": "3/3", "C1b_why": {"DGS10": "tasa", "DFII10": "tasa real", "FEDFUNDS": "tasa"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "3/3", "C4_why": {"MSFT": "'márgenes operativos sólidos y recompras'", "AAPL": "'elevado ROIC'", "NVDA": "'hipercrecimiento de beneficios operativos reales'"},
+  "obs": ""
+ }
+}

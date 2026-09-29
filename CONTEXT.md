@@ -120,7 +120,7 @@ Organización del trabajo:
 
 - `GEMINI_API_KEY`, `FRED_API_KEY`, `OPENAI_API_KEY` (opcional).
 - `LLM_PROVIDER`: `gemini`, `gemini_cli`, `claude_cli`, `openai`, `ollama`, `auto` o `mock`. `auto` elige `gemini` si hay key, si no `openai`, si no `mock`.
-- `CLAUDE_CLI_MODEL`: default `haiku`, para gastar menos del cupo compartido.
+- `CLAUDE_CLI_MODEL`: default `sonnet` (ADR-0031, reemplaza a ADR-0016): en la evaluación de 4.10, `haiku` propuso series FRED irrelevantes e inexistentes y cometió errores de hecho. `haiku` gasta menos del cupo compartido.
 - `OLLAMA_BASE_URL`.
 - `DATABASE_URL`: la DB real por defecto. Las verificaciones apuntan a una copia; los tests, a un SQLite temporal.
 - `ALLOW_SYNTHETIC_DATA`: default `false`; no tocar salvo en una demo offline consciente.

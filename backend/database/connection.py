@@ -44,6 +44,7 @@ _ADDED_COLUMNS = [
     ("engine_decisions", "horizon", "INTEGER"),
     ("forecast_snapshots", "frequency", "VARCHAR(20)"),
     ("engine_decisions", "cutoff_errors_json", "TEXT"),
+    ("theses", "analysis_json", "TEXT"),
 ]
 
 

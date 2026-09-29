@@ -199,6 +199,40 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             </button>
           </div>
 
+          {/* 4.10: the thesis as a mechanism that can be checked and refuted */}
+          {(thesisData.mechanism || (thesisData.falsifiers?.length ?? 0) > 0 || thesisData.benchmark) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs" data-testid="thesis-analysis">
+              {thesisData.mechanism && (
+                <div className="md:col-span-2 bg-slate-950/60 border border-slate-800 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Mecanismo</div>
+                  <p className="text-slate-300 leading-relaxed" data-testid="thesis-mechanism">{thesisData.mechanism}</p>
+                </div>
+              )}
+              <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Qué la refutaría</div>
+                {(thesisData.falsifiers?.length ?? 0) > 0 ? (
+                  <ul className="list-disc pl-4 text-slate-300 space-y-1" data-testid="thesis-falsifiers">
+                    {thesisData.falsifiers!.map((f, i) => (
+                      <li key={i}>
+                        {f.condition}
+                        {f.series_id && <span className="font-mono text-slate-500"> ({f.series_id})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-amber-300" data-testid="thesis-no-falsifiers">
+                    La traducción no trae ningún dato que la refute.
+                  </p>
+                )}
+                {thesisData.benchmark && (
+                  <div className="text-slate-400 pt-1" data-testid="thesis-benchmark">
+                    Benchmark: <span className="font-mono text-slate-200">{thesisData.benchmark}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Rationale Cards per Asset */}
           {showAllRationales && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
@@ -215,7 +249,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                       <span className="text-xs text-slate-300 font-medium">{t.name}</span>
                     </div>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                      {t.sector}
+                      {t.instrument_type ? `${t.instrument_type} · ` : ''}{t.sector}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
@@ -227,6 +261,19 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                       {thesisData.rationales[t.symbol]}
                     </p>
                   )}
+                  {/* What the LLM wrote about the asset is its claim unless it
+                      cites a source, and even then the app didn't check it. */}
+                  <p
+                    data-testid="claim-label"
+                    data-sourced={t.source ? 'true' : 'false'}
+                    className={`text-[10px] ${t.source ? 'text-slate-400' : 'text-amber-400/90'}`}
+                  >
+                    {thesisData.provider_used?.startsWith('mock')
+                      ? 'Texto de plantilla local (sin LLM)'
+                      : t.source
+                      ? `Fuente citada por el LLM: ${t.source} (la app no la verificó)`
+                      : 'Afirmación del LLM, no verificada'}
+                  </p>
                 </div>
               ))}
             </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MetricCards } from './MetricCards';
 import type { ForecastResponse, TimeSeriesData } from '../services/api';
 
@@ -134,5 +134,57 @@ describe('MetricCards CAGR color', () => {
     render(<MetricCards thesisData={null} forecast={fc} seriesData={monthly} horizon={12} confidence={0.95} />);
     expect(screen.getByTestId('cagr-value')).toHaveTextContent('-10.0%');
     expect(screen.getByTestId('cagr-value').className).toContain('text-rose-400');
+  });
+});
+
+describe('MetricCards thesis translated with prompt v2 (4.10)', () => {
+  const thesis = {
+    thesis: 'Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.',
+    summary: 's',
+    tickers: [
+      { symbol: 'ITB', name: 'iShares Home Construction', sector: 'Vivienda', weight: 0.6, thesis_role: 'r', instrument_type: 'etf' as const },
+      { symbol: 'DHI', name: 'D.R. Horton', sector: 'Vivienda', weight: 0.4, thesis_role: 'r', instrument_type: 'stock' as const,
+        source: '10-K 2025' },
+    ],
+    macro_series: [],
+    rationales: { ITB: 'Exposición a constructoras', DHI: 'Mayor constructora por unidades' },
+    provider_used: 'gemini-3.6-flash',
+    mechanism: 'Tasas más altas → menos permisos → menos inicios de obra.',
+    falsifiers: [{ condition: 'Si los inicios suben con tasas altas', series_id: 'HOUST' }],
+    benchmark: 'SPY',
+    prompt_version: 2,
+  };
+
+  it('shows the mechanism, what would refute it and the benchmark', () => {
+    render(<MetricCards thesisData={thesis} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('thesis-mechanism')).toHaveTextContent('Tasas más altas → menos permisos');
+    expect(screen.getByTestId('thesis-falsifiers')).toHaveTextContent('Si los inicios suben con tasas altas (HOUST)');
+    expect(screen.getByTestId('thesis-benchmark')).toHaveTextContent('Benchmark: SPY');
+  });
+
+  it('says so when nothing would refute it', () => {
+    render(<MetricCards thesisData={{ ...thesis, falsifiers: [] }} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    expect(screen.getByTestId('thesis-no-falsifiers')).toHaveTextContent('no trae ningún dato que la refute');
+  });
+
+  it('marks each company text as an unverified LLM claim unless it cites a source', () => {
+    render(<MetricCards thesisData={thesis} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    const labels = screen.getAllByTestId('claim-label');
+    expect(labels[0]).toHaveTextContent('Afirmación del LLM, no verificada');
+    expect(labels[0]).toHaveAttribute('data-sourced', 'false');
+    expect(labels[1]).toHaveTextContent('Fuente citada por el LLM: 10-K 2025 (la app no la verificó)');
+  });
+});
+
+describe('MetricCards claim label with the local template', () => {
+  it('does not call the local template text an LLM claim', () => {
+    const thesis = {
+      thesis: 't', summary: 's', macro_series: [], rationales: {}, provider_used: 'mock-semantic-engine',
+      tickers: [{ symbol: 'ITB', name: 'i', sector: 'x', weight: 1, thesis_role: 'r', instrument_type: 'etf' as const }],
+    };
+    render(<MetricCards thesisData={thesis} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    expect(screen.getByTestId('claim-label')).toHaveTextContent('Texto de plantilla local (sin LLM)');
   });
 });

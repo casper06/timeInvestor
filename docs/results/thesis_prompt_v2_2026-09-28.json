@@ -1,0 +1,3493 @@
+{
+ "runs": [
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "response": null,
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "response": null,
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "response": null,
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "response": null,
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "nuevo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "Demanda eléctrica por centros de datos de IA",
+    "summary": "La demanda eléctrica de centros de datos de IA está creciendo exponencialmente, impulsada por el entrenamiento y despliegue de modelos de IA generativa a escala global. Esta demanda requiere inversiones significativas en infraestructura eléctrica, semiconductores avanzados y capacidad de data center, beneficiando directamente a utilities, fabricantes de chips y operadores de infraestructura de computación.",
+    "tickers": [
+     {
+      "symbol": "XLU",
+      "name": "Utilities Select Sector SPDR ETF",
+      "sector": "Utilities",
+      "weight": 0.25,
+      "thesis_role": "Beneficiario directo de aumento en demanda de electricidad y tarifas",
+      "instrument_type": "etf",
+      "source": "Data center demand for electricity is accelerating; utilities absorb demand pressure and pricing power"
+     },
+     {
+      "symbol": "IPO",
+      "name": "VanEck Semiconductor ETF",
+      "sector": "Technology/Semiconductors",
+      "weight": 0.25,
+      "thesis_role": "Proveedor de chips (GPUs, TPUs, procesadores) necesarios para capacidad computacional de IA",
+      "instrument_type": "etf",
+      "source": "Training and inference of large language models requires specialized semiconductor capacity; GPU/AI chip production is primary bottleneck"
+     },
+     {
+      "symbol": "ICLN",
+      "name": "iShares Global Clean Energy ETF",
+      "sector": "Energy/Renewables",
+      "weight": 0.15,
+      "thesis_role": "Beneficiario de demanda de energía limpia para alimentar data centers (presión ESG y cost optimization)",
+      "instrument_type": "etf",
+      "source": "Major tech companies (Google, Microsoft, Meta) committed to renewable energy sourcing for data center operations; renewable capacity additions accelerating"
+     },
+     {
+      "symbol": "UNG",
+      "name": "United States Natural Gas Fund",
+      "sector": "Energy/Commodities",
+      "weight": 0.15,
+      "thesis_role": "Combustible para generación térmica eléctrica requerida por centros de datos (cuando renovables insuficientes)",
+      "instrument_type": "commodity",
+      "source": "Natural gas is marginal fuel source for peak electricity generation; data center power growth increases peak demand episodes"
+     },
+     {
+      "symbol": "EQIX",
+      "name": "Equinix Inc.",
+      "sector": "Real Estate/Data Centers",
+      "weight": 0.2,
+      "thesis_role": "Infraestructura crítica: alojar servidores, proveer refrigeración y potencia para data centers de IA globales",
+      "instrument_type": "stock",
+      "source": "Equinix operates 250+ data center facilities globally; capacity utilization and pricing power directly exposed to AI/cloud computing growth trends"
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "INDPRO",
+      "name": "Industrial Production Index",
+      "category": "Production/Semiconductors",
+      "expected_correlation": "Correlación positiva: crecimiento de producción de semiconductores y equipos de computación señala expansión de capacidad IA",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "ELECCCMI",
+      "name": "Electric Power Consumed: Commercial and Industrial Sector",
+      "category": "Energy Consumption",
+      "expected_correlation": "Correlación positiva: aumento en consumo eléctrico de sector comercial/industrial reflejaría demanda de data centers",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "CPIUFDSL",
+      "name": "Consumer Price Index: Fuels and Related Energy Products",
+      "category": "Price Inflation",
+      "expected_correlation": "Correlación positiva: presión inflacionaria en precios de energía como reflejo de demanda creciente",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "XLU": "Las utilities están expuestas directamente al aumento en demanda de electricidad. Los centros de datos de IA requieren suministro eléctrico masivo (megavatios continuos). Las utilities se benefician de mayores volúmenes vendidos y potencial de incremento tarifario ante constrains de capacidad en redes regionales.",
+     "IPO": "Los semiconductores avanzados (GPUs, TPUs, chips de red, memory) son críticos e insustituibles para capacidad computacional. El crecimiento exponencial de IA está directamente vinculado a demanda acelerada de chips de alto rendimiento para entrenamiento e inferencia. IPO captura exposición al ecosistema de semiconductores especializados.",
+     "ICLN": "Muchos operadores de data centers y grandes tech companies buscan energía renovable para reducir costos operacionales, mejorar márgenes (eléctrica más barata) y cumplir objetivos de sostenibilidad corporativa. La demanda eléctrica creciente de IA impulsa expansión de capacidad renovable (solar, eólica).",
+     "UNG": "El gas natural es combustible marginal para generación eléctrica térmica, especialmente durante períodos de peak demand. A mayor demanda de electricidad por IA, especialmente en horarios pico, mayor demanda de generación flexible. Gas natural se beneficia si capacidad renovable no expande al ritmo suficiente.",
+     "EQIX": "Equinix es el mayor operador global independiente de data centers con presencia en mercados clave (Silicon Valley, Nueva York, Londres, Singapur). La demanda de espacio de rack, potencia confiable y refrigeración para alojar capacidad de IA crece exponencialmente, expandiendo ingresos recurrentes y márgenes del modelo."
+    },
+    "mechanism": "El crecimiento exponencial de modelos de IA (especialmente LLMs) y sistemas de IA generativa requiere capacidad computacional masiva alojada en centros de datos. Estos centros consumen cantidades gigantescas de electricidad continuamente para operación y refrigeración. Este aumento acelerado en demanda eléctrica impulsa inversiones en infraestructura generadora y distribuidora de energía, presionando al alza los precios de electricidad, gas natural y semiconductores, particularmente en regiones con concentración de data centers como EE.UU., Irlanda y Asia Pacífico.",
+    "falsifiers": [
+     {
+      "condition": "ELECCCMI cae 5% o más año a año durante dos trimestres consecutivos (indicaría recesión en demanda de data centers)",
+      "series_id": "ELECCCMI"
+     },
+     {
+      "condition": "CPIUFDSL cae 4% o más año a año durante dos trimestres (indicaría debilitamiento de demanda energética real)",
+      "series_id": "CPIUFDSL"
+     },
+     {
+      "condition": "INDPRO cae 3% o más versus media móvil de 12 meses (indicaría contracción en producción de semiconductores/equipos IA)",
+      "series_id": "INDPRO"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 67.4
+   },
+   "model_raw": {
+    "summary": "La demanda eléctrica de centros de datos de IA está creciendo exponencialmente, impulsada por el entrenamiento y despliegue de modelos de IA generativa a escala global. Esta demanda requiere inversiones significativas en infraestructura eléctrica, semiconductores avanzados y capacidad de data center, beneficiando directamente a utilities, fabricantes de chips y operadores de infraestructura de computación.",
+    "mechanism": "El crecimiento exponencial de modelos de IA (especialmente LLMs) y sistemas de IA generativa requiere capacidad computacional masiva alojada en centros de datos. Estos centros consumen cantidades gigantescas de electricidad continuamente para operación y refrigeración. Este aumento acelerado en demanda eléctrica impulsa inversiones en infraestructura generadora y distribuidora de energía, presionando al alza los precios de electricidad, gas natural y semiconductores, particularmente en regiones con concentración de data centers como EE.UU., Irlanda y Asia Pacífico.",
+    "macro_series": [
+     {
+      "series_id": "INDPRO",
+      "name": "Industrial Production Index",
+      "category": "Production/Semiconductors",
+      "mechanism_role": "causa",
+      "expected_correlation": "Correlación positiva: crecimiento de producción de semiconductores y equipos de computación señala expansión de capacidad IA"
+     },
+     {
+      "series_id": "ELECCCMI",
+      "name": "Electric Power Consumed: Commercial and Industrial Sector",
+      "category": "Energy Consumption",
+      "mechanism_role": "canal",
+      "expected_correlation": "Correlación positiva: aumento en consumo eléctrico de sector comercial/industrial reflejaría demanda de data centers"
+     },
+     {
+      "series_id": "CPIUFDSL",
+      "name": "Consumer Price Index: Fuels and Related Energy Products",
+      "category": "Price Inflation",
+      "mechanism_role": "efecto",
+      "expected_correlation": "Correlación positiva: presión inflacionaria en precios de energía como reflejo de demanda creciente"
+     }
+    ],
+    "falsifiers": [
+     {
+      "series_id": "ELECCCMI",
+      "condition": "ELECCCMI cae 5% o más año a año durante dos trimestres consecutivos (indicaría recesión en demanda de data centers)"
+     },
+     {
+      "series_id": "CPIUFDSL",
+      "condition": "CPIUFDSL cae 4% o más año a año durante dos trimestres (indicaría debilitamiento de demanda energética real)"
+     },
+     {
+      "series_id": "INDPRO",
+      "condition": "INDPRO cae 3% o más versus media móvil de 12 meses (indicaría contracción en producción de semiconductores/equipos IA)"
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "XLU",
+      "name": "Utilities Select Sector SPDR ETF",
+      "sector": "Utilities",
+      "instrument_type": "etf",
+      "weight": 0.25,
+      "thesis_role": "Beneficiario directo de aumento en demanda de electricidad y tarifas",
+      "source": "Data center demand for electricity is accelerating; utilities absorb demand pressure and pricing power"
+     },
+     {
+      "symbol": "IPO",
+      "name": "VanEck Semiconductor ETF",
+      "sector": "Technology/Semiconductors",
+      "instrument_type": "etf",
+      "weight": 0.25,
+      "thesis_role": "Proveedor de chips (GPUs, TPUs, procesadores) necesarios para capacidad computacional de IA",
+      "source": "Training and inference of large language models requires specialized semiconductor capacity; GPU/AI chip production is primary bottleneck"
+     },
+     {
+      "symbol": "ICLN",
+      "name": "iShares Global Clean Energy ETF",
+      "sector": "Energy/Renewables",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Beneficiario de demanda de energía limpia para alimentar data centers (presión ESG y cost optimization)",
+      "source": "Major tech companies (Google, Microsoft, Meta) committed to renewable energy sourcing for data center operations; renewable capacity additions accelerating"
+     },
+     {
+      "symbol": "UNG",
+      "name": "United States Natural Gas Fund",
+      "sector": "Energy/Commodities",
+      "instrument_type": "commodity",
+      "weight": 0.15,
+      "thesis_role": "Combustible para generación térmica eléctrica requerida por centros de datos (cuando renovables insuficientes)",
+      "source": "Natural gas is marginal fuel source for peak electricity generation; data center power growth increases peak demand episodes"
+     },
+     {
+      "symbol": "EQIX",
+      "name": "Equinix Inc.",
+      "sector": "Real Estate/Data Centers",
+      "instrument_type": "stock",
+      "weight": 0.2,
+      "thesis_role": "Infraestructura crítica: alojar servidores, proveer refrigeración y potencia para data centers de IA globales",
+      "source": "Equinix operates 250+ data center facilities globally; capacity utilization and pricing power directly exposed to AI/cloud computing growth trends"
+     }
+    ],
+    "rationales": {
+     "XLU": "Las utilities están expuestas directamente al aumento en demanda de electricidad. Los centros de datos de IA requieren suministro eléctrico masivo (megavatios continuos). Las utilities se benefician de mayores volúmenes vendidos y potencial de incremento tarifario ante constrains de capacidad en redes regionales.",
+     "IPO": "Los semiconductores avanzados (GPUs, TPUs, chips de red, memory) son críticos e insustituibles para capacidad computacional. El crecimiento exponencial de IA está directamente vinculado a demanda acelerada de chips de alto rendimiento para entrenamiento e inferencia. IPO captura exposición al ecosistema de semiconductores especializados.",
+     "ICLN": "Muchos operadores de data centers y grandes tech companies buscan energía renovable para reducir costos operacionales, mejorar márgenes (eléctrica más barata) y cumplir objetivos de sostenibilidad corporativa. La demanda eléctrica creciente de IA impulsa expansión de capacidad renovable (solar, eólica).",
+     "UNG": "El gas natural es combustible marginal para generación eléctrica térmica, especialmente durante períodos de peak demand. A mayor demanda de electricidad por IA, especialmente en horarios pico, mayor demanda de generación flexible. Gas natural se beneficia si capacidad renovable no expande al ritmo suficiente.",
+     "EQIX": "Equinix es el mayor operador global independiente de data centers con presencia en mercados clave (Silicon Valley, Nueva York, Londres, Singapur). La demanda de espacio de rack, potencia confiable y refrigeración para alojar capacidad de IA crece exponencialmente, expandiendo ingresos recurrentes y márgenes del modelo."
+    }
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "nuevo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "La IA es una burbuja",
+    "summary": "La hipótesis \"La IA es una burbuja\" sostiene que las valuaciones de empresas de IA están históricamente desacopladas de sus fundamentos económicos actuales (ingresos realizados, ganancias). Esto genera un riesgo de repricing violento cuando las expectativas de crecimiento exponencial se corrijan. El mecanismo depende de que los múltiplos de valuación (P/E, PEG, CAPE) estén extraordinariamente elevados en el sector tech/Nasdaq, donde se concentra la exposición a IA, mientras que los earnings growth es más moderado.",
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust (Nasdaq-100)",
+      "sector": "Technology / Growth",
+      "weight": 0.3,
+      "thesis_role": "Captura epicentro de la burbuja: Nasdaq 100 concentra 7%+ en Nvidia, Microsoft, Google, Tesla—empresas valuadas a P/E 25-40x vs histórico 18x. Precursor esperado de crash en IA.",
+      "instrument_type": "etf",
+      "source": "QQQ holdings: Nasdaq 100 incluye 48%+ en tech. Nvidia representa ~7% con P/E ~60x (vs histórico sector 18x)."
+     },
+     {
+      "symbol": "XLK",
+      "name": "Information Technology Select Sector SPDR",
+      "sector": "Technology",
+      "weight": 0.2,
+      "thesis_role": "Tech puro dentro S&P 500. Expone valuaciones del sector tech pero más maduro (Apple, Microsoft) que QQQ. Diferencial XLK vs QQQ revelaría si crash es solo IA especulativa o más amplio.",
+      "instrument_type": "etf",
+      "source": "XLK: sector tech del S&P 500, P/E sector ~27x (enero 2025 aproximado)."
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Fixed Income",
+      "weight": 0.2,
+      "thesis_role": "Hedge de crash: cuando burbuja revienta, tasas caen y bonos largos se aprecian. TLT ganó ~40% en 2008, ~4% en 2020 post-crash. Protección de cartera al ocurrir corrección.",
+      "instrument_type": "etf",
+      "source": "Histórico: TLT en crisis sistémicas caen tasas (inversión de 10y-2y), bonos largos se aprecian."
+     },
+     {
+      "symbol": "PSQ",
+      "name": "Direxion Nasdaq-100 Bear 3X Shares (Inverse Nasdaq)",
+      "sector": "Inverse Equities",
+      "weight": 0.2,
+      "thesis_role": "Apuesta corta directa: 3x inverso del Nasdaq 100. Si QQQ cae 30%, PSQ gana ~90% (menos decay). Maximiza exposición a crash de burbuja de IA. Riesgo alto: decay en mercados laterales.",
+      "instrument_type": "etf",
+      "source": "PSQ: inverso 3x Nasdaq-100 de Direxion. Usado para shorting de tech en caídas."
+     },
+     {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "sector": "Commodities",
+      "weight": 0.1,
+      "thesis_role": "Hedge de crisis sistémica: oro se aprecia en pánico. 2008 (+5%), 2020 (+24%), 2022 (+0% pero bajo volatilidad). Si crash de IA contagia a crédito/bancos, GLD asciende.",
+      "instrument_type": "commodity",
+      "source": "Histórico: oro actúa como safe-haven en crashes sistémicos >10% S&P 500."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Equities",
+      "expected_correlation": "Positiva con boom especulativo de IA (sube ahora); negativa con corrección (cae cuando burbuja revienta)",
+      "mechanism_role": "efecto"
+     },
+     {
+      "series_id": "SHCOMP",
+      "name": "Shiller Cyclically Adjusted Price-to-Earnings Ratio",
+      "category": "Valuations",
+      "expected_correlation": "CAPE elevado (>35) indica sobrevaloración; debería caer si valuaciones se normalizan",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "UMCSENT",
+      "name": "University of Michigan Consumer Sentiment Index",
+      "category": "Expectations",
+      "expected_correlation": "Optimismo alto actualmente soporta el boom de IA; caería al corregirse expectativas de crecimiento futuro",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "VIXCLS",
+      "name": "CBOE Volatility Index (VIX)",
+      "category": "Volatility",
+      "expected_correlation": "Baja actualmente (<15-18); sube agudamente cuando la burbuja revienta, señalando pánico",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "QQQ": "QQQ replica el Nasdaq-100, que concentra magnitudes de IA: Nvidia (~7%), Microsoft, Google, Amazon, Tesla. Estos cotizan a P/E 25-60x vs histórico del sector 18x. Un múltiplo extremo sin crecimiento de earnings equivalente (Nvidia: forward P/E 30x con crecimiento 20% YoY en 2025-2026 vs histórico 40% YoY) define condición de burbuja. QQQ sería el epicentro de colapso.",
+     "XLK": "XLK (Technology SPDR) representa tech maduro del S&P 500 (Apple 12%, Microsoft 11%, Nvidia 8%, Intel 3%). Valuado a P/E ~27x vs promedio S&P de 22x. Si crash afecta solo IA/growth, XLK caería menos que QQQ; si es sistémico, ambos caen similar. Diferencial entre PSQ (short QQQ) y XLK ganancia revelaría la severidad y amplitud del crash.",
+     "TLT": "Bonos de largo plazo (20y+) invierten en relación tasas cuando hay pánico. En crashes, inversores venden riesgo, compran bonos, tasas caen. TLT (iShares 20y Treasury) se aprecia cuando 10-2y yield curve invierte (indicador de recesión = pánico). Histórico: -11% en 2021-2024 (subida de tasas), pero +40% en crashes. Protección simétrica de cartera.",
+     "PSQ": "PSQ es 3x inverso Nasdaq-100. Es la apuesta pura a crash de IA. Si hipótesis es correcta (burbuja revienta, QQQ cae 30-50%), PSQ gana 90-150% (antes de decay). Representa la posición corta concentrada. Riesgo: decay en mercados laterales (<5% movimiento anual) hace que PSQ pierda ~10-15% anual si Nasdaq es neutral.",
+     "GLD": "Oro se aprecia en crisis de confianza sistémica (2008 +5%, 2020 +24%). Si crash de IA (Nasdaq -30%) contagia a crédito corporativo (mucha deuda emitida por tech) o sector financiero (exposición a junk bonds), mercado entra pánico sistémico: GLD sube 15-30%. Hedge de cola izquierda contra escenario de mayor severidad que solo tech."
+    },
+    "mechanism": "El crecimiento del precio de acciones y ETFs de IA está siendo impulsado por expectativas de retornos futuros extraordinarios, no por ganancias actuales realizadas. Esto causa una expansión extrema de múltiplos de valuación (P/E, CAPE) en el Nasdaq. Cuando la realidad económica—decepción en adopción, saturación competitiva, retornos más bajos de lo esperado o subida de tasas—demuestre que el crecimiento será menor, los inversores reprician violentamente hacia la baja, causando un crash potencialmente más severo en Nasdaq (epicentro de tech/IA) que en el mercado amplio.",
+    "falsifiers": [
+     {
+      "condition": "SHCOMP baja de 35 a <28 durante 6 meses mientras NASDAQCOM se mantiene >19,000: indica corrección ordenada de valuaciones sin crash, no confirmando burbuja",
+      "series_id": "SHCOMP"
+     },
+     {
+      "condition": "VIXCLS permanece <13 por 6+ meses consecutivos: no hay pánico de mercado ni signos de corrección inminente, contradiciendo narrativa de crash próximo",
+      "series_id": "VIXCLS"
+     },
+     {
+      "condition": "NASDAQCOM crece >15% anual mientras UMCSENT cae <10%: precios suben pese a expectativas debilitadas, sugiere fundamentales justifican valuaciones sin burbuja",
+      "series_id": "NASDAQCOM"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 102.6
+   },
+   "model_raw": {
+    "summary": "La hipótesis \"La IA es una burbuja\" sostiene que las valuaciones de empresas de IA están históricamente desacopladas de sus fundamentos económicos actuales (ingresos realizados, ganancias). Esto genera un riesgo de repricing violento cuando las expectativas de crecimiento exponencial se corrijan. El mecanismo depende de que los múltiplos de valuación (P/E, PEG, CAPE) estén extraordinariamente elevados en el sector tech/Nasdaq, donde se concentra la exposición a IA, mientras que los earnings growth es más moderado.",
+    "mechanism": "El crecimiento del precio de acciones y ETFs de IA está siendo impulsado por expectativas de retornos futuros extraordinarios, no por ganancias actuales realizadas. Esto causa una expansión extrema de múltiplos de valuación (P/E, CAPE) en el Nasdaq. Cuando la realidad económica—decepción en adopción, saturación competitiva, retornos más bajos de lo esperado o subida de tasas—demuestre que el crecimiento será menor, los inversores reprician violentamente hacia la baja, causando un crash potencialmente más severo en Nasdaq (epicentro de tech/IA) que en el mercado amplio.",
+    "macro_series": [
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Equities",
+      "mechanism_role": "efecto",
+      "expected_correlation": "Positiva con boom especulativo de IA (sube ahora); negativa con corrección (cae cuando burbuja revienta)"
+     },
+     {
+      "series_id": "SHCOMP",
+      "name": "Shiller Cyclically Adjusted Price-to-Earnings Ratio",
+      "category": "Valuations",
+      "mechanism_role": "canal",
+      "expected_correlation": "CAPE elevado (>35) indica sobrevaloración; debería caer si valuaciones se normalizan"
+     },
+     {
+      "series_id": "UMCSENT",
+      "name": "University of Michigan Consumer Sentiment Index",
+      "category": "Expectations",
+      "mechanism_role": "causa",
+      "expected_correlation": "Optimismo alto actualmente soporta el boom de IA; caería al corregirse expectativas de crecimiento futuro"
+     },
+     {
+      "series_id": "VIXCLS",
+      "name": "CBOE Volatility Index (VIX)",
+      "category": "Volatility",
+      "mechanism_role": "efecto",
+      "expected_correlation": "Baja actualmente (<15-18); sube agudamente cuando la burbuja revienta, señalando pánico"
+     }
+    ],
+    "falsifiers": [
+     {
+      "series_id": "SHCOMP",
+      "condition": "SHCOMP baja de 35 a <28 durante 6 meses mientras NASDAQCOM se mantiene >19,000: indica corrección ordenada de valuaciones sin crash, no confirmando burbuja"
+     },
+     {
+      "series_id": "VIXCLS",
+      "condition": "VIXCLS permanece <13 por 6+ meses consecutivos: no hay pánico de mercado ni signos de corrección inminente, contradiciendo narrativa de crash próximo"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "condition": "NASDAQCOM crece >15% anual mientras UMCSENT cae <10%: precios suben pese a expectativas debilitadas, sugiere fundamentales justifican valuaciones sin burbuja"
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust (Nasdaq-100)",
+      "sector": "Technology / Growth",
+      "instrument_type": "etf",
+      "weight": 0.3,
+      "thesis_role": "Captura epicentro de la burbuja: Nasdaq 100 concentra 7%+ en Nvidia, Microsoft, Google, Tesla—empresas valuadas a P/E 25-40x vs histórico 18x. Precursor esperado de crash en IA.",
+      "source": "QQQ holdings: Nasdaq 100 incluye 48%+ en tech. Nvidia representa ~7% con P/E ~60x (vs histórico sector 18x)."
+     },
+     {
+      "symbol": "XLK",
+      "name": "Information Technology Select Sector SPDR",
+      "sector": "Technology",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Tech puro dentro S&P 500. Expone valuaciones del sector tech pero más maduro (Apple, Microsoft) que QQQ. Diferencial XLK vs QQQ revelaría si crash es solo IA especulativa o más amplio.",
+      "source": "XLK: sector tech del S&P 500, P/E sector ~27x (enero 2025 aproximado)."
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Fixed Income",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Hedge de crash: cuando burbuja revienta, tasas caen y bonos largos se aprecian. TLT ganó ~40% en 2008, ~4% en 2020 post-crash. Protección de cartera al ocurrir corrección.",
+      "source": "Histórico: TLT en crisis sistémicas caen tasas (inversión de 10y-2y), bonos largos se aprecian."
+     },
+     {
+      "symbol": "PSQ",
+      "name": "Direxion Nasdaq-100 Bear 3X Shares (Inverse Nasdaq)",
+      "sector": "Inverse Equities",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Apuesta corta directa: 3x inverso del Nasdaq 100. Si QQQ cae 30%, PSQ gana ~90% (menos decay). Maximiza exposición a crash de burbuja de IA. Riesgo alto: decay en mercados laterales.",
+      "source": "PSQ: inverso 3x Nasdaq-100 de Direxion. Usado para shorting de tech en caídas."
+     },
+     {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "sector": "Commodities",
+      "instrument_type": "commodity",
+      "weight": 0.1,
+      "thesis_role": "Hedge de crisis sistémica: oro se aprecia en pánico. 2008 (+5%), 2020 (+24%), 2022 (+0% pero bajo volatilidad). Si crash de IA contagia a crédito/bancos, GLD asciende.",
+      "source": "Histórico: oro actúa como safe-haven en crashes sistémicos >10% S&P 500."
+     }
+    ],
+    "rationales": {
+     "QQQ": "QQQ replica el Nasdaq-100, que concentra magnitudes de IA: Nvidia (~7%), Microsoft, Google, Amazon, Tesla. Estos cotizan a P/E 25-60x vs histórico del sector 18x. Un múltiplo extremo sin crecimiento de earnings equivalente (Nvidia: forward P/E 30x con crecimiento 20% YoY en 2025-2026 vs histórico 40% YoY) define condición de burbuja. QQQ sería el epicentro de colapso.",
+     "XLK": "XLK (Technology SPDR) representa tech maduro del S&P 500 (Apple 12%, Microsoft 11%, Nvidia 8%, Intel 3%). Valuado a P/E ~27x vs promedio S&P de 22x. Si crash afecta solo IA/growth, XLK caería menos que QQQ; si es sistémico, ambos caen similar. Diferencial entre PSQ (short QQQ) y XLK ganancia revelaría la severidad y amplitud del crash.",
+     "TLT": "Bonos de largo plazo (20y+) invierten en relación tasas cuando hay pánico. En crashes, inversores venden riesgo, compran bonos, tasas caen. TLT (iShares 20y Treasury) se aprecia cuando 10-2y yield curve invierte (indicador de recesión = pánico). Histórico: -11% en 2021-2024 (subida de tasas), pero +40% en crashes. Protección simétrica de cartera.",
+     "PSQ": "PSQ es 3x inverso Nasdaq-100. Es la apuesta pura a crash de IA. Si hipótesis es correcta (burbuja revienta, QQQ cae 30-50%), PSQ gana 90-150% (antes de decay). Representa la posición corta concentrada. Riesgo: decay en mercados laterales (<5% movimiento anual) hace que PSQ pierda ~10-15% anual si Nasdaq es neutral.",
+     "GLD": "Oro se aprecia en crisis de confianza sistémica (2008 +5%, 2020 +24%). Si crash de IA (Nasdaq -30%) contagia a crédito corporativo (mucha deuda emitida por tech) o sector financiero (exposición a junk bonds), mercado entra pánico sistémico: GLD sube 15-30%. Hedge de cola izquierda contra escenario de mayor severidad que solo tech."
+    }
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "nuevo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+    "summary": "\nHipótesis: Tasas de interés más altas comprimen múltiplos de valuación en tecnología de manera desproporcionada. El mecanismo opera a través de la tasa de descuento (tasa libre de riesgo + prima): cuando sube, el valor presente neto de flujos futuros cae. Tech, con flujos concentrados en años lejanos, sufre más que sectores defensivos. La estrategia captura esta sensibilidad monitoreando tasas largas (DGS10), índices tech (NASDAQ) y volatilidad sistémica.\n",
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust (NASDAQ 100)",
+      "sector": "Tecnología",
+      "weight": 0.35,
+      "thesis_role": "Exposición directa a mega-cap tech (Apple, Microsoft, Nvidia, Amazon ~50% del índice). Máxima sensibilidad a tasas de descuento.",
+      "instrument_type": "etf",
+      "source": "Invesco factsheet; Nasdaq 100 composition"
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR (S&P 500 Tech)",
+      "sector": "Tecnología",
+      "weight": 0.2,
+      "thesis_role": "Exposición complementaria a tech de mayor diversificación. Valida si el efecto es genérico o específico a NASDAQ 100.",
+      "instrument_type": "etf",
+      "source": "State Street sector classification"
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta Fija",
+      "weight": 0.15,
+      "thesis_role": "Hedge inverso con duración ~17 años. Si tasas bajan, TLT aprecia (amortiguador si tesis falla). Captura movimiento inverso de DGS10.",
+      "instrument_type": "etf",
+      "source": "iShares factsheet"
+     },
+     {
+      "symbol": "VTV",
+      "name": "Vanguard Value ETF (Russell 1000 Value)",
+      "sector": "Valor / Defensivos",
+      "weight": 0.2,
+      "thesis_role": "Beneficiario de rotación value cuando tasas suben y múltiplos growth se comprimen. Correlación con tasas: ~+0.25-0.35.",
+      "instrument_type": "etf",
+      "source": "Vanguard Russell 1000 Value methodology"
+     },
+     {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "sector": "Materias Primas",
+      "weight": 0.1,
+      "thesis_role": "Hedge de volatilidad sistémica y de inflación subyacente en ciclos de endurecimiento monetario. Decorrelacionado de tasas en crisis.",
+      "instrument_type": "commodity",
+      "source": "World Gold Council; GLD factsheet"
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Yield",
+      "category": "Tasas de Interés",
+      "expected_correlation": "Negativa con precios tech (NASDAQ); positiva con compresión de múltiplos",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Mercados de Acciones",
+      "expected_correlation": "Negativa con DGS10; captura el impacto de tasas en precios de tech",
+      "mechanism_role": "efecto"
+     },
+     {
+      "series_id": "DFF",
+      "name": "Federal Funds Effective Rate",
+      "category": "Tasas de Interés",
+      "expected_correlation": "Positiva con tasas largas; transmisor de impulsos de política monetaria",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "VIXCLS",
+      "name": "CBOE Volatility Index (VIX)",
+      "category": "Volatilidad",
+      "expected_correlation": "Co-movimiento con choques de tasas; amplifica rotaciones de cartera",
+      "mechanism_role": "canal"
+     }
+    ],
+    "rationales": {
+     "QQQ": "QQQ es 100% NASDAQ 100 con sobrepeso en mega-cap tech. Estos nombres (AAPL, MSFT, NVDA, AMZN) tienen alta duration de ganancias: la mayoría crece en 3-5 años, no en ingresos actuales. Sensibilidad estimada a cambios de tasa: -1.5x vs SPY. Cada +50bps en DGS10 típicamente genera -3% a -5% en QQQ en corto plazo.",
+     "XLK": "XLK captura sector Tech del S&P 500 con names como ORCL, IBM, CSCO, MSFT (overlapping). Menos concentrado que QQQ. Si tech sufre por tasas, ambos caen, pero XLK permite validar si el efecto es generic (hits both) o específico a growth puro.",
+     "TLT": "TLT invierte en bonos de 20+ años. Duración ~17: cuando DGS10 sube 100bps, TLT cae ~17%. Es un hedge inverso de riesgo. Si la tesis falla (tasas suben pero tech resiste), TLT amortiguará pérdidas. Correlación con QQQ: -0.60 en ciclos de endurecimiento.",
+     "VTV": "VTV holds Russell 1000 Value (bajos P/E, P/B, M/B). Cuando tasas suben, inversores rotan de Growth (pagaban premium por crecimiento futuro) a Value (ingresos inmediatos que no se descuentan tanto). VTV típicamente aprecia 200-400bps mientras QQQ cae en endurecimiento. Captura el lado long de la rotación.",
+     "GLD": "Oro actúa como hedge de volatilidad en crisis de tasas (VIX spikes). Además, si el impulso subyacente es inflacionario (Fed sube tasas por inflación), oro se aprecia como hedge de valor real. Posición pequeña (10%) pero crítica: cubre tail risk de volatilidad sistémica."
+    },
+    "mechanism": "\nLas tasas de interés superiores elevan la tasa de descuento (tasa libre de riesgo + prima de riesgo) aplicada al cálculo del valor presente neto. Las empresas tecnológicas tienen la mayoría de sus flujos de caja en años lejanos, lo que maximiza su sensibilidad a cambios en la tasa de descuento comparado con sectores defensivos o ingresos inmediatos. Cuando tasas largas suben, múltiplos de valuación (P/E, EV/Sales) en tech se comprimen más que en value o defensivos. Este efecto se amplifica en ciclos de endurecimiento monetario rápido y se materializa en rotaciones hacia value y defensivos.\n",
+    "falsifiers": [
+     {
+      "condition": "Correlación rolling 12 meses entre DGS10 y NASDAQCOM > -0.20 (esperado: < -0.50, relación negativa fuerte)",
+      "series_id": "DGS10"
+     },
+     {
+      "condition": "Retorno anualizado de NASDAQCOM > 10% en trimestres donde DGS10 sube > 100 bps (contradice compresión de múltiplos)",
+      "series_id": "NASDAQCOM"
+     },
+     {
+      "condition": "M2 Year-over-Year crece < 2% mientras DGS10 sube > 50 bps (escasez de liquidez que contrarreste efecto de descuento)",
+      "series_id": "M2SL"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 76.2
+   },
+   "model_raw": {
+    "summary": "\nHipótesis: Tasas de interés más altas comprimen múltiplos de valuación en tecnología de manera desproporcionada. El mecanismo opera a través de la tasa de descuento (tasa libre de riesgo + prima): cuando sube, el valor presente neto de flujos futuros cae. Tech, con flujos concentrados en años lejanos, sufre más que sectores defensivos. La estrategia captura esta sensibilidad monitoreando tasas largas (DGS10), índices tech (NASDAQ) y volatilidad sistémica.\n",
+    "mechanism": "\nLas tasas de interés superiores elevan la tasa de descuento (tasa libre de riesgo + prima de riesgo) aplicada al cálculo del valor presente neto. Las empresas tecnológicas tienen la mayoría de sus flujos de caja en años lejanos, lo que maximiza su sensibilidad a cambios en la tasa de descuento comparado con sectores defensivos o ingresos inmediatos. Cuando tasas largas suben, múltiplos de valuación (P/E, EV/Sales) en tech se comprimen más que en value o defensivos. Este efecto se amplifica en ciclos de endurecimiento monetario rápido y se materializa en rotaciones hacia value y defensivos.\n",
+    "macro_series": [
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Yield",
+      "category": "Tasas de Interés",
+      "mechanism_role": "causa",
+      "expected_correlation": "Negativa con precios tech (NASDAQ); positiva con compresión de múltiplos"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Mercados de Acciones",
+      "mechanism_role": "efecto",
+      "expected_correlation": "Negativa con DGS10; captura el impacto de tasas en precios de tech"
+     },
+     {
+      "series_id": "DFF",
+      "name": "Federal Funds Effective Rate",
+      "category": "Tasas de Interés",
+      "mechanism_role": "causa",
+      "expected_correlation": "Positiva con tasas largas; transmisor de impulsos de política monetaria"
+     },
+     {
+      "series_id": "VIXCLS",
+      "name": "CBOE Volatility Index (VIX)",
+      "category": "Volatilidad",
+      "mechanism_role": "canal",
+      "expected_correlation": "Co-movimiento con choques de tasas; amplifica rotaciones de cartera"
+     }
+    ],
+    "falsifiers": [
+     {
+      "condition": "Correlación rolling 12 meses entre DGS10 y NASDAQCOM > -0.20 (esperado: < -0.50, relación negativa fuerte)",
+      "series_id": "DGS10"
+     },
+     {
+      "condition": "Retorno anualizado de NASDAQCOM > 10% en trimestres donde DGS10 sube > 100 bps (contradice compresión de múltiplos)",
+      "series_id": "NASDAQCOM"
+     },
+     {
+      "condition": "M2 Year-over-Year crece < 2% mientras DGS10 sube > 50 bps (escasez de liquidez que contrarreste efecto de descuento)",
+      "series_id": "M2SL"
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust (NASDAQ 100)",
+      "sector": "Tecnología",
+      "instrument_type": "etf",
+      "weight": 0.35,
+      "thesis_role": "Exposición directa a mega-cap tech (Apple, Microsoft, Nvidia, Amazon ~50% del índice). Máxima sensibilidad a tasas de descuento.",
+      "source": "Invesco factsheet; Nasdaq 100 composition"
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR (S&P 500 Tech)",
+      "sector": "Tecnología",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Exposición complementaria a tech de mayor diversificación. Valida si el efecto es genérico o específico a NASDAQ 100.",
+      "source": "State Street sector classification"
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta Fija",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Hedge inverso con duración ~17 años. Si tasas bajan, TLT aprecia (amortiguador si tesis falla). Captura movimiento inverso de DGS10.",
+      "source": "iShares factsheet"
+     },
+     {
+      "symbol": "VTV",
+      "name": "Vanguard Value ETF (Russell 1000 Value)",
+      "sector": "Valor / Defensivos",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Beneficiario de rotación value cuando tasas suben y múltiplos growth se comprimen. Correlación con tasas: ~+0.25-0.35.",
+      "source": "Vanguard Russell 1000 Value methodology"
+     },
+     {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "sector": "Materias Primas",
+      "instrument_type": "commodity",
+      "weight": 0.1,
+      "thesis_role": "Hedge de volatilidad sistémica y de inflación subyacente en ciclos de endurecimiento monetario. Decorrelacionado de tasas en crisis.",
+      "source": "World Gold Council; GLD factsheet"
+     }
+    ],
+    "rationales": {
+     "QQQ": "QQQ es 100% NASDAQ 100 con sobrepeso en mega-cap tech. Estos nombres (AAPL, MSFT, NVDA, AMZN) tienen alta duration de ganancias: la mayoría crece en 3-5 años, no en ingresos actuales. Sensibilidad estimada a cambios de tasa: -1.5x vs SPY. Cada +50bps en DGS10 típicamente genera -3% a -5% en QQQ en corto plazo.",
+     "XLK": "XLK captura sector Tech del S&P 500 con names como ORCL, IBM, CSCO, MSFT (overlapping). Menos concentrado que QQQ. Si tech sufre por tasas, ambos caen, pero XLK permite validar si el efecto es generic (hits both) o específico a growth puro.",
+     "TLT": "TLT invierte en bonos de 20+ años. Duración ~17: cuando DGS10 sube 100bps, TLT cae ~17%. Es un hedge inverso de riesgo. Si la tesis falla (tasas suben pero tech resiste), TLT amortiguará pérdidas. Correlación con QQQ: -0.60 en ciclos de endurecimiento.",
+     "VTV": "VTV holds Russell 1000 Value (bajos P/E, P/B, M/B). Cuando tasas suben, inversores rotan de Growth (pagaban premium por crecimiento futuro) a Value (ingresos inmediatos que no se descuentan tanto). VTV típicamente aprecia 200-400bps mientras QQQ cae en endurecimiento. Captura el lado long de la rotación.",
+     "GLD": "Oro actúa como hedge de volatilidad en crisis de tasas (VIX spikes). Además, si el impulso subyacente es inflacionario (Fed sube tasas por inflación), oro se aprecia como hedge de valor real. Posición pequeña (10%) pero crítica: cubre tail risk de volatilidad sistémica."
+    }
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "nuevo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+    "summary": "Las tasas hipotecarias altas encarecen el financiamiento para compradores de viviendas, reduciendo la demanda de construcción nueva. Esta caída en demanda se refleja en menores inicios de obras (housing starts) y permisos de construcción, impactando directamente a constructoras y proveedores de materiales.",
+    "tickers": [
+     {
+      "symbol": "XHB",
+      "name": "SPDR S&P Homebuilders ETF",
+      "sector": "Construction & Real Estate",
+      "weight": 0.35,
+      "thesis_role": "Exposición directa a constructoras residenciales, sensibles a tasa hipotecaria",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "XLRE",
+      "name": "Real Estate Select Sector SPDR ETF",
+      "sector": "Real Estate",
+      "weight": 0.25,
+      "thesis_role": "Sector inmobiliario expuesto a cambios en demanda de viviendas por tasas",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "XLB",
+      "name": "Materials Select Sector SPDR ETF",
+      "sector": "Materials & Construction",
+      "weight": 0.2,
+      "thesis_role": "Proveedores de cemento, acero, madera: demanda cae con volumen de construcción",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury ETF",
+      "sector": "Fixed Income",
+      "weight": 0.15,
+      "thesis_role": "Tasas largas correlacionadas con hipotecarias; captura régimen de tasas altas",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "IYM",
+      "name": "iShares US Basic Materials ETF",
+      "sector": "Materials",
+      "weight": 0.05,
+      "thesis_role": "Redundancia en materiales; expone a commodities de construcción (acero, cobre)",
+      "instrument_type": "etf",
+      "source": null
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average",
+      "category": "Tasa de financiamiento",
+      "expected_correlation": "Negativa con construcción; cuando MORTGAGE30US sube, se espera caída en HOUST y PERMIT",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "Building Permits for New Private Housing Units",
+      "category": "Indicador adelantado construcción",
+      "expected_correlation": "Negativa con tasas; PERMIT cae 1-2 meses después de aumento en MORTGAGE30US",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "Total Housing Starts (1000s)",
+      "category": "Efecto construcción",
+      "expected_correlation": "Negativa con tasas; HOUST responde rezagado a cambios en MORTGAGE30US",
+      "mechanism_role": "efecto"
+     },
+     {
+      "series_id": "HOUST1F",
+      "name": "Single-Family Housing Starts (1000s)",
+      "category": "Efecto construcción sensible",
+      "expected_correlation": "Negativa con tasas; single-family es más sensible a tasas hipotecarias que multifamily",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "XHB": "Constructoras (Toll Brothers, KB Home, D.R. Horton) venden a compradores sensibles a pago mensual. Cada 100 bps de aumento en tasa hipotecaria reduce capacidad de compra ~10-15%. XHB cotiza ingresos y márgenes de constructoras.",
+     "XLRE": "Real estate residencial (REITs) ve compresión de valuaciones cuando tasas hipotecarias suben (cap rates suben). Demanda de propiedades cae con tasas más altas.",
+     "XLB": "Índices de producción industrial en construcción (cemento, acero, products forestales) caen cuando housing starts caen. XLB expone a estos proveedores.",
+     "TLT": "Tasa hipotecaria media = yield de bonos + spread (~1.5-2% típicamente). TLT (treasuries de 20+ años) es correlacionada con el componente de yield de la tasa hipotecaria.",
+     "IYM": "Commodities de construcción (cobre en electricidad, acero estructural) son insumos de construcción residencial. Volumen de starts impulsa demanda de commodities."
+    },
+    "mechanism": "El aumento de tasas hipotecarias incrementa el costo anual de servir una hipoteca, reduciendo la demanda de viviendas nuevas entre compradores. Constructoras anticipan menor demanda y aplazan inversión en nuevos proyectos. Esta caída en inversión se refleja primero en permisos de construcción (indicador adelantado) y luego en inicios de obras reales. El mecanismo opera: tasa hipotecaria → demanda de viviendas → permiso y construcción residencial.",
+    "falsifiers": [
+     {
+      "condition": "MORTGAGE30US > 7.5% sostenido pero HOUST permanece > 1,200,000 (promedio móvil 12 meses)",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "MORTGAGE30US cae por debajo de 4.5% pero HOUST se mantiene < 800,000 durante 6+ meses consecutivos",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "Correlación móvil 12 meses entre MORTGAGE30US y HOUST > -0.2 (relación débil o positiva)",
+      "series_id": "MORTGAGE30US"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 191.0
+   },
+   "model_raw": {
+    "summary": "Las tasas hipotecarias altas encarecen el financiamiento para compradores de viviendas, reduciendo la demanda de construcción nueva. Esta caída en demanda se refleja en menores inicios de obras (housing starts) y permisos de construcción, impactando directamente a constructoras y proveedores de materiales.",
+    "mechanism": "El aumento de tasas hipotecarias incrementa el costo anual de servir una hipoteca, reduciendo la demanda de viviendas nuevas entre compradores. Constructoras anticipan menor demanda y aplazan inversión en nuevos proyectos. Esta caída en inversión se refleja primero en permisos de construcción (indicador adelantado) y luego en inicios de obras reales. El mecanismo opera: tasa hipotecaria → demanda de viviendas → permiso y construcción residencial.",
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average",
+      "category": "Tasa de financiamiento",
+      "mechanism_role": "causa",
+      "expected_correlation": "Negativa con construcción; cuando MORTGAGE30US sube, se espera caída en HOUST y PERMIT"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "Building Permits for New Private Housing Units",
+      "category": "Indicador adelantado construcción",
+      "mechanism_role": "canal",
+      "expected_correlation": "Negativa con tasas; PERMIT cae 1-2 meses después de aumento en MORTGAGE30US"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "Total Housing Starts (1000s)",
+      "category": "Efecto construcción",
+      "mechanism_role": "efecto",
+      "expected_correlation": "Negativa con tasas; HOUST responde rezagado a cambios en MORTGAGE30US"
+     },
+     {
+      "series_id": "HOUST1F",
+      "name": "Single-Family Housing Starts (1000s)",
+      "category": "Efecto construcción sensible",
+      "mechanism_role": "efecto",
+      "expected_correlation": "Negativa con tasas; single-family es más sensible a tasas hipotecarias que multifamily"
+     }
+    ],
+    "falsifiers": [
+     {
+      "condition": "MORTGAGE30US > 7.5% sostenido pero HOUST permanece > 1,200,000 (promedio móvil 12 meses)",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "MORTGAGE30US cae por debajo de 4.5% pero HOUST se mantiene < 800,000 durante 6+ meses consecutivos",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "Correlación móvil 12 meses entre MORTGAGE30US y HOUST > -0.2 (relación débil o positiva)",
+      "series_id": "MORTGAGE30US"
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "XHB",
+      "name": "SPDR S&P Homebuilders ETF",
+      "sector": "Construction & Real Estate",
+      "instrument_type": "etf",
+      "weight": 0.35,
+      "thesis_role": "Exposición directa a constructoras residenciales, sensibles a tasa hipotecaria",
+      "source": ""
+     },
+     {
+      "symbol": "XLRE",
+      "name": "Real Estate Select Sector SPDR ETF",
+      "sector": "Real Estate",
+      "instrument_type": "etf",
+      "weight": 0.25,
+      "thesis_role": "Sector inmobiliario expuesto a cambios en demanda de viviendas por tasas",
+      "source": ""
+     },
+     {
+      "symbol": "XLB",
+      "name": "Materials Select Sector SPDR ETF",
+      "sector": "Materials & Construction",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Proveedores de cemento, acero, madera: demanda cae con volumen de construcción",
+      "source": ""
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury ETF",
+      "sector": "Fixed Income",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Tasas largas correlacionadas con hipotecarias; captura régimen de tasas altas",
+      "source": ""
+     },
+     {
+      "symbol": "IYM",
+      "name": "iShares US Basic Materials ETF",
+      "sector": "Materials",
+      "instrument_type": "etf",
+      "weight": 0.05,
+      "thesis_role": "Redundancia en materiales; expone a commodities de construcción (acero, cobre)",
+      "source": ""
+     }
+    ],
+    "rationales": {
+     "XHB": "Constructoras (Toll Brothers, KB Home, D.R. Horton) venden a compradores sensibles a pago mensual. Cada 100 bps de aumento en tasa hipotecaria reduce capacidad de compra ~10-15%. XHB cotiza ingresos y márgenes de constructoras.",
+     "XLRE": "Real estate residencial (REITs) ve compresión de valuaciones cuando tasas hipotecarias suben (cap rates suben). Demanda de propiedades cae con tasas más altas.",
+     "XLB": "Índices de producción industrial en construcción (cemento, acero, products forestales) caen cuando housing starts caen. XLB expone a estos proveedores.",
+     "TLT": "Tasa hipotecaria media = yield de bonos + spread (~1.5-2% típicamente). TLT (treasuries de 20+ años) es correlacionada con el componente de yield de la tasa hipotecaria.",
+     "IYM": "Commodities de construcción (cobre en electricidad, acero estructural) son insumos de construcción residencial. Volumen de starts impulsa demanda de commodities."
+    }
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "nuevo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "Demanda eléctrica por centros de datos de IA",
+    "summary": "La hipótesis sostiene que el crecimiento explosivo de data centers para entrenar e inferir modelos de IA está generando un salto estructural en la demanda eléctrica de EE.UU., forzando inversión en generación (gas, nuclear) y en infraestructura de red, lo que beneficia a utilities con exposición a esa carga, generadores nucleares con PPAs directos, fabricantes de equipos de grid/turbinas y, en menor medida, al gas natural como combustible marginal.",
+    "tickers": [
+     {
+      "symbol": "XLU",
+      "name": "Utilities Select Sector SPDR Fund",
+      "sector": "Utilities",
+      "weight": 0.25,
+      "thesis_role": "Exposición amplia a utilities reguladas que capturan el crecimiento de rate base derivado de mayor carga eléctrica de data centers",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "GRID",
+      "name": "First Trust Nasdaq Clean Edge Smart Grid Infrastructure Fund",
+      "sector": "Industrial / Grid Infrastructure",
+      "weight": 0.15,
+      "thesis_role": "Canal de inversión en modernización y expansión de red de transmisión necesaria para soportar la nueva carga",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "URA",
+      "name": "Global X Uranium ETF",
+      "sector": "Energía / Nuclear",
+      "weight": 0.2,
+      "thesis_role": "Exposición a la demanda de energía nuclear como carga base libre de carbono contratada por hyperscalers",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "CEG",
+      "name": "Constellation Energy Corporation",
+      "sector": "Utilities / Nuclear IPP",
+      "weight": 0.2,
+      "thesis_role": "Generador nuclear con contrato directo de suministro a un hyperscaler (Microsoft) ligado a un data center de IA",
+      "instrument_type": "stock",
+      "source": null
+     },
+     {
+      "symbol": "GEV",
+      "name": "GE Vernova Inc.",
+      "sector": "Industrial / Power Equipment",
+      "weight": 0.2,
+      "thesis_role": "Fabricante de turbinas de gas y equipos de generación cuyo backlog refleja directamente la nueva demanda de capacidad despachable",
+      "instrument_type": "stock",
+      "source": null
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "PNFI",
+      "name": "Private Nonresidential Fixed Investment",
+      "category": "Inversión / Capex",
+      "expected_correlation": "positiva - captura el ciclo de capex (incluyendo construcción de data centers y equipos de cómputo) que origina la demanda eléctrica incremental",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "CAPUTLG2211A2S",
+      "name": "Capacity Utilization: Electric and Gas Utilities",
+      "category": "Energía / Utilities",
+      "expected_correlation": "positiva - utilización de capacidad al alza refleja tensión de red por nueva carga de data centers",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "DHHNGSP",
+      "name": "Henry Hub Natural Gas Spot Price",
+      "category": "Energía / Commodities",
+      "expected_correlation": "positiva - el gas natural es el combustible marginal para nueva generación despachable que cubre la demanda de data centers, por lo que mayor demanda presiona su precio",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "IPUTIL",
+      "name": "Industrial Production: Utilities",
+      "category": "Energía / Producción",
+      "expected_correlation": "positiva - mide directamente el crecimiento del output eléctrico/gas de las utilities, el efecto final del mecanismo",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "XLU": "ETF que agrupa a las utilities eléctricas reguladas de EE.UU. (Southern, Duke, NextEra, American Electric Power, etc.), varias de las cuales han elevado sus proyecciones de crecimiento de carga y de rate base explícitamente citando demanda de data centers en sus reportes trimestrales y guías de capex 2024-2025.",
+     "GRID": "ETF (First Trust Nasdaq Clean Edge Smart Grid Infrastructure) con exposición a fabricantes de transformadores, equipos de transmisión y modernización de red, el canal de inversión en grid necesario para absorber la nueva carga de data centers.",
+     "URA": "ETF de uranio/mineras nucleares; expone al mecanismo por el lado de la energía nuclear como fuente de carga base libre de carbono que hyperscalers están contratando directamente para sus data centers.",
+     "CEG": "Constellation Energy firmó en septiembre de 2024 un acuerdo de suministro de 20 años con Microsoft para reactivar la Unidad 1 de Three Mile Island (rebautizada Crane Clean Energy Center) y destinar esa energía nuclear a sus data centers, evidencia directa del mecanismo causal (fuente: comunicado de prensa de Constellation Energy, 20-sep-2024, y cobertura de Reuters).",
+     "GEV": "GE Vernova, spin-off de GE dedicado a equipos de generación (turbinas de gas) y grid, ha reportado en sus llamadas de resultados un fuerte crecimiento de backlog de turbinas de gas atribuido en parte a la nueva demanda de generación despachable para data centers de IA (fuente: comentarios de management en earnings calls de GE Vernova, reportados por Reuters/Bloomberg 2024-2025)."
+    },
+    "mechanism": "El boom de cómputo de IA (entrenamiento e inferencia de modelos grandes) obliga a hyperscalers a construir data centers cada vez más densos en consumo eléctrico, generando una demanda de electricidad que crece muy por encima de la tendencia histórica plana de EE.UU. de las últimas dos décadas. Esa demanda incremental satura la capacidad de generación y transmisión existente, forzando a utilities y generadores independientes a añadir capacidad despachable (turbinas de gas, reactivación/extensión de vida de plantas nucleares) y a invertir en equipos de red (transformadores, líneas, transmisión). El canal de transmisión es: capex en IA → carga eléctrica de data centers → utilización de capacidad y precios de combustibles marginales (gas) al alza → inversión en generación y grid → crecimiento del output medido en producción industrial de utilities. Los ganadores son utilities con exposición a \"data center load growth\", generadores nucleares con contratos directos (PPAs) con hyperscalers, fabricantes de turbinas/equipos de red y el gas natural como combustible puente.",
+    "falsifiers": [
+     {
+      "condition": "Si el índice de Producción Industrial de Utilities (IPUTIL) se estanca o cae durante 2+ trimestres consecutivos pese a que el capex de hyperscalers en IA sigue creciendo, la demanda eléctrica incremental no se está materializando y la tesis se refuta.",
+      "series_id": "IPUTIL"
+     },
+     {
+      "condition": "Si la Utilización de Capacidad de Electric and Gas Utilities cae de forma sostenida por debajo de ~75% (su promedio histórico de largo plazo), indica holgura de red en vez de tensión por data centers, refutando el mecanismo.",
+      "series_id": "CAPUTLG2211A2S"
+     },
+     {
+      "condition": "Si la Inversión Fija Privada No Residencial (proxy amplio de capex, incluyendo data centers/IA) muestra crecimiento interanual negativo sostenido sin recuperación, la causa raíz del mecanismo (boom de capex en IA) se está apagando.",
+      "series_id": "PNFI"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 72.1
+   },
+   "model_raw": {
+    "falsifiers": [
+     {
+      "series_id": "IPUTIL",
+      "condition": "Si el índice de Producción Industrial de Utilities (IPUTIL) se estanca o cae durante 2+ trimestres consecutivos pese a que el capex de hyperscalers en IA sigue creciendo, la demanda eléctrica incremental no se está materializando y la tesis se refuta."
+     },
+     {
+      "series_id": "CAPUTLG2211A2S",
+      "condition": "Si la Utilización de Capacidad de Electric and Gas Utilities cae de forma sostenida por debajo de ~75% (su promedio histórico de largo plazo), indica holgura de red en vez de tensión por data centers, refutando el mecanismo."
+     },
+     {
+      "series_id": "PNFI",
+      "condition": "Si la Inversión Fija Privada No Residencial (proxy amplio de capex, incluyendo data centers/IA) muestra crecimiento interanual negativo sostenido sin recuperación, la causa raíz del mecanismo (boom de capex en IA) se está apagando."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "PNFI",
+      "name": "Private Nonresidential Fixed Investment",
+      "category": "Inversión / Capex",
+      "mechanism_role": "causa",
+      "expected_correlation": "positiva - captura el ciclo de capex (incluyendo construcción de data centers y equipos de cómputo) que origina la demanda eléctrica incremental"
+     },
+     {
+      "series_id": "CAPUTLG2211A2S",
+      "name": "Capacity Utilization: Electric and Gas Utilities",
+      "category": "Energía / Utilities",
+      "mechanism_role": "canal",
+      "expected_correlation": "positiva - utilización de capacidad al alza refleja tensión de red por nueva carga de data centers"
+     },
+     {
+      "series_id": "DHHNGSP",
+      "name": "Henry Hub Natural Gas Spot Price",
+      "category": "Energía / Commodities",
+      "mechanism_role": "canal",
+      "expected_correlation": "positiva - el gas natural es el combustible marginal para nueva generación despachable que cubre la demanda de data centers, por lo que mayor demanda presiona su precio"
+     },
+     {
+      "series_id": "IPUTIL",
+      "name": "Industrial Production: Utilities",
+      "category": "Energía / Producción",
+      "mechanism_role": "efecto",
+      "expected_correlation": "positiva - mide directamente el crecimiento del output eléctrico/gas de las utilities, el efecto final del mecanismo"
+     }
+    ],
+    "mechanism": "El boom de cómputo de IA (entrenamiento e inferencia de modelos grandes) obliga a hyperscalers a construir data centers cada vez más densos en consumo eléctrico, generando una demanda de electricidad que crece muy por encima de la tendencia histórica plana de EE.UU. de las últimas dos décadas. Esa demanda incremental satura la capacidad de generación y transmisión existente, forzando a utilities y generadores independientes a añadir capacidad despachable (turbinas de gas, reactivación/extensión de vida de plantas nucleares) y a invertir en equipos de red (transformadores, líneas, transmisión). El canal de transmisión es: capex en IA → carga eléctrica de data centers → utilización de capacidad y precios de combustibles marginales (gas) al alza → inversión en generación y grid → crecimiento del output medido en producción industrial de utilities. Los ganadores son utilities con exposición a \"data center load growth\", generadores nucleares con contratos directos (PPAs) con hyperscalers, fabricantes de turbinas/equipos de red y el gas natural como combustible puente.",
+    "rationales": {
+     "XLU": "ETF que agrupa a las utilities eléctricas reguladas de EE.UU. (Southern, Duke, NextEra, American Electric Power, etc.), varias de las cuales han elevado sus proyecciones de crecimiento de carga y de rate base explícitamente citando demanda de data centers en sus reportes trimestrales y guías de capex 2024-2025.",
+     "GRID": "ETF (First Trust Nasdaq Clean Edge Smart Grid Infrastructure) con exposición a fabricantes de transformadores, equipos de transmisión y modernización de red, el canal de inversión en grid necesario para absorber la nueva carga de data centers.",
+     "URA": "ETF de uranio/mineras nucleares; expone al mecanismo por el lado de la energía nuclear como fuente de carga base libre de carbono que hyperscalers están contratando directamente para sus data centers.",
+     "CEG": "Constellation Energy firmó en septiembre de 2024 un acuerdo de suministro de 20 años con Microsoft para reactivar la Unidad 1 de Three Mile Island (rebautizada Crane Clean Energy Center) y destinar esa energía nuclear a sus data centers, evidencia directa del mecanismo causal (fuente: comunicado de prensa de Constellation Energy, 20-sep-2024, y cobertura de Reuters).",
+     "GEV": "GE Vernova, spin-off de GE dedicado a equipos de generación (turbinas de gas) y grid, ha reportado en sus llamadas de resultados un fuerte crecimiento de backlog de turbinas de gas atribuido en parte a la nueva demanda de generación despachable para data centers de IA (fuente: comentarios de management en earnings calls de GE Vernova, reportados por Reuters/Bloomberg 2024-2025)."
+    },
+    "summary": "La hipótesis sostiene que el crecimiento explosivo de data centers para entrenar e inferir modelos de IA está generando un salto estructural en la demanda eléctrica de EE.UU., forzando inversión en generación (gas, nuclear) y en infraestructura de red, lo que beneficia a utilities con exposición a esa carga, generadores nucleares con PPAs directos, fabricantes de equipos de grid/turbinas y, en menor medida, al gas natural como combustible marginal.",
+    "tickers": [
+     {
+      "symbol": "XLU",
+      "name": "Utilities Select Sector SPDR Fund",
+      "sector": "Utilities",
+      "instrument_type": "etf",
+      "weight": 0.25,
+      "thesis_role": "Exposición amplia a utilities reguladas que capturan el crecimiento de rate base derivado de mayor carga eléctrica de data centers"
+     },
+     {
+      "symbol": "GRID",
+      "name": "First Trust Nasdaq Clean Edge Smart Grid Infrastructure Fund",
+      "sector": "Industrial / Grid Infrastructure",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Canal de inversión en modernización y expansión de red de transmisión necesaria para soportar la nueva carga"
+     },
+     {
+      "symbol": "URA",
+      "name": "Global X Uranium ETF",
+      "sector": "Energía / Nuclear",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Exposición a la demanda de energía nuclear como carga base libre de carbono contratada por hyperscalers"
+     },
+     {
+      "symbol": "CEG",
+      "name": "Constellation Energy Corporation",
+      "sector": "Utilities / Nuclear IPP",
+      "instrument_type": "stock",
+      "weight": 0.2,
+      "thesis_role": "Generador nuclear con contrato directo de suministro a un hyperscaler (Microsoft) ligado a un data center de IA"
+     },
+     {
+      "symbol": "GEV",
+      "name": "GE Vernova Inc.",
+      "sector": "Industrial / Power Equipment",
+      "instrument_type": "stock",
+      "weight": 0.2,
+      "thesis_role": "Fabricante de turbinas de gas y equipos de generación cuyo backlog refleja directamente la nueva demanda de capacidad despachable"
+     }
+    ]
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "nuevo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "La IA es una burbuja",
+    "summary": "La hipótesis sostiene que el actual boom de inversión en infraestructura de IA (GPUs, datacenters) está desconectado de los ingresos reales que generará, financiado en parte con deuda y expectativas extendidas al extremo, lo que configura una burbuja de valuación en las empresas tech expuestas a IA.",
+    "tickers": [
+     {
+      "symbol": "SMH",
+      "name": "VanEck Semiconductor ETF",
+      "sector": "Semiconductores",
+      "weight": 0.25,
+      "thesis_role": "Exposición directa al ciclo de capex en GPUs/IA (causa del mecanismo)",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "sector": "Tecnología",
+      "weight": 0.2,
+      "thesis_role": "Captura el efecto agregado de la narrativa de burbuja sobre valuaciones tech mega-cap",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "HYG",
+      "name": "iShares iBoxx $ High Yield Corporate Bond ETF",
+      "sector": "Crédito corporativo",
+      "weight": 0.15,
+      "thesis_role": "Canal de financiamiento de deuda de datacenters/IA; termómetro de estrés crediticio",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "IEF",
+      "name": "iShares 7-10 Year Treasury Bond ETF",
+      "sector": "Renta fija soberana",
+      "weight": 0.15,
+      "thesis_role": "Canal de tasas de interés / tasa de descuento sobre valuaciones de crecimiento",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "sector": "Semiconductores",
+      "weight": 0.15,
+      "thesis_role": "Proxy idiosincrático de demanda real de IA vs. capex especulativo, no replicable por ETF",
+      "instrument_type": "stock",
+      "source": null
+     },
+     {
+      "symbol": "SH",
+      "name": "ProShares Short S&P500",
+      "sector": "Cobertura / índice inverso",
+      "weight": 0.1,
+      "thesis_role": "Cobertura direccional si el estallido de la burbuja arrastra al mercado amplio",
+      "instrument_type": "etf",
+      "source": null
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "PNFI",
+      "name": "Private Nonresidential Fixed Investment",
+      "category": "Inversión / Capex",
+      "expected_correlation": "positiva con valuaciones tech mientras dura el ciclo; una desaceleración brusca sería la señal de ruptura",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Tasas de interés",
+      "expected_correlation": "negativa con valuaciones de crecimiento/tech (mayor tasa = mayor descuento de flujos futuros)",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "BAMLH0A0HYM2",
+      "name": "ICE BofA US High Yield Index Option-Adjusted Spread",
+      "category": "Crédito corporativo",
+      "expected_correlation": "positiva con estrés: un salto en el spread señala que el mercado exige más prima para financiar deuda ligada a IA/datacenters",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Valuaciones equity tech",
+      "expected_correlation": "refleja directamente si la narrativa de burbuja se traduce en precios; una caída fuerte confirmaría el estallido",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "SMH": "ETF sectorial de semiconductores (Nvidia, TSMC, Broadcom entre sus mayores posiciones); es la exposición más directa al ciclo de capex de GPUs/IA, tanto al alza (demanda sostenida) como a la baja (desaceleración de pedidos).",
+     "XLK": "ETF de tecnología del S&P 500 con alta concentración en mega-caps ligadas a IA (Microsoft, Apple, Nvidia, Broadcom); captura el efecto agregado de la narrativa de burbuja sobre las valuaciones del sector.",
+     "HYG": "ETF de bonos corporativos high yield; expone el canal crediticio del mecanismo, ya que buena parte del capex de datacenters e infraestructura IA se financia con deuda especulativa o de menor calidad.",
+     "IEF": "ETF de bonos del Tesoro 7-10 años; expone el canal de tasas de interés, que actúa como tasa de descuento sobre las valuaciones de crecimiento asociadas a IA.",
+     "NVDA": "Acción individual incluida porque ningún ETF captura con la misma intensidad la concentración idiosincrática del ciclo IA: Nvidia es el proveedor dominante de GPUs para entrenamiento de modelos, por lo que sus resultados son el proxy más directo de si la demanda de IA justifica el capex.",
+     "SH": "ETF inverso sobre el S&P 500; funciona como cobertura para beneficiarse si la hipótesis de burbuja se confirma y el mercado amplio corrige por el peso de las mega-caps tech en el índice."
+    },
+    "mechanism": "Los hyperscalers (Microsoft, Google, Meta, Amazon) y las empresas de semiconductores están ejecutando un capex masivo en GPUs y datacenters basado en expectativas de demanda de IA que todavía no se traduce en ingresos proporcionales. Gran parte de ese capex se financia con deuda corporativa y emisión de acciones, lo que eleva la sensibilidad de estas compañías a las tasas de interés y al apetito de riesgo crediticio del mercado. Si los ingresos reales de IA no logran justificar el ritmo de inversión, el mecanismo se revierte: el crecimiento del capex se frena, los spreads de crédito se amplían y las valuaciones tech —fuertemente concentradas en los índices— se comprimen, arrastrando al mercado amplio por su peso en el S&P 500/Nasdaq. Las tasas de interés actúan como catalizador adicional: una suba abrupta encarece el financiamiento del capex y aumenta la tasa de descuento aplicada a flujos futuros altamente especulativos.",
+    "falsifiers": [
+     {
+      "condition": "Si el NASDAQ Composite (NASDAQCOM) no retrocede más de 20% desde su máximo de 12 meses incluso cuando el capex de inversión no residencial (PNFI) se desacelera fuertemente (crecimiento trimestral negativo dos trimestres seguidos), se refuta que la valuación dependa de una expansión insostenible del gasto en IA.",
+      "series_id": "NASDAQCOM"
+     },
+     {
+      "condition": "Si el spread de high yield (BAMLH0A0HYM2) se mantiene por debajo de 400 puntos básicos (rango históricamente normal) durante los próximos 4 trimestres pese al fuerte volumen de emisión de deuda ligada a datacenters, se refuta el canal de estrés crediticio de la burbuja.",
+      "series_id": "BAMLH0A0HYM2"
+     },
+     {
+      "condition": "Si el rendimiento del Treasury a 10 años (DGS10) sube más de 100 puntos básicos sin que el NASDAQ Composite caiga en paralelo, se refuta que las valuaciones tech/IA sean altamente sensibles a la tasa de descuento.",
+      "series_id": "DGS10"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 60.3
+   },
+   "model_raw": {
+    "falsifiers": [
+     {
+      "series_id": "NASDAQCOM",
+      "condition": "Si el NASDAQ Composite (NASDAQCOM) no retrocede más de 20% desde su máximo de 12 meses incluso cuando el capex de inversión no residencial (PNFI) se desacelera fuertemente (crecimiento trimestral negativo dos trimestres seguidos), se refuta que la valuación dependa de una expansión insostenible del gasto en IA."
+     },
+     {
+      "series_id": "BAMLH0A0HYM2",
+      "condition": "Si el spread de high yield (BAMLH0A0HYM2) se mantiene por debajo de 400 puntos básicos (rango históricamente normal) durante los próximos 4 trimestres pese al fuerte volumen de emisión de deuda ligada a datacenters, se refuta el canal de estrés crediticio de la burbuja."
+     },
+     {
+      "series_id": "DGS10",
+      "condition": "Si el rendimiento del Treasury a 10 años (DGS10) sube más de 100 puntos básicos sin que el NASDAQ Composite caiga en paralelo, se refuta que las valuaciones tech/IA sean altamente sensibles a la tasa de descuento."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "PNFI",
+      "name": "Private Nonresidential Fixed Investment",
+      "category": "Inversión / Capex",
+      "mechanism_role": "causa",
+      "expected_correlation": "positiva con valuaciones tech mientras dura el ciclo; una desaceleración brusca sería la señal de ruptura"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Tasas de interés",
+      "mechanism_role": "canal",
+      "expected_correlation": "negativa con valuaciones de crecimiento/tech (mayor tasa = mayor descuento de flujos futuros)"
+     },
+     {
+      "series_id": "BAMLH0A0HYM2",
+      "name": "ICE BofA US High Yield Index Option-Adjusted Spread",
+      "category": "Crédito corporativo",
+      "mechanism_role": "canal",
+      "expected_correlation": "positiva con estrés: un salto en el spread señala que el mercado exige más prima para financiar deuda ligada a IA/datacenters"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Valuaciones equity tech",
+      "mechanism_role": "efecto",
+      "expected_correlation": "refleja directamente si la narrativa de burbuja se traduce en precios; una caída fuerte confirmaría el estallido"
+     }
+    ],
+    "mechanism": "Los hyperscalers (Microsoft, Google, Meta, Amazon) y las empresas de semiconductores están ejecutando un capex masivo en GPUs y datacenters basado en expectativas de demanda de IA que todavía no se traduce en ingresos proporcionales. Gran parte de ese capex se financia con deuda corporativa y emisión de acciones, lo que eleva la sensibilidad de estas compañías a las tasas de interés y al apetito de riesgo crediticio del mercado. Si los ingresos reales de IA no logran justificar el ritmo de inversión, el mecanismo se revierte: el crecimiento del capex se frena, los spreads de crédito se amplían y las valuaciones tech —fuertemente concentradas en los índices— se comprimen, arrastrando al mercado amplio por su peso en el S&P 500/Nasdaq. Las tasas de interés actúan como catalizador adicional: una suba abrupta encarece el financiamiento del capex y aumenta la tasa de descuento aplicada a flujos futuros altamente especulativos.",
+    "rationales": {
+     "SMH": "ETF sectorial de semiconductores (Nvidia, TSMC, Broadcom entre sus mayores posiciones); es la exposición más directa al ciclo de capex de GPUs/IA, tanto al alza (demanda sostenida) como a la baja (desaceleración de pedidos).",
+     "XLK": "ETF de tecnología del S&P 500 con alta concentración en mega-caps ligadas a IA (Microsoft, Apple, Nvidia, Broadcom); captura el efecto agregado de la narrativa de burbuja sobre las valuaciones del sector.",
+     "HYG": "ETF de bonos corporativos high yield; expone el canal crediticio del mecanismo, ya que buena parte del capex de datacenters e infraestructura IA se financia con deuda especulativa o de menor calidad.",
+     "IEF": "ETF de bonos del Tesoro 7-10 años; expone el canal de tasas de interés, que actúa como tasa de descuento sobre las valuaciones de crecimiento asociadas a IA.",
+     "NVDA": "Acción individual incluida porque ningún ETF captura con la misma intensidad la concentración idiosincrática del ciclo IA: Nvidia es el proveedor dominante de GPUs para entrenamiento de modelos, por lo que sus resultados son el proxy más directo de si la demanda de IA justifica el capex.",
+     "SH": "ETF inverso sobre el S&P 500; funciona como cobertura para beneficiarse si la hipótesis de burbuja se confirma y el mercado amplio corrige por el peso de las mega-caps tech en el índice."
+    },
+    "summary": "La hipótesis sostiene que el actual boom de inversión en infraestructura de IA (GPUs, datacenters) está desconectado de los ingresos reales que generará, financiado en parte con deuda y expectativas extendidas al extremo, lo que configura una burbuja de valuación en las empresas tech expuestas a IA.",
+    "tickers": [
+     {
+      "symbol": "SMH",
+      "name": "VanEck Semiconductor ETF",
+      "sector": "Semiconductores",
+      "instrument_type": "etf",
+      "weight": 0.25,
+      "thesis_role": "Exposición directa al ciclo de capex en GPUs/IA (causa del mecanismo)"
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "sector": "Tecnología",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Captura el efecto agregado de la narrativa de burbuja sobre valuaciones tech mega-cap"
+     },
+     {
+      "symbol": "HYG",
+      "name": "iShares iBoxx $ High Yield Corporate Bond ETF",
+      "sector": "Crédito corporativo",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Canal de financiamiento de deuda de datacenters/IA; termómetro de estrés crediticio"
+     },
+     {
+      "symbol": "IEF",
+      "name": "iShares 7-10 Year Treasury Bond ETF",
+      "sector": "Renta fija soberana",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Canal de tasas de interés / tasa de descuento sobre valuaciones de crecimiento"
+     },
+     {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "sector": "Semiconductores",
+      "instrument_type": "stock",
+      "weight": 0.15,
+      "thesis_role": "Proxy idiosincrático de demanda real de IA vs. capex especulativo, no replicable por ETF"
+     },
+     {
+      "symbol": "SH",
+      "name": "ProShares Short S&P500",
+      "sector": "Cobertura / índice inverso",
+      "instrument_type": "etf",
+      "weight": 0.1,
+      "thesis_role": "Cobertura direccional si el estallido de la burbuja arrastra al mercado amplio"
+     }
+    ]
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "nuevo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+    "summary": "Cuando suben las tasas de interés (especialmente las tasas reales de largo plazo), el mercado descuenta más fuerte los flujos de caja futuros. Las empresas tecnológicas de alto crecimiento tienen la mayor parte de su valor en flujos lejanos, por lo que sus múltiplos (P/E, EV/FCF) se comprimen más que los de sectores de valor cuando sube el costo de capital, y se expanden más cuando baja.",
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust",
+      "sector": "Tecnología / Nasdaq-100",
+      "weight": 0.3,
+      "thesis_role": "Proxy principal del efecto: agrupa las acciones de crecimiento de mayor duración de flujos de caja, más sensibles a cambios en la tasa de descuento.",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "sector": "Tecnología",
+      "weight": 0.25,
+      "thesis_role": "Exposición pura al sector tecnológico dentro de S&P 500, para aislar el efecto sectorial del efecto índice growth-heavy de QQQ.",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "ARKK",
+      "name": "ARK Innovation ETF",
+      "sector": "Tecnología disruptiva / alto crecimiento",
+      "weight": 0.15,
+      "thesis_role": "Instrumento de máxima duración de flujos de caja (empresas sin rentabilidad actual), amplifica la sensibilidad a tasas para detectar el mecanismo con mayor claridad.",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta fija / Tasas",
+      "weight": 0.2,
+      "thesis_role": "Proxy inverso de la causa: sube cuando las tasas de largo plazo bajan, permite tradear el canal de tasas directamente y como cobertura/contraparte de la tesis.",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "^TNX",
+      "name": "CBOE 10-Year Treasury Note Yield Index",
+      "sector": "Tasas de interés",
+      "weight": 0.1,
+      "thesis_role": "Medición directa de la tasa de descuento de mercado (nominal 10 años) para seguimiento en tiempo real de la causa del mecanismo.",
+      "instrument_type": "rate",
+      "source": null
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "DFII10",
+      "name": "10-Year Treasury Inflation-Indexed Security, Constant Maturity (tasa real)",
+      "category": "tasas",
+      "expected_correlation": "Positive",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "FEDFUNDS",
+      "name": "Federal Funds Effective Rate",
+      "category": "tasas",
+      "expected_correlation": "Positive",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate (tasa nominal)",
+      "category": "tasas",
+      "expected_correlation": "Positive",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "equity",
+      "expected_correlation": "Positive",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "QQQ": "El Nasdaq-100 está dominado por megacaps tecnológicas de alto crecimiento cuyo valor depende de flujos de caja proyectados a varios años, lo que las hace las más sensibles del mercado a cambios en la tasa de descuento de largo plazo.",
+     "XLK": "Al ser un ETF sectorial dentro del S&P 500, aísla el efecto tecnología del efecto 'growth' más amplio que capta QQQ (que incluye consumo discrecional y comunicación), permitiendo separar sensibilidad sectorial de sensibilidad por estilo.",
+     "ARKK": "Compuesto históricamente por empresas de innovación con baja o nula rentabilidad actual y flujos de caja proyectados muy lejanos en el tiempo, funciona como el instrumento de mayor 'duración de renta variable' para contrastar la hipótesis en su forma más extrema.",
+     "TLT": "Al tener duración larga en renta fija, su precio se mueve inversamente y de forma amplificada con la tasa a 10 años, lo que permite operar y verificar directamente el canal de tasas que origina el mecanismo.",
+     "^TNX": "Es la medida de mercado en tiempo real de la tasa nominal a 10 años, el input de descuento más citado en valuaciones DCF de acciones de crecimiento, sirviendo como serie de seguimiento diario del driver causal."
+    },
+    "mechanism": "La tasa de política monetaria (Fed Funds) y las expectativas de inflación determinan la tasa libre de riesgo de largo plazo, en particular la tasa real a 10 años (TIPS), que es el input clave de la tasa de descuento en modelos DCF. Como las acciones tecnológicas de alto crecimiento tienen duración de flujos de caja muy larga (poca generación de caja hoy, mucha proyectada a futuro), un aumento en la tasa de descuento reduce el valor presente de esos flujos proporcionalmente más que en sectores de baja duración (utilities, consumo defensivo). Esto se traduce en compresión de múltiplos (P/E forward) del Nasdaq/tecnología relativo al mercado amplio, y en rotación de capital hacia valor cuando las tasas suben, y viceversa cuando bajan.",
+    "falsifiers": [
+     {
+      "condition": "La tasa real a 10 años (DFII10) sube más de 50 puntos básicos en un trimestre y el forward P/E de XLK/QQQ no se comprime (o incluso se expande) de forma sostenida durante ese período.",
+      "series_id": "DFII10"
+     },
+     {
+      "condition": "La Fed recorta la tasa de referencia (FEDFUNDS) de forma sostenida (>=75pb en 2 trimestres) y los múltiplos tecnológicos (P/E de QQQ/XLK) no se expanden ni el desempeño relativo de QQQ vs SPY mejora.",
+      "series_id": "FEDFUNDS"
+     },
+     {
+      "condition": "La correlación móvil de 12 meses entre variaciones de DGS10 y el desempeño relativo de QQQ frente a SPY se vuelve positiva y estadísticamente estable durante más de 2 trimestres consecutivos.",
+      "series_id": "DGS10"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 37.5
+   },
+   "model_raw": {
+    "summary": "Cuando suben las tasas de interés (especialmente las tasas reales de largo plazo), el mercado descuenta más fuerte los flujos de caja futuros. Las empresas tecnológicas de alto crecimiento tienen la mayor parte de su valor en flujos lejanos, por lo que sus múltiplos (P/E, EV/FCF) se comprimen más que los de sectores de valor cuando sube el costo de capital, y se expanden más cuando baja.",
+    "mechanism": "La tasa de política monetaria (Fed Funds) y las expectativas de inflación determinan la tasa libre de riesgo de largo plazo, en particular la tasa real a 10 años (TIPS), que es el input clave de la tasa de descuento en modelos DCF. Como las acciones tecnológicas de alto crecimiento tienen duración de flujos de caja muy larga (poca generación de caja hoy, mucha proyectada a futuro), un aumento en la tasa de descuento reduce el valor presente de esos flujos proporcionalmente más que en sectores de baja duración (utilities, consumo defensivo). Esto se traduce en compresión de múltiplos (P/E forward) del Nasdaq/tecnología relativo al mercado amplio, y en rotación de capital hacia valor cuando las tasas suben, y viceversa cuando bajan.",
+    "macro_series": [
+     {
+      "series_id": "DFII10",
+      "name": "10-Year Treasury Inflation-Indexed Security, Constant Maturity (tasa real)",
+      "category": "tasas",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "FEDFUNDS",
+      "name": "Federal Funds Effective Rate",
+      "category": "tasas",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate (tasa nominal)",
+      "category": "tasas",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "equity",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "falsifiers": [
+     {
+      "series_id": "DFII10",
+      "condition": "La tasa real a 10 años (DFII10) sube más de 50 puntos básicos en un trimestre y el forward P/E de XLK/QQQ no se comprime (o incluso se expande) de forma sostenida durante ese período."
+     },
+     {
+      "series_id": "FEDFUNDS",
+      "condition": "La Fed recorta la tasa de referencia (FEDFUNDS) de forma sostenida (>=75pb en 2 trimestres) y los múltiplos tecnológicos (P/E de QQQ/XLK) no se expanden ni el desempeño relativo de QQQ vs SPY mejora."
+     },
+     {
+      "series_id": "DGS10",
+      "condition": "La correlación móvil de 12 meses entre variaciones de DGS10 y el desempeño relativo de QQQ frente a SPY se vuelve positiva y estadísticamente estable durante más de 2 trimestres consecutivos."
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust",
+      "sector": "Tecnología / Nasdaq-100",
+      "instrument_type": "etf",
+      "weight": 0.3,
+      "thesis_role": "Proxy principal del efecto: agrupa las acciones de crecimiento de mayor duración de flujos de caja, más sensibles a cambios en la tasa de descuento."
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "sector": "Tecnología",
+      "instrument_type": "etf",
+      "weight": 0.25,
+      "thesis_role": "Exposición pura al sector tecnológico dentro de S&P 500, para aislar el efecto sectorial del efecto índice growth-heavy de QQQ."
+     },
+     {
+      "symbol": "ARKK",
+      "name": "ARK Innovation ETF",
+      "sector": "Tecnología disruptiva / alto crecimiento",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Instrumento de máxima duración de flujos de caja (empresas sin rentabilidad actual), amplifica la sensibilidad a tasas para detectar el mecanismo con mayor claridad."
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta fija / Tasas",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Proxy inverso de la causa: sube cuando las tasas de largo plazo bajan, permite tradear el canal de tasas directamente y como cobertura/contraparte de la tesis."
+     },
+     {
+      "symbol": "^TNX",
+      "name": "CBOE 10-Year Treasury Note Yield Index",
+      "sector": "Tasas de interés",
+      "instrument_type": "rate",
+      "weight": 0.1,
+      "thesis_role": "Medición directa de la tasa de descuento de mercado (nominal 10 años) para seguimiento en tiempo real de la causa del mecanismo."
+     }
+    ],
+    "rationales": {
+     "QQQ": "El Nasdaq-100 está dominado por megacaps tecnológicas de alto crecimiento cuyo valor depende de flujos de caja proyectados a varios años, lo que las hace las más sensibles del mercado a cambios en la tasa de descuento de largo plazo.",
+     "XLK": "Al ser un ETF sectorial dentro del S&P 500, aísla el efecto tecnología del efecto 'growth' más amplio que capta QQQ (que incluye consumo discrecional y comunicación), permitiendo separar sensibilidad sectorial de sensibilidad por estilo.",
+     "ARKK": "Compuesto históricamente por empresas de innovación con baja o nula rentabilidad actual y flujos de caja proyectados muy lejanos en el tiempo, funciona como el instrumento de mayor 'duración de renta variable' para contrastar la hipótesis en su forma más extrema.",
+     "TLT": "Al tener duración larga en renta fija, su precio se mueve inversamente y de forma amplificada con la tasa a 10 años, lo que permite operar y verificar directamente el canal de tasas que origina el mecanismo.",
+     "^TNX": "Es la medida de mercado en tiempo real de la tasa nominal a 10 años, el input de descuento más citado en valuaciones DCF de acciones de crecimiento, sirviendo como serie de seguimiento diario del driver causal."
+    }
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "nuevo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+    "summary": "Tasas hipotecarias elevadas encarecen el financiamiento de vivienda, reducen la demanda de compradores y el ritmo al que los constructores inician nuevos proyectos, contrayendo la oferta de vivienda nueva en EE.UU.",
+    "tickers": [
+     {
+      "symbol": "ITB",
+      "name": "iShares U.S. Home Construction ETF",
+      "sector": "Construcción residencial",
+      "weight": 0.3,
+      "thesis_role": "Exposición directa a constructoras de vivienda residencial, el sector más sensible al canal de oferta/inicio de obra",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "XHB",
+      "name": "SPDR S&P Homebuilders ETF",
+      "sector": "Cadena de suministro de vivienda",
+      "weight": 0.2,
+      "thesis_role": "Exposición más amplia a homebuilders y proveedores relacionados (materiales, electrodomésticos), capturando efectos de segundo orden en la cadena",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta fija",
+      "weight": 0.2,
+      "thesis_role": "Proxy inverso de tasas largas: su precio sube cuando las tasas (incluida la hipotecaria) bajan, útil para trackear el driver causal",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "WOOD",
+      "name": "iShares Global Timber & Forestry ETF",
+      "sector": "Materiales de construcción",
+      "weight": 0.15,
+      "thesis_role": "Canal de costo de insumos (madera) que se mueve con la demanda de nueva construcción residencial",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "LEN",
+      "name": "Lennar Corporation",
+      "sector": "Construcción residencial",
+      "weight": 0.15,
+      "thesis_role": "Constructora individual de gran escala con exposición pura a inicios de obra y sensibilidad directa al costo de financiamiento de construcción, no totalmente replicable por ETFs diversificados",
+      "instrument_type": "stock",
+      "source": null
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average in the United States",
+      "category": "tasas",
+      "expected_correlation": "Positive",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "MSACSR",
+      "name": "Monthly Supply of New Houses in the United States",
+      "category": "vivienda",
+      "expected_correlation": "Positive",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "New Private Housing Units Authorized by Building Permits",
+      "category": "vivienda",
+      "expected_correlation": "Positive",
+      "mechanism_role": "efecto"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "New Privately-Owned Housing Units Started: Total Units",
+      "category": "vivienda",
+      "expected_correlation": "Positive",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "rationales": {
+     "ITB": "ETF concentrado en constructoras de vivienda; su composición y desempeño histórico reflejan directamente el ciclo de housing starts (fuente: metodología del índice Dow Jones U.S. Select Home Construction, publicada por iShares).",
+     "XHB": "Incluye no solo builders sino retailers de mejoras para el hogar y proveedores, dando exposición al efecto de segundo orden de menor actividad constructiva sobre toda la cadena (fuente: metodología S&P Homebuilders Select Industry Index).",
+     "TLT": "Los bonos del Tesoro a largo plazo son el principal ancla de las tasas hipotecarias a 30 años en EE.UU., por lo que su precio se mueve inversamente al costo hipotecario, sirviendo como proxy negociable del driver causal.",
+     "WOOD": "La demanda de madera para construcción residencial es un insumo directo de nueva vivienda; su precio y las acciones de empresas forestales/madereras responden al ritmo de nuevos inicios de obra.",
+     "LEN": "Lennar es uno de los mayores homebuilders de EE.UU. por volumen de cierres de viviendas, con exposición directa al costo de crédito de construcción y a la demanda hipotecaria de compradores finales (fuente: reportes anuales 10-K de Lennar Corporation)."
+    },
+    "mechanism": "Cuando la tasa hipotecaria a 30 años sube, la cuota mensual de una hipoteca típica aumenta y la vivienda se vuelve menos asequible, lo que reduce la demanda de compradores (canal de demanda). Con menos ventas y más inventario sin vender, los constructores frenan permisos y nuevos inicios de obra para no acumular stock (canal de oferta/inventario). Adicionalmente, tasas más altas encarecen el crédito puente de construcción que usan los propios builders, golpeando directamente su rentabilidad y apetito por nuevos proyectos (canal de costo de capital). El resultado esperado es una caída en housing starts y permits con rezago de algunos meses respecto al movimiento de tasas.",
+    "falsifiers": [
+     {
+      "condition": "HOUST sube más de 5% interanual durante 2 trimestres consecutivos mientras MORTGAGE30US se mantiene por encima de 7%",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "PERMIT crece sostenidamente (3 meses consecutivos) con MORTGAGE30US en niveles elevados (>6.5%), rompiendo la relación inversa esperada",
+      "series_id": "PERMIT"
+     },
+     {
+      "condition": "MSACSR (meses de oferta) cae de forma sostenida pese a tasas hipotecarias en máximos del ciclo, indicando que la demanda no se enfría con tasas altas",
+      "series_id": "MSACSR"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 31.4
+   },
+   "model_raw": {
+    "summary": "Tasas hipotecarias elevadas encarecen el financiamiento de vivienda, reducen la demanda de compradores y el ritmo al que los constructores inician nuevos proyectos, contrayendo la oferta de vivienda nueva en EE.UU.",
+    "mechanism": "Cuando la tasa hipotecaria a 30 años sube, la cuota mensual de una hipoteca típica aumenta y la vivienda se vuelve menos asequible, lo que reduce la demanda de compradores (canal de demanda). Con menos ventas y más inventario sin vender, los constructores frenan permisos y nuevos inicios de obra para no acumular stock (canal de oferta/inventario). Adicionalmente, tasas más altas encarecen el crédito puente de construcción que usan los propios builders, golpeando directamente su rentabilidad y apetito por nuevos proyectos (canal de costo de capital). El resultado esperado es una caída en housing starts y permits con rezago de algunos meses respecto al movimiento de tasas.",
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average in the United States",
+      "category": "tasas",
+      "mechanism_role": "causa"
+     },
+     {
+      "series_id": "MSACSR",
+      "name": "Monthly Supply of New Houses in the United States",
+      "category": "vivienda",
+      "mechanism_role": "canal"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "New Private Housing Units Authorized by Building Permits",
+      "category": "vivienda",
+      "mechanism_role": "efecto"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "New Privately-Owned Housing Units Started: Total Units",
+      "category": "vivienda",
+      "mechanism_role": "efecto"
+     }
+    ],
+    "falsifiers": [
+     {
+      "series_id": "HOUST",
+      "condition": "HOUST sube más de 5% interanual durante 2 trimestres consecutivos mientras MORTGAGE30US se mantiene por encima de 7%"
+     },
+     {
+      "series_id": "PERMIT",
+      "condition": "PERMIT crece sostenidamente (3 meses consecutivos) con MORTGAGE30US en niveles elevados (>6.5%), rompiendo la relación inversa esperada"
+     },
+     {
+      "series_id": "MSACSR",
+      "condition": "MSACSR (meses de oferta) cae de forma sostenida pese a tasas hipotecarias en máximos del ciclo, indicando que la demanda no se enfría con tasas altas"
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "ITB",
+      "name": "iShares U.S. Home Construction ETF",
+      "sector": "Construcción residencial",
+      "instrument_type": "etf",
+      "weight": 0.3,
+      "thesis_role": "Exposición directa a constructoras de vivienda residencial, el sector más sensible al canal de oferta/inicio de obra"
+     },
+     {
+      "symbol": "XHB",
+      "name": "SPDR S&P Homebuilders ETF",
+      "sector": "Cadena de suministro de vivienda",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Exposición más amplia a homebuilders y proveedores relacionados (materiales, electrodomésticos), capturando efectos de segundo orden en la cadena"
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta fija",
+      "instrument_type": "etf",
+      "weight": 0.2,
+      "thesis_role": "Proxy inverso de tasas largas: su precio sube cuando las tasas (incluida la hipotecaria) bajan, útil para trackear el driver causal"
+     },
+     {
+      "symbol": "WOOD",
+      "name": "iShares Global Timber & Forestry ETF",
+      "sector": "Materiales de construcción",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Canal de costo de insumos (madera) que se mueve con la demanda de nueva construcción residencial"
+     },
+     {
+      "symbol": "LEN",
+      "name": "Lennar Corporation",
+      "sector": "Construcción residencial",
+      "instrument_type": "stock",
+      "weight": 0.15,
+      "thesis_role": "Constructora individual de gran escala con exposición pura a inicios de obra y sensibilidad directa al costo de financiamiento de construcción, no totalmente replicable por ETFs diversificados"
+     }
+    ],
+    "rationales": {
+     "ITB": "ETF concentrado en constructoras de vivienda; su composición y desempeño histórico reflejan directamente el ciclo de housing starts (fuente: metodología del índice Dow Jones U.S. Select Home Construction, publicada por iShares).",
+     "XHB": "Incluye no solo builders sino retailers de mejoras para el hogar y proveedores, dando exposición al efecto de segundo orden de menor actividad constructiva sobre toda la cadena (fuente: metodología S&P Homebuilders Select Industry Index).",
+     "TLT": "Los bonos del Tesoro a largo plazo son el principal ancla de las tasas hipotecarias a 30 años en EE.UU., por lo que su precio se mueve inversamente al costo hipotecario, sirviendo como proxy negociable del driver causal.",
+     "WOOD": "La demanda de madera para construcción residencial es un insumo directo de nueva vivienda; su precio y las acciones de empresas forestales/madereras responden al ritmo de nuevos inicios de obra.",
+     "LEN": "Lennar es uno de los mayores homebuilders de EE.UU. por volumen de cierres de viviendas, con exposición directa al costo de crédito de construcción y a la demanda hipotecaria de compradores finales (fuente: reportes anuales 10-K de Lennar Corporation)."
+    }
+   },
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "viejo",
+   "model": "gemini",
+   "status": "ok",
+   "response": {
+    "thesis": "Demanda eléctrica por centros de datos de IA",
+    "summary": "Tesis cuantitativa y macroestructural enfocada en el crecimiento exponencial del consumo de energía eléctrica impulsado por la infraestructura de IA. Combina generadores de energía baseload (nuclear y térmica eficiente) con proveedores de infraestructura crítica de red y equipamiento eléctrico necesarios para aliviar cuellos de botella energéticos.",
+    "tickers": [
+     {
+      "symbol": "CEG",
+      "name": "Constellation Energy Corp",
+      "sector": "Utilities",
+      "weight": 0.25,
+      "thesis_role": "Suministro de energía nuclear baseload limpia para contratos de compra directa (PPA) con hyperscalers."
+     },
+     {
+      "symbol": "VST",
+      "name": "Vistra Corp",
+      "sector": "Utilities",
+      "weight": 0.25,
+      "thesis_role": "Generación independiente de energía térmica y nuclear con alta capacidad de respuesta ante picos de demanda."
+     },
+     {
+      "symbol": "ETN",
+      "name": "Eaton Corporation plc",
+      "sector": "Industrial",
+      "weight": 0.2,
+      "thesis_role": "Provisión de infraestructura de distribución eléctrica, transformadores y gestión de energía para data centers."
+     },
+     {
+      "symbol": "GEV",
+      "name": "GE Vernova Inc",
+      "sector": "Industrial",
+      "weight": 0.15,
+      "thesis_role": "Fabricación de turbinas de gas y equipos de electrificación de red para rápido despliegue de capacidad."
+     },
+     {
+      "symbol": "PWR",
+      "name": "Quanta Services Inc",
+      "sector": "Industrial",
+      "weight": 0.15,
+      "thesis_role": "Ingeniería y construcción de líneas de transmisión de alta tensión y modernización de la red eléctrica."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "IPG2211A2N",
+      "name": "Industrial Production: Electric and Gas Utilities",
+      "category": "Energía",
+      "expected_correlation": "Positive"
+     },
+     {
+      "series_id": "PCU335311335311",
+      "name": "PPI: Power, Distribution, and Specialty Transformer Manufacturing",
+      "category": "Equipamiento Eléctrico",
+      "expected_correlation": "Positive"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Tasas",
+      "expected_correlation": "Negative"
+     }
+    ],
+    "rationales": {
+     "CEG": "Es el mayor operador de energía nuclear de EE. UU., posicionado de forma única para ofrecer energía 24/7 libre de carbono mediante PPAs a largo plazo con prima sobre el precio de mercado.",
+     "VST": "Cuenta con una combinación estratégica de activos nucleares y de gas natural, beneficiándose del re-pricing de la capacidad de reserva en mercados desregulados como ERCOT y PJM.",
+     "ETN": "Sufre un superciclo de demanda derivado de la escasez de transformadores y equipos de distribución de media/alta tensión indispensables para conectar centros de datos a la red.",
+     "GEV": "La necesidad imperativa de respaldo térmico inmediato para la red favorece la venta de sus turbinas de gas de ciclo combinado y tecnología de estabilización de red.",
+     "PWR": "Es el contratista clave para resolver el cuello de botella físico de interconexión, beneficiándose del backlog masivo en proyectos de infraestructura de transmisión eléctrica."
+    },
+    "provider_used": "gemini-3.6-flash",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 31.0
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "viejo",
+   "model": "gemini",
+   "status": "ok",
+   "response": {
+    "thesis": "La IA es una burbuja",
+    "summary": "Estrategia de cobertura cuantitativa y rotación defensiva diseñada para capitalizar la compresión de múltiplos de valoración en empresas de tecnología ligadas a la IA. Combina cobertura inversa al sector tecnológico con una asignación ponderada hacia activos de valor, alta liquidez y sectores defensivos no cíclicos de baja beta.",
+    "tickers": [
+     {
+      "symbol": "PSQ",
+      "name": "ProShares Short QQQ",
+      "sector": "ETFs / Cobertura",
+      "weight": 0.3,
+      "thesis_role": "Cobertura directa e inversa del índice Nasdaq-100 para monetizar la caída en las valoraciones del sector tecnológico."
+     },
+     {
+      "symbol": "BRK.B",
+      "name": "Berkshire Hathaway Inc.",
+      "sector": "Financiero / Conglomerado",
+      "weight": 0.25,
+      "thesis_role": "Refugio de capital con elevados niveles de liquidez para redistribuir en activos infravalorados tras la corrección del mercado."
+     },
+     {
+      "symbol": "XLP",
+      "name": "Consumer Staples Select Sector SPDR Fund",
+      "sector": "Bienes de Consumo Básico",
+      "weight": 0.2,
+      "thesis_role": "Asignación defensiva de baja beta con flujos de caja estables y menor sensibilidad a la contracción de múltiplos de crecimiento."
+     },
+     {
+      "symbol": "XLU",
+      "name": "Utilities Select Sector SPDR Fund",
+      "sector": "Servicios Públicos",
+      "weight": 0.15,
+      "thesis_role": "Activo no cíclico generador de dividendos con baja correlación frente al sector de tecnología especulativa."
+     },
+     {
+      "symbol": "XOM",
+      "name": "Exxon Mobil Corporation",
+      "sector": "Energía",
+      "weight": 0.1,
+      "thesis_role": "Exposición a activos reales y flujo de caja sustancial desconectado de las narrativas de monetización de software."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Renta Variable / Tech",
+      "expected_correlation": "Negative"
+     },
+     {
+      "series_id": "BAMLH0A0HYM2",
+      "name": "ICE BofA US High Yield Option-Adjusted Spread",
+      "category": "Riesgo de Crédito / Liquidez",
+      "expected_correlation": "Positive"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Tasas de Interés",
+      "expected_correlation": "Positive"
+     }
+    ],
+    "rationales": {
+     "PSQ": "Genera alpha positivo directamente proporcional a la corrección del Nasdaq-100, mitigando el impacto sistémico del colapso de las megacaps tecnológicas.",
+     "BRK.B": "Su enfoque cuantitativo en valor fundamental y su fortaleza de balance la posicionan como el vehículo idóneo de preservación de capital durante fases de pánico de mercado.",
+     "XLP": "Presenta una correlación histórica reducida frente a burbujas tecnológicas, garantizando estabilidad en los retornos mediante demanda inelástica de sus constituyentes.",
+     "XLU": "Proporciona protección contra las caídas al actuar como sustituto de renta fija con flujos de ingresos estables cuando los capitales huyen de la renta variable de alto crecimiento.",
+     "XOM": "Ofrece respaldo sustancial en valoración mediante recompra de acciones y dividendos fundamentados en métricas operativas reales en lugar de expectativas de crecimiento futuras irreales."
+    },
+    "provider_used": "gemini-3.6-flash",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 29.3
+   },
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "seconds": 5.8,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 45.633819856s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '45s'}]}}"
+    }
+   ]
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "viejo",
+   "model": "gemini",
+   "status": "sin dato",
+   "response": null,
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "seconds": 5.7,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 45.559026322s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '45s'}]}}"
+    },
+    {
+     "seconds": 5.8,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 34.741468518s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '34s'}]}}"
+    },
+    {
+     "seconds": 11.6,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 18.167115832s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '18s'}]}}"
+    }
+   ]
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "viejo",
+   "model": "gemini",
+   "status": "sin dato",
+   "response": null,
+   "model_raw": null,
+   "failed_attempts": [
+    {
+     "seconds": 5.9,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 52.312129918s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '52s'}]}}"
+    },
+    {
+     "seconds": 5.8,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 41.469073617s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.6-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '41s'}]}}"
+    },
+    {
+     "seconds": 5.3,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 31.176576679s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '31s'}]}}"
+    }
+   ]
+  },
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "viejo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "Demanda eléctrica por centros de datos de IA",
+    "summary": "Tesis de exposición al boom de demanda eléctrica generado por expansión de centros de datos de IA. La cartera combina: (1) utilities de energía renovable y tradicional que suministran la infraestructura crítica (NEE, DUK); (2) semiconductores líderes cuya demanda es impulsada por la necesidad de procesamiento IA (NVDA, AMD); (3) REITs especializados en infraestructura de data centers (DLR). Posicionada para capturar el crecimiento exponencial de demanda de electricidad, chips de IA, e infraestructura de computación en los próximos años.",
+    "tickers": [
+     {
+      "symbol": "NEE",
+      "name": "NextEra Energy",
+      "sector": "Utilities",
+      "weight": 0.3,
+      "thesis_role": "Generador de energía renovable: proveedor crítico de electricidad limpia para data centers. Crecimiento en renovables alineado con demanda de energia para IA."
+     },
+     {
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "sector": "Semiconductors",
+      "weight": 0.25,
+      "thesis_role": "Semiconductor líder IA: demanda explosiva de GPUs para data centers. Exposición directa a capex de infraestructura de IA."
+     },
+     {
+      "symbol": "DLR",
+      "name": "Digital Realty",
+      "sector": "Real Estate (Data Centers)",
+      "weight": 0.2,
+      "thesis_role": "REIT de data centers: beneficiario directo de expansión de capacidad. Ingresos recurrentes de ocupación de espacios para servidores IA."
+     },
+     {
+      "symbol": "DUK",
+      "name": "Duke Energy",
+      "sector": "Utilities",
+      "weight": 0.15,
+      "thesis_role": "Distribuidor eléctrico tradicional: infraestructura crítica para generación y transmisión. Posición defensiva con dividendos."
+     },
+     {
+      "symbol": "AMD",
+      "name": "Advanced Micro Devices",
+      "sector": "Semiconductors",
+      "weight": 0.1,
+      "thesis_role": "Competidor de semiconductores IA: beneficiario de demanda de chips CPUs/GPUs para data centers. Valuación alternativa a NVDA."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "ELECMVS",
+      "name": "Total Electricity Sales",
+      "category": "Energy Demand",
+      "expected_correlation": "Positiva: Demanda eléctrica total debe crecer con expansión de data centers"
+     },
+     {
+      "series_id": "INDPRO",
+      "name": "Industrial Production Index",
+      "category": "Economic Activity",
+      "expected_correlation": "Positiva: Actividad industrial y construcción de infraestructura de data centers"
+     },
+     {
+      "series_id": "FEDFUNDS",
+      "name": "Federal Funds Effective Rate",
+      "category": "Monetary Policy",
+      "expected_correlation": "Negativa: Tasas más altas afectan valuación de utilities e inversiones en infraestructura"
+     }
+    ],
+    "rationales": {
+     "NEE": "NextEra Energy es el operador de energía renovable más grande de EE.UU. Posicionado para satisfacer demanda de electricidad limpia de data centers. Exposición dual a crecimiento de energías renovables y demanda de infraestructura energética para IA. Ponderación alta (30%) refleja posición defensiva y de crecimiento equilibrado.",
+     "NVDA": "NVIDIA es el proveedor casi monopólico de GPUs para IA y data centers. Demanda de chips para capacidad de procesamiento de LLMs es exponencial. Integración vertical en software de IA aumenta moat. Ponderación sustancial (25%) captura exposición directa al capex de infraestructura de IA.",
+     "DLR": "Digital Realty Trust es REIT global especializado en data centers, con ocupación relacionada a IA en crecimiento acelerado. Modelo de ingresos recurrentes a través de arrendamientos. Exposición directa a construcción y operación de infraestructura que requiere demanda eléctrica masiva.",
+     "DUK": "Duke Energy es uno de los mayores generadores de electricidad en EE.UU. Infraestructura crítica para suministro de energía a data centers en regiones de alta demanda (Carolina, Midwest). Posición defensiva con dividendos regulares y cash flows predecibles.",
+     "AMD": "Advanced Micro Devices compite en semiconductores para centros de datos y IA, con productos ganando cuota de mercado. Beneficiario de demanda de CPUs y aceleradores alternativos. Valuación más atractiva que NVIDIA ofrece exposición a semiconductores con menor prima."
+    },
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 34.3
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "viejo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "La IA es una burbuja",
+    "summary": "Tesis contraria: posicionamiento bajista sobre el sector de IA argumentando que las valoraciones han alcanzado extremos insostenibles desconectadas de los fundamentos económicos. Las empresas tecnológicas líderes (semiconductores, cloud, redes sociales) han incorporado excesivas primas por IA sin demostrar retornos de inversión proporcionales. La estrategia combina posiciones cortas en beneficiarios del ciclo de hype con posiciones defensivas largas en activos de flight-to-safety que se aprecian durante correcciones de mercado.",
+    "tickers": [
+     {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "sector": "Semiconductores",
+      "weight": 0.3,
+      "thesis_role": "SHORT - Core AI play con P/E extremo (100+x), valuación desconectada de earnings reales. Líder en chips IA pero con crecimiento futuro ya preciosado."
+     },
+     {
+      "symbol": "META",
+      "name": "Meta Platforms Inc.",
+      "sector": "Tecnología/Redes Sociales",
+      "weight": 0.25,
+      "thesis_role": "SHORT - Capex masivo en IA/metaverse (>$60B anuales) sin ROI claro. Inversión especulativa que erosiona márgenes operacionales."
+     },
+     {
+      "symbol": "TSLA",
+      "name": "Tesla Inc.",
+      "sector": "Automotriz/Tecnología",
+      "weight": 0.2,
+      "thesis_role": "SHORT - Valuación extrema basada en promesas no comprobadas de autonomía y IA. Múltiplos insostenibles sin evidencia de Full Self-Driving viable."
+     },
+     {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "sector": "Materias Primas/Defensivo",
+      "weight": 0.15,
+      "thesis_role": "LONG - Activo refugio que se aprecia durante correcciones de mercado y estrés sistémico. Beneficiario de flight-to-safety."
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta Fija/Defensivo",
+      "weight": 0.1,
+      "thesis_role": "LONG - Bonos del tesoro de largo plazo que se aprecian cuando las tasas caen post-corrección. Cobertura de volatilidad."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "CPIAUCSL",
+      "name": "Índice de Precios al Consumidor (CPI) - Todos los items, U.S. City Average",
+      "category": "Precios/Inflación",
+      "expected_correlation": "Negativa con equities de crecimiento en escenario de desaceleración. Presiones inflacionarias limitan caídas de tasas post-corrección."
+     },
+     {
+      "series_id": "UNRATE",
+      "name": "Tasa de Desempleo Oficial (U-3)",
+      "category": "Mercado Laboral",
+      "expected_correlation": "Positiva con volatilidad. Una corrección de IA sería acompañada por ajustes laborales en tech. Deterioro del empleo valida tesis bajista."
+     },
+     {
+      "series_id": "DFF",
+      "name": "Tasa de Fondos Federales Efectiva",
+      "category": "Política Monetaria",
+      "expected_correlation": "Directa con ciclo de mercado. Tasas altas presionan valuaciones de crecimiento. Eventual corte de tasas post-burbuja beneficia activos defensivos."
+     },
+     {
+      "series_id": "VIXCLS",
+      "name": "Índice VIX (Volatilidad Implícita S&P 500)",
+      "category": "Sentimiento/Riesgo",
+      "expected_correlation": "Fuerte positiva durante corrección. Spike en volatilidad confirma transición desde fase de hype a estrés. Beneficia opciones de protección."
+     }
+    ],
+    "rationales": {
+     "NVDA": "NVIDIA es el epicentro de la narrativa de IA con múltiplos de valoración que han alcanzado extremos históricos (>100x P/E). Aunque la demanda de chips de IA es real, los precios actuales implican tasas de crecimiento insostenibles a perpetuidad. El stock ha incorporado 3-5 años de crecimiento futuro en precios presentes. Una corrección del 40-60% es consistente con ciclos de hype tecnológico históricos.",
+     "META": "Meta está gastando $65B+ anuales en capex para IA/metaverse con retornos de inversión aún por demostrar. El 'Reality Labs' ha quemado >$80B acumulados sin generar ingresos materiales. Los inversores están pagando una prima creciente por una apuesta especulativa que ya ha erodionado márgenes operacionales en un 20-30% en tres años.",
+     "TSLA": "Tesla cotiza a 70-80x P/E (2024-25) sin justificación fundamental. La tesis alcista descansa en Full Self-Driving y Optimus robot, ninguno de los cuales ha generado ingresos comerciales verificables. La actual valuación requiere que Teslagenere $50-100B+ en ingresos recurrentes de IA en próxima década - altamente especulativo.",
+     "GLD": "El oro históricamente se aprecia 15-30% durante correcciones de mercado y períodos de estrés sistémico. Posee correlación negativa con equities de crecimiento. Actúa como seguro durante transiciones de ciclo. Una caída del 30% en Nasdaq típicamente acompaña movimientos de +10-15% en oro.",
+     "TLT": "Bonos del tesoro de largo plazo (20+ años) se benefician de entornos de tasas decrecientes. Si IA bubble colapsa, el Banco Central probablemente revertirá a ciclo de cortes de tasas, haciendo que TLT se aprecie 10-20%. Proporciona cobertura contra deflación y estrés de mercado."
+    },
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 169.8
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "viejo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+    "summary": "Tesis de inversión que explota la relación inversa entre tasas de interés y múltiplos de valoración en el sector tecnológico. Tasas más altas comprimen valuaciones DCF especialmente en empresas high-growth con flujos de caja concentrados en el futuro. La cartera se construye con un mix de empresas tech de diferentes sensibilidades a cambios en tasas: núcleo defensivo (MSFT, AAPL) combinado con exposición a beta-rates elevada (NVDA, TSLA, AMZN) para capturar dinámicas de revaluación.",
+    "tickers": [
+     {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "sector": "Technology - Semiconductors",
+      "weight": 0.3,
+      "thesis_role": "High Beta to Rates: Mayor sensibilidad a cambios en tasas por su perfil de crecimiento acelerado y múltiplos elevados. Principal exposición a revaluación de múltiplos con movimientos de tasas."
+     },
+     {
+      "symbol": "MSFT",
+      "name": "Microsoft Corporation",
+      "sector": "Technology - Software & Services",
+      "weight": 0.25,
+      "thesis_role": "Core Defensive Large Cap: Generador consistente de flujos libres con menor sensibilidad a tasas. Ancla de estabilidad y diversificación dentro de cartera tech."
+     },
+     {
+      "symbol": "TSLA",
+      "name": "Tesla Inc.",
+      "sector": "Technology - Automotive/Energy",
+      "weight": 0.2,
+      "thesis_role": "Growth Multiple Proxy: Múltiplo elevado vulnerable a variaciones en tasas. Exposición directa a cambios en percepciones de crecimiento futuro y descuento de cash flows."
+     },
+     {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "sector": "Technology - Hardware",
+      "weight": 0.15,
+      "thesis_role": "Rate Hedge: Mega-cap con generación robusta de dividendos y recompras. Protege la cartera en escenarios de tasas crecientes debido a fortaleza de balance."
+     },
+     {
+      "symbol": "AMZN",
+      "name": "Amazon.com Inc.",
+      "sector": "Technology - E-commerce & Cloud",
+      "weight": 0.1,
+      "thesis_role": "Long-Duration Growth: Exposición a flujos de caja altamente concentrados en el futuro (AWS, expansión). Sensible a cambios en curva de descuento."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "DFF",
+      "name": "Effective Federal Funds Rate",
+      "category": "Monetary Policy",
+      "expected_correlation": "Negativa: Aumentos en tasas directoras reducen múltiplos de tech, particularmente los de high-growth"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Long-term Interest Rates",
+      "expected_correlation": "Negativa: Mayor tasa de descuento aplicada a valuaciones DCF de empresas tech con flujos futuros amplios"
+     },
+     {
+      "series_id": "T10Y2Y",
+      "name": "10-Year Minus 2-Year Treasury Spread",
+      "category": "Yield Curve Shape",
+      "expected_correlation": "Positiva: Curva más pronunciada favorece growth (expectativas de crecimiento), negativa cuando se aplana (recesión)"
+     },
+     {
+      "series_id": "UNRATE",
+      "name": "Unemployment Rate",
+      "category": "Labor Market",
+      "expected_correlation": "Positiva: Desempleo bajo presiona tasas al alza; desempleo alto reduce multiple de riesgo en tech"
+     }
+    ],
+    "rationales": {
+     "NVDA": "NVIDIA es el máximo exponente de múltiplo elevado en tech con valuación DCF altamente sensible a cambios marginales en tasas de descuento. Su proyectado crecimiento exponencial (50%+ CAGR esperado) concentra valor en años futuros. Un aumento de 100bps en el yield a 10 años comprime el valor presente significativamente más que en peers. Posición core para capturar dinámicas de compresión/expansión de múltiplos.",
+     "MSFT": "Microsoft combina crecimiento sostenido (15-20% CAGR) con generación robusta de FCF y balance fortísimo. Su fortaleza relativa en escenarios de tasas crecientes la hace menos volátil. AI/cloud positioning mantiene múltiplo premium pero más racional que NVDA. Funciona como estabilizador en la cartera.",
+     "TSLA": "Tesla cotiza con múltiplo PEG comprimido en contexto de tasas bajas, donde inversores precian crecimiento futuro agresivo. Extremadamente sensible a cambios en expectativas de crecimiento y tasa de descuento. Funciona como amplificador de thesis: caída en tasas → expansión de múltiplo; subida en tasas → compresión severa.",
+     "AAPL": "Apple genera ~$100B anuales en FCF con capital devuelto a accionistas. Valuación menos vulnerable a tasas por generación de ingresos inmediatos y crecimiento más moderado (mid-single digit). Proporciona ancla defensiva y flujo de dividendos que se vuelve más atractivo en contextos de tasas crecientes.",
+     "AMZN": "Amazon invierte FCF en crecimiento futuro (AWS, expansión). Estructura de flujos más alejada en el tiempo que AAPL o MSFT pero menos especulativa que TSLA. Exposición balanceada a dinámicas de tasa con potencial de upside si tasas bajan y curva se esteriliza."
+    },
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 27.7
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "viejo",
+   "model": "haiku",
+   "status": "ok",
+   "response": {
+    "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+    "summary": "Tesis de inversión: Tasas hipotecarias elevadas reducen significativamente la demanda de viviendas nuevas en EE.UU., impactando negativamente a constructoras y proveedores de materiales, mientras benefician a REITs de apartamentos (mayor demanda de renta). La exposición se estructura como short en el sector constructor y long en inmuebles residenciales de renta.",
+    "tickers": [
+     {
+      "symbol": "DHI",
+      "name": "D.R. Horton, Inc.",
+      "sector": "Real Estate - Residential Construction",
+      "weight": 0.25,
+      "thesis_role": "Bearish - Mayor constructor de EE.UU. altamente sensible a demanda de viviendas nuevas y tasas hipotecarias"
+     },
+     {
+      "symbol": "LEN",
+      "name": "Lennar Corporation",
+      "sector": "Real Estate - Residential Construction",
+      "weight": 0.25,
+      "thesis_role": "Bearish - Constructor integrado vulnerabile a contracción de demanda por tasas altas"
+     },
+     {
+      "symbol": "KBH",
+      "name": "KB Home",
+      "sector": "Real Estate - Residential Construction",
+      "weight": 0.2,
+      "thesis_role": "Bearish - Constructor de viviendas de presupuesto sensible a tasas de hipotecarias"
+     },
+     {
+      "symbol": "MAS",
+      "name": "Masco Corporation",
+      "sector": "Industrials - Building Products",
+      "weight": 0.15,
+      "thesis_role": "Bearish - Proveedor de materiales y productos de construcción con demanda derivada de actividad constructora"
+     },
+     {
+      "symbol": "EQR",
+      "name": "Equity Residential",
+      "sector": "Real Estate - Residential REITs",
+      "weight": 0.15,
+      "thesis_role": "Bullish - REIT de apartamentos beneficiado por shift de compradores a rentistas ante tasas hipotecarias altas"
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average",
+      "category": "Interest Rates",
+      "expected_correlation": "Inversa con construcción; variable causal central de la tesis"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "Total Housing Starts",
+      "category": "Construction & Real Estate",
+      "expected_correlation": "Negativa - A tasas altas, inicios de construcción disminuyen"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "New Private Housing Units Authorized by Building Permits",
+      "category": "Construction & Real Estate",
+      "expected_correlation": "Negativa - Indicador adelantado de construcción futura"
+     },
+     {
+      "series_id": "MORTGAGE1YA",
+      "name": "1-Year Adjustable Rate Mortgage Average",
+      "category": "Interest Rates",
+      "expected_correlation": "Complementaria - Seguimiento de tasas ajustables"
+     }
+    ],
+    "rationales": {
+     "DHI": "D.R. Horton es el mayor constructor residencial de EE.UU. con ~9% cuota de mercado. Tasas hipotecarias altas reducen directamente el pool de compradores calificados, contrayendo pedidos y márgenes. Exposición máxima (25%) por sensibilidad sistémica.",
+     "LEN": "Lennar es constructor integrado con presencia nacional diversificada. Sin embargo, la elasticidad demanda-tasa es crítica en su modelo. Tasas superiores al 7% históricamente comprimen starts. Peso del 25% refleja exposición equiparable a DHI.",
+     "KBH": "KB Home se enfoca en segmento de vivienda de presupuesto donde la tasa hipotecaria es factor decisivo de asequibilidad. Ponderación del 20% por mayor sensibilidad relativa a presión de tasas.",
+     "MAS": "Masco (grifería, revestimientos, aislamiento) experimenta demanda derivada. Caídas en HOUST de -30% históricamente correlacionan con caídas en márgenes de Masco del 15-20%. Peso del 15% captura riesgo sistémico en cadena de suministro.",
+     "EQR": "Equity Residential captura inversionista institucional en apartments. Tasas altas fuerzan shift demográfico: compradores priced-out migran a renta. Ocupancia y rents deberían aumentar. Long del 15% balancea riesgo concentrado en constructoras."
+    },
+    "provider_used": "claude-cli-haiku",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 29.4
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "viejo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "Demanda eléctrica por centros de datos de IA",
+    "summary": "La hipótesis plantea que el crecimiento explosivo de centros de datos para entrenar e inferir modelos de IA está generando una demanda eléctrica sin precedentes en EE.UU. (hyperscalers como Microsoft, Google, Amazon y Meta firmando PPAs multi-GW), forzando una reactivación del capex en generación (nuclear, gas, renovables), transmisión y distribución, así como en equipos eléctricos, refrigeración y gestión térmica dentro de los propios data centers. La cartera combina productores/utilities con capacidad de despacho firme (nuclear/gas), fabricantes de equipos de generación y proveedores de infraestructura eléctrica/térmica crítica para data centers, capturando tanto el lado \"molienda\" (generación de electrones) como el lado \"picks and shovels\" (equipos e infraestructura) de este superciclo de inversión.",
+    "tickers": [
+     {
+      "symbol": "CEG",
+      "name": "Constellation Energy Corp",
+      "sector": "Utilities - Nuclear Generation",
+      "weight": 0.2,
+      "thesis_role": "Núcleo de la tesis: mayor operador de energía nuclear en EE.UU., con contratos de suministro directo (PPA) de largo plazo con hyperscalers (ej. Microsoft/Three Mile Island) para alimentar data centers de IA con energía libre de carbono y despachable 24/7."
+     },
+     {
+      "symbol": "VST",
+      "name": "Vistra Corp",
+      "sector": "Utilities - Diversified Power Generation",
+      "weight": 0.18,
+      "thesis_role": "Productor independiente de electricidad con flota diversificada (nuclear, gas, solar/batería); beneficiario directo del repricing de PPAs y crecimiento de demanda en mercados desregulados (PJM, ERCOT) donde se concentran los nuevos data centers."
+     },
+     {
+      "symbol": "VRT",
+      "name": "Vertiv Holdings Co",
+      "sector": "Industrials - Data Center Infrastructure",
+      "weight": 0.17,
+      "thesis_role": "Proveedor especializado en infraestructura crítica de energía y refrigeración (líquida) dentro del data center; captura directamente el gasto en 'picks and shovels' necesario para densidades de potencia crecientes por rack de IA."
+     },
+     {
+      "symbol": "ETN",
+      "name": "Eaton Corporation plc",
+      "sector": "Industrials - Electrical Equipment",
+      "weight": 0.15,
+      "thesis_role": "Fabricante de componentes eléctricos (transformadores, switchgear, gestión de energía) con cuello de botella de oferta actual; beneficiario del cuello de botella de interconexión a la red para nuevos data centers."
+     },
+     {
+      "symbol": "GEV",
+      "name": "GE Vernova Inc",
+      "sector": "Industrials - Power Generation Equipment",
+      "weight": 0.15,
+      "thesis_role": "Fabricante líder de turbinas de gas y equipos de red eléctrica; backlog en máximos históricos impulsado por la necesidad de nueva capacidad de generación firme para alimentar data centers."
+     },
+     {
+      "symbol": "NEE",
+      "name": "NextEra Energy Inc",
+      "sector": "Utilities - Diversified/Renewables",
+      "weight": 0.15,
+      "thesis_role": "Mayor utility y desarrollador de renovables/almacenamiento de EE.UU.; expansión de red de transmisión y contratos de energía renovable+batería para clientes corporativos de tecnología que buscan cumplir objetivos de sostenibilidad."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "IPG2211A2N",
+      "name": "Industrial Production: Electric Power Generation, Transmission and Distribution",
+      "category": "Producción Industrial / Energía",
+      "expected_correlation": "positiva - mide directamente el crecimiento de la generación y distribución eléctrica en EE.UU., proxy directo de la demanda estructural del sector"
+     },
+     {
+      "series_id": "TLPWRCONS",
+      "name": "Total Construction Spending: Power",
+      "category": "Inversión / Construcción",
+      "expected_correlation": "positiva - captura el capex en construcción de nueva capacidad de generación y transmisión, incluyendo plantas dedicadas a alimentar data centers"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Tasas de interés",
+      "expected_correlation": "negativa - las utilities y empresas de infraestructura intensivas en capital son sensibles a tasas; tasas altas presionan valuaciones y costo de financiamiento de nuevos proyectos"
+     },
+     {
+      "series_id": "CPIENGSL",
+      "name": "CPI: Energy (SA)",
+      "category": "Inflación",
+      "expected_correlation": "positiva - refleja presión de precios en energía que puede traducirse en mayor poder de fijación de precios para generadores, pero también mayor costo de insumos para operadores de data centers"
+     }
+    ],
+    "rationales": {
+     "CEG": "Constellation es el proveedor de energía nuclear más grande de EE.UU. y ha firmado acuerdos históricos (como el reinicio de Three Mile Island para Microsoft) que garantizan ingresos contratados a largo plazo directamente ligados a la demanda de IA, con márgenes premium por energía limpia y firme.",
+     "VST": "Vistra opera una flota de generación diversificada con exposición significativa a mercados desregulados donde se concentran los nuevos data centers (Texas/PJM); se beneficia de la repotenciación de contratos de energía a precios más altos ante la escasez de capacidad firme.",
+     "VRT": "Vertiv es líder en soluciones de energía y refrigeración (incluyendo líquida) para data centers de alta densidad, exactamente el tipo de infraestructura que requieren los racks de GPUs de IA; su backlog y órdenes han crecido aceleradamente con el boom de IA.",
+     "ETN": "Eaton fabrica transformadores, switchgear y equipos de gestión eléctrica que enfrentan escasez de oferta global; es un cuello de botella crítico para la interconexión de nuevos data centers y plantas de generación a la red.",
+     "GEV": "GE Vernova domina el mercado de turbinas de gas de ciclo combinado, tecnología clave para agregar capacidad de generación firme rápida ante el aumento de demanda; su backlog de equipos de potencia está en niveles récord.",
+     "NEE": "NextEra combina la mayor cartera de renovables/almacenamiento de EE.UU. con una red de transmisión regulada en expansión, posicionándola para capturar tanto contratos corporativos de energía limpia como el crecimiento de infraestructura de red necesaria para servir nueva carga de data centers."
+    },
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 35.8
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "viejo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "La IA es una burbuja",
+    "summary": "Tesis: \"La IA es una burbuja\" — la hipótesis sostiene que las valuaciones actuales de las empresas ligadas al ecosistema de inteligencia artificial (semiconductores, hyperscalers, infraestructura de datacenters) están desconectadas de los fundamentos (flujos de caja, retorno sobre el capex masivo, monetización real de productos de IA), y que un catalizador (desaceleración de crecimiento de ingresos, compresión de márgenes, suba de tasas reales, o decepción en resultados de capex) podría gatillar una corrección abrupta y contagio al mercado amplio, dado el alto peso de estas compañías en los índices (Nasdaq-100, S&P 500). La estructura propuesta es una cartera de expresión bajista/de cobertura: instrumentos inversos apalancados sobre Nasdaq-100 y semiconductores (los epicentros del hype de IA), combinados con activos refugio clásicos (oro y bonos largos del Tesoro) y un vehículo de volatilidad que se beneficia de un spike en el VIX durante una corrección desordenada. El objetivo es capturar el escenario de \"desinflado de burbuja\" sin apostar a un solo nombre, diversificando entre exposición direccional corta, cobertura de cola (tail risk) y activos de flight-to-quality. Horizonte táctico de 3-12 meses; riesgo principal: el rally de IA se extiende más de lo esperado (melt-up), generando pérdidas en las posiciones inversas y de decay por apalancamiento diario en SQQQ/SOXS.",
+    "tickers": [
+     {
+      "symbol": "SQQQ",
+      "name": "ProShares UltraPro Short QQQ",
+      "sector": "ETF Inverso Apalancado - Tecnología",
+      "weight": 0.35,
+      "thesis_role": "Posición corta core: exposición inversa 3x al Nasdaq-100, índice con máxima concentración en las mega-caps de IA (NVDA, MSFT, GOOGL, META, AMZN, AVGO). Vehículo principal para expresar la caída generalizada si la narrativa de IA se revierte."
+     },
+     {
+      "symbol": "SOXS",
+      "name": "Direxion Daily Semiconductor Bear 3X Shares",
+      "sector": "ETF Inverso Apalancado - Semiconductores",
+      "weight": 0.2,
+      "thesis_role": "Cobertura/short concentrado en el sector de semiconductores, epicentro físico del capex de IA (GPUs, aceleradores, fabs). Amplifica la tesis si la desaceleración golpea primero la cadena de suministro de hardware."
+     },
+     {
+      "symbol": "VIXY",
+      "name": "ProShares VIX Short-Term Futures ETF",
+      "sector": "ETF de Volatilidad",
+      "weight": 0.15,
+      "thesis_role": "Cobertura de cola (tail hedge): se aprecia fuertemente ante un spike de volatilidad típico de un desinflado desordenado de burbuja, protegiendo la cartera en escenarios de crash rápido."
+     },
+     {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "sector": "ETF de Materias Primas - Metales Preciosos",
+      "weight": 0.15,
+      "thesis_role": "Activo refugio no correlacionado con equities tech; históricamente se beneficia de la rotación fuera de activos de riesgo especulativos y de la pérdida de confianza en narrativas de crecimiento."
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "ETF de Renta Fija - Bonos del Tesoro Largo Plazo",
+      "weight": 0.15,
+      "thesis_role": "Flight-to-quality: si el estallido de la burbuja de IA arrastra al mercado amplio, se espera una respuesta de política monetaria más laxa o búsqueda de seguridad, beneficiando a los bonos largos."
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "NASDAQCOM",
+      "name": "NASDAQ Composite Index",
+      "category": "Mercado de Renta Variable / Tecnología",
+      "expected_correlation": "Negativa con la tesis (si la burbuja estalla, el índice cae fuertemente dado su alto peso en mega-cap tech/IA)"
+     },
+     {
+      "series_id": "VIXCLS",
+      "name": "CBOE Volatility Index (VIX)",
+      "category": "Volatilidad de Mercado",
+      "expected_correlation": "Positiva (un spike de VIX confirmaría pánico de mercado consistente con el desinflado de la burbuja)"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Tasas de Interés",
+      "expected_correlation": "Positiva con el catalizador de la tesis en el corto plazo (tasas reales más altas comprimen valuaciones de growth/IA), pero negativa en el escenario posterior de flight-to-quality (tasas caen tras el crash)"
+     },
+     {
+      "series_id": "BAMLH0A0HYM2",
+      "name": "ICE BofA US High Yield Index Option-Adjusted Spread",
+      "category": "Spreads de Crédito",
+      "expected_correlation": "Positiva (ampliación de spreads de high yield señalaría estrés crediticio, relevante dado el creciente financiamiento con deuda de los proyectos de datacenters de IA)"
+     }
+    ],
+    "rationales": {
+     "SQQQ": "Concentra la exposición bajista en el índice donde reside el mayor peso relativo de las compañías 'AI-driven' (Nasdaq-100 tiene >45% en las 7 magníficas, mayoría ligadas a narrativa de IA). Es la posición de mayor convicción y mayor tamaño en la cartera por ser el vehículo más directo y líquido para expresar la tesis.",
+     "SOXS": "Los semiconductores son el 'pico y pala' físico del boom de IA; si el capex de hyperscalers se desacelera o si hay sobrecapacidad de GPUs, este sector sufre antes y con mayor amplitud que el resto del mercado, por lo que ofrece apalancamiento temático a la tesis de burbuja.",
+     "VIXY": "Actúa como seguro de cartera: en escenarios de burbuja que estalla de forma abrupta (no gradual), la volatilidad implícita se dispara, compensando potencial drag por decay diario de los ETFs apalancados inversos en escenarios de caída lenta o lateral.",
+     "GLD": "Diversifica la fuente de retorno fuera de instrumentos derivados/apalancados sobre equities, aportando un hedge macro clásico ante pérdida de confianza en activos especulativos y posible entorno de estanflación si la Fed debe elegir entre inflación y crecimiento.",
+     "TLT": "Captura el escenario post-estallido en que los inversores rotan hacia duración y calidad crediticia, especialmente si la corrección de IA fuerza a la Fed a señalar recortes de tasas o si se materializa un shock de crecimiento negativo."
+    },
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 48.1
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "viejo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+    "summary": "Tesis: los múltiplos de valoración de las acciones tecnológicas de alto crecimiento (growth) son altamente sensibles a la tasa de interés real y nominal, ya que sus flujos de caja se proyectan mayoritariamente a largo plazo (alta \"duración\" de equity). Cuando la Fed sube tasas o los rendimientos de bonos del Tesoro suben, la tasa de descuento aplicada a esos flujos futuros aumenta, comprimiendo los múltiplos P/E y EV/Sales de estas empresas de forma más pronunciada que en sectores de valor. La estructura combina exposición larga a tecnología de distinta duración (para capturar el gradiente de sensibilidad) junto con un instrumento de renta fija (TLT) que actúa como proxy inverso de tasas para monitorear/hedgear el riesgo de tasa, y un benchmark sectorial amplio (XLK) para aislar el efecto puro de tasas del efecto idiosincrático de cada nombre.",
+    "tickers": [
+     {
+      "symbol": "QQQ",
+      "name": "Invesco QQQ Trust (Nasdaq-100 ETF)",
+      "sector": "Tecnología (amplio)",
+      "weight": 0.25,
+      "thesis_role": "core_high_multiple_proxy"
+     },
+     {
+      "symbol": "ARKK",
+      "name": "ARK Innovation ETF",
+      "sector": "Tecnología disruptiva / growth extremo",
+      "weight": 0.15,
+      "thesis_role": "max_duration_sensitivity"
+     },
+     {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corp",
+      "sector": "Semiconductores",
+      "weight": 0.15,
+      "thesis_role": "single_name_high_multiple_growth"
+     },
+     {
+      "symbol": "MSFT",
+      "name": "Microsoft Corp",
+      "sector": "Software / Mega-cap Tech",
+      "weight": 0.15,
+      "thesis_role": "quality_tech_lower_sensitivity_control"
+     },
+     {
+      "symbol": "XLK",
+      "name": "Technology Select Sector SPDR Fund",
+      "sector": "Tecnología (benchmark sectorial)",
+      "weight": 0.15,
+      "thesis_role": "sector_benchmark"
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Renta fija / Duración larga",
+      "weight": 0.15,
+      "thesis_role": "inverse_rate_proxy_hedge"
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "DFII10",
+      "name": "10-Year Treasury Inflation-Indexed Security, Constant Maturity Rate (Real Yield)",
+      "category": "Interest Rates / Real Rates",
+      "expected_correlation": "negativa fuerte con múltiplos tech (la tasa real es el driver directo de la tasa de descuento en modelos DCF de growth)"
+     },
+     {
+      "series_id": "DGS10",
+      "name": "10-Year Treasury Constant Maturity Rate",
+      "category": "Interest Rates",
+      "expected_correlation": "negativa con P/E y EV/Sales de tech de alta duración"
+     },
+     {
+      "series_id": "FEDFUNDS",
+      "name": "Effective Federal Funds Rate",
+      "category": "Política Monetaria",
+      "expected_correlation": "negativa; sube el costo de capital y reduce apetito por riesgo en growth no rentable"
+     },
+     {
+      "series_id": "T10Y2Y",
+      "name": "10-Year Treasury Minus 2-Year Treasury (Yield Curve Spread)",
+      "category": "Curva de Rendimientos",
+      "expected_correlation": "señal adelantada de expectativas de tasas/recesión; aplanamiento/inversión suele preceder compresión de múltiplos growth"
+     }
+    ],
+    "rationales": {
+     "QQQ": "Concentra las mega-caps tecnológicas de mayor ponderación en Nasdaq-100, la mayoría con múltiplos elevados y flujos de caja proyectados a largo plazo; es el vehículo más líquido para expresar la tesis de forma diversificada.",
+     "ARKK": "Representa el extremo de mayor duración de equity dentro de tecnología: empresas de innovación con ganancias muy lejanas en el tiempo o aún no rentables, por lo que históricamente muestra la correlación negativa más pronunciada con subas de tasas reales.",
+     "NVDA": "Líder en semiconductores/IA con múltiplo EV/Sales muy elevado; funciona como caso de estudio single-name de alta sensibilidad a tasas dentro del universo de mega-caps, útil para aislar el efecto de re-rating vs. crecimiento de fundamentales.",
+     "MSFT": "Mega-cap tech rentable, con flujo de caja más cercano en el tiempo y balance sólido; sirve de control de menor sensibilidad relativa dentro del mismo sector, permitiendo diferenciar compresión de múltiplo por tasas de compresión por riesgo idiosincrático.",
+     "XLK": "Benchmark sectorial amplio y diversificado que permite comparar el desempeño de la cesta seleccionada contra el sector tecnológico en su conjunto, aislando el efecto de la selección de nombres del efecto puro de tasas.",
+     "TLT": "Bono largo del Tesoro (20+ años) cuya cotización se mueve inversamente a los rendimientos de largo plazo; actúa como proxy directo e instrumento de cobertura/monitoreo del riesgo de tasas que es el eje central de la tesis."
+    },
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 26.0
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "viejo",
+   "model": "sonnet",
+   "status": "ok",
+   "response": {
+    "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+    "summary": "Tesis: El fuerte incremento de las tasas hipotecarias en EE.UU. encarece el financiamiento para compradores de vivienda, reduce la demanda de nuevas construcciones y comprime los márgenes de las constructoras (menor volumen, mayores incentivos/descuentos, cancelaciones). La cartera propuesta busca capturar esta presión negativa sobre el sector de construcción residencial mediante exposición bajista/defensiva a homebuilders y proveedores de materiales de construcción, cuya actividad está altamente correlacionada de forma inversa con el nivel de tasas hipotecarias. Se complementa con seguimiento de series FRED que anticipan (permisos) y confirman (starts, ventas) el impacto real en el sector, permitiendo validar o invalidar la tesis con datos duros antes de escalar o cerrar posiciones.",
+    "tickers": [
+     {
+      "symbol": "DHI",
+      "name": "D.R. Horton, Inc.",
+      "sector": "Construcción residencial (Homebuilders)",
+      "weight": 0.25,
+      "thesis_role": "Posición bajista/corta core: mayor constructora de EE.UU. por volumen, alta sensibilidad a tasas hipotecarias vía financiamiento de compradores first-time buyer"
+     },
+     {
+      "symbol": "LEN",
+      "name": "Lennar Corporation",
+      "sector": "Construcción residencial (Homebuilders)",
+      "weight": 0.2,
+      "thesis_role": "Posición bajista/corta: segunda constructora más grande, expuesta a compresión de márgenes por incentivos de financiamiento (rate buydowns) ante tasas altas"
+     },
+     {
+      "symbol": "ITB",
+      "name": "iShares U.S. Home Construction ETF",
+      "sector": "ETF sectorial - Construcción residencial",
+      "weight": 0.25,
+      "thesis_role": "Cobertura/exposición diversificada y líquida a todo el ecosistema de homebuilders y proveedores; vehículo eficiente para posición bajista o de cobertura vía opciones/puts"
+     },
+     {
+      "symbol": "BLDR",
+      "name": "Builders FirstSource, Inc.",
+      "sector": "Materiales y productos de construcción",
+      "weight": 0.15,
+      "thesis_role": "Exposición apalancada al volumen de construcción de viviendas nuevas (proveedor de insumos); amplifica el efecto de la caída en housing starts sobre ingresos"
+     },
+     {
+      "symbol": "MHK",
+      "name": "Mohawk Industries, Inc.",
+      "sector": "Materiales de construcción (pisos/revestimientos)",
+      "weight": 0.15,
+      "thesis_role": "Exposición secundaria vía demanda de acabados en construcción nueva y remodelación, sensible a la desaceleración del ciclo de vivienda"
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average in the United States",
+      "category": "Tasas de interés / Financiamiento hipotecario",
+      "expected_correlation": "Correlación negativa con actividad de construcción y con los precios de las acciones de homebuilders/proveedores de materiales; variable causal principal de la tesis"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "Housing Starts: Total New Privately Owned Housing Units Started",
+      "category": "Actividad de construcción residencial",
+      "expected_correlation": "Correlación negativa con el nivel de tasas hipotecarias (con rezago); indicador coincidente/confirmatorio de la tesis, positivo con desempeño de la cartera si se opera en corto"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "New Private Housing Units Authorized by Building Permits",
+      "category": "Actividad de construcción residencial (indicador adelantado)",
+      "expected_correlation": "Correlación negativa con tasas hipotecarias; funciona como indicador líder de HOUST, útil para anticipar el momentum de la tesis antes de que se refleje en starts"
+     },
+     {
+      "series_id": "EXHOSLUSM495S",
+      "name": "Existing Home Sales",
+      "category": "Demanda del mercado de vivienda",
+      "expected_correlation": "Correlación negativa con tasas hipotecarias; captura el 'lock-in effect' de propietarios con hipotecas a tasa baja que reduce inventario disponible y afecta indirectamente la demanda de vivienda nueva"
+     }
+    ],
+    "rationales": {
+     "DHI": "D.R. Horton concentra gran parte de sus ventas en compradores de primera vivienda y de ingresos medios, el segmento más sensible a la cuota mensual hipotecaria. Un alza sostenida de MORTGAGE30US reduce directamente su capacidad de compra y presiona volúmenes de cierre (closings) y backlog.",
+     "LEN": "Lennar ha recurrido intensamente a incentivos de tasa (mortgage rate buydowns) para sostener ventas en entorno de tasas altas, lo que comprime márgenes brutos por vivienda vendida; es un proxy directo del costo de la tesis (rentabilidad vs. volumen).",
+     "ITB": "ITB agrega homebuilders, proveedores de materiales y minoristas de mejoras para el hogar en un solo vehículo líquido, permitiendo expresar la tesis macro sectorial sin riesgo idiosincrático de un solo nombre, y facilita construir cobertura vía derivados (puts/inverse exposure).",
+     "BLDR": "Como proveedor de materiales estructurales y componentes prefabricados para nueva construcción, sus ingresos dependen directamente del volumen de housing starts; una caída en starts por tasas altas se traduce en menor demanda de insumos con apalancamiento operativo negativo.",
+     "MHK": "Mohawk depende de la demanda residencial (nueva construcción y remodelación) para pisos y revestimientos; aunque más diversificado geográficamente, su segmento norteamericano se ve afectado por la desaceleración del ciclo de vivienda ligada a tasas altas.",
+     "macro_rationale": "MORTGAGE30US es la variable causal de la tesis (el shock de tasas). HOUST y PERMIT permiten verificar empíricamente la transmisión del shock a la actividad real de construcción (PERMIT como líder, HOUST como confirmación). EXHOSLUSM495S añade contexto sobre el 'efecto de bloqueo' (lock-in) que reduce oferta de vivienda usada y puede desviar parcialmente demanda hacia vivienda nueva, matizando la magnitud del impacto negativo esperado."
+    },
+    "provider_used": "claude-cli-sonnet",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 34.8
+   },
+   "model_raw": null,
+   "failed_attempts": []
+  }
+ ],
+ "scores": [
+  {
+   "key": "nuevo|gemini|Demanda eléctrica por centros de datos de IA",
+   "status": "sin dato",
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "key": "nuevo|gemini|La IA es una burbuja",
+   "status": "sin dato",
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "key": "nuevo|gemini|Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": "sin dato",
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "key": "nuevo|gemini|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": "sin dato",
+   "failed_attempts": [
+    {
+     "fallback_reason": "no corrida en la pasada principal: el cupo gratuito diario de Gemini (20 pedidos, GenerateRequestsPerDayPerProjectPerModel-FreeTier) ya estaba agotado (429 en las celdas viejas T3 y T4); la corrida se detuvo para no gastar intentos. Ver la pasada complementaria."
+    }
+   ]
+  },
+  {
+   "key": "nuevo|haiku|Demanda eléctrica por centros de datos de IA",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "2/3",
+    "series_exist": {
+     "INDPRO": true,
+     "ELECCCMI": false,
+     "CPIUFDSL": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": true,
+    "C3b": 0.2,
+    "C3c": true,
+    "quote_types": {
+     "XLU": "ETF",
+     "IPO": "ETF",
+     "ICLN": "ETF",
+     "UNG": "ETF",
+     "EQIX": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "0/2",
+    "C1b_why": {
+     "INDPRO": "producción industrial total, no un eslabón eléctrico",
+     "CPIUFDSL": "IPC de alimentos: no mide nada del mecanismo",
+     "ELECCCMI": "no existe en FRED (fuera del denominador)"
+    },
+    "C2": 2,
+    "C2_why": "INDPRO cae 3% contra su media de 12 meses: medible, pero sobre una serie irrelevante; las otras dos usan ELECCCMI (inexistente) y el IPC de alimentos",
+    "C4": "1/1",
+    "C4_why": {
+     "EQIX": "'mayor operador global independiente de data centers' y '250+ data center facilities' sin fuente real"
+    },
+    "obs": "Usó 'source' para afirmaciones, no fuentes (5 de 5 instrumentos). Usó el ETF 'IPO' (Renaissance IPO ETF) como exposición a semiconductores: error."
+   }
+  },
+  {
+   "key": "nuevo|haiku|La IA es una burbuja",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "3/4",
+    "series_exist": {
+     "NASDAQCOM": true,
+     "SHCOMP": false,
+     "UMCSENT": true,
+     "VIXCLS": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": true,
+    "C3b": 0.0,
+    "C3c": true,
+    "quote_types": {
+     "QQQ": "ETF",
+     "XLK": "ETF",
+     "TLT": "ETF",
+     "PSQ": "ETF",
+     "GLD": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "2/3",
+    "C1b_why": {
+     "NASDAQCOM": "precio de activos tecnológicos",
+     "VIXCLS": "condiciones financieras (volatilidad)",
+     "UMCSENT": "confianza del consumidor: no está en el mecanismo",
+     "SHCOMP": "no existe en FRED"
+    },
+    "C2": 2,
+    "C2_why": "VIXCLS < 13 durante 6 meses; NASDAQCOM > 15% anual con UMCSENT cayendo",
+    "C4": "0/0",
+    "C4_why": "sin acciones sueltas",
+    "obs": "Errores de hecho en textos de ETFs: 'PSQ: inverso 3x Nasdaq-100 de Direxion' (PSQ es ProShares, −1x); cifras de P/E sin fuente puestas en 'source'."
+   }
+  },
+  {
+   "key": "nuevo|haiku|Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "DGS10": true,
+     "NASDAQCOM": true,
+     "DFF": true,
+     "VIXCLS": true
+    },
+    "C3a_modelo": true,
+    "C3a_app": true,
+    "C3b": 0.0,
+    "C3c": true,
+    "quote_types": {
+     "QQQ": "ETF",
+     "XLK": "ETF",
+     "TLT": "ETF",
+     "VTV": "ETF",
+     "GLD": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "DGS10": "tasa",
+     "DFF": "tasa",
+     "NASDAQCOM": "precios tecnológicos",
+     "VIXCLS": "prima de riesgo / condiciones financieras"
+    },
+    "C2": 2,
+    "C2_why": "correlación móvil DGS10–NASDAQCOM > −0,20; NASDAQCOM > 10% con DGS10 +100 pb",
+    "C4": "0/0",
+    "C4_why": "sin acciones sueltas",
+    "obs": "Cifras sin fuente en textos de ETFs ('Sensibilidad −1.5x vs SPY', 'correlación −0.60')."
+   }
+  },
+  {
+   "key": "nuevo|haiku|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "MORTGAGE30US": true,
+     "PERMIT": true,
+     "HOUST": true,
+     "HOUST1F": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": true,
+    "C3b": 0.0,
+    "C3c": true,
+    "quote_types": {
+     "XHB": "ETF",
+     "XLRE": "ETF",
+     "XLB": "ETF",
+     "TLT": "ETF",
+     "IYM": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "MORTGAGE30US": "tasa hipotecaria",
+     "PERMIT": "permisos",
+     "HOUST": "inicios",
+     "HOUST1F": "inicios (unifamiliares)"
+    },
+    "C2": 2,
+    "C2_why": "MORTGAGE30US > 7,5% sostenido con HOUST > 1,2 M",
+    "C4": "0/0",
+    "C4_why": "sin acciones sueltas",
+    "obs": "'Cada 100 bps … reduce capacidad de compra ~10-15%' sin fuente (texto de ETF)."
+   }
+  },
+  {
+   "key": "nuevo|sonnet|Demanda eléctrica por centros de datos de IA",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "PNFI": true,
+     "CAPUTLG2211A2S": true,
+     "DHHNGSP": true,
+     "IPUTIL": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": true,
+    "C3b": 0.4,
+    "C3c": true,
+    "quote_types": {
+     "XLU": "ETF",
+     "GRID": "ETF",
+     "URA": "ETF",
+     "CEG": "EQUITY",
+     "GEV": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "3/4",
+    "C1b_why": {
+     "PNFI": "inversión privada no residencial: proxy amplio de la inversión en data centers",
+     "CAPUTLG2211A2S": "utilización de capacidad eléctrica",
+     "IPUTIL": "producción eléctrica",
+     "DHHNGSP": "precio del gas: combustible, no precio de la electricidad (el mecanismo de referencia no lo incluye)"
+    },
+    "C2": 2,
+    "C2_why": "IPUTIL estancado 2+ trimestres con capex creciente; utilización < ~75%",
+    "C4": "0/2",
+    "C4_why": {
+     "CEG": "cita comunicado de Constellation (20-sep-2024) y Reuters en el texto",
+     "GEV": "cita 'earnings calls … reportados por Reuters/Bloomberg' (fuente vaga, pero fuente)"
+    },
+    "obs": "Las fuentes quedaron en el texto y 'source' en null: la UI las marca 'afirmación del LLM, no verificada' (conservador)."
+   }
+  },
+  {
+   "key": "nuevo|sonnet|La IA es una burbuja",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "PNFI": true,
+     "DGS10": true,
+     "BAMLH0A0HYM2": true,
+     "NASDAQCOM": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": true,
+    "C3b": 0.15,
+    "C3c": true,
+    "quote_types": {
+     "SMH": "ETF",
+     "XLK": "ETF",
+     "HYG": "ETF",
+     "IEF": "ETF",
+     "NVDA": "EQUITY",
+     "SH": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "PNFI": "capex",
+     "DGS10": "condiciones financieras",
+     "BAMLH0A0HYM2": "crédito",
+     "NASDAQCOM": "precios tecnológicos"
+    },
+    "C2": 2,
+    "C2_why": "NASDAQCOM no retrocede > 20% con PNFI en caída; spread HY < 400 pb 4 trimestres",
+    "C4": "1/1",
+    "C4_why": {
+     "NVDA": "'proveedor dominante de GPUs para entrenamiento' sin fuente"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "nuevo|sonnet|Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "DFII10": true,
+     "FEDFUNDS": true,
+     "DGS10": true,
+     "NASDAQCOM": true
+    },
+    "C3a_modelo": true,
+    "C3a_app": true,
+    "C3b": 0.0,
+    "C3c": true,
+    "quote_types": {
+     "QQQ": "ETF",
+     "XLK": "ETF",
+     "ARKK": "ETF",
+     "TLT": "ETF",
+     "^TNX": "INDEX"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "DFII10": "tasa real",
+     "FEDFUNDS": "tasa",
+     "DGS10": "tasa",
+     "NASDAQCOM": "precios tecnológicos"
+    },
+    "C2": 2,
+    "C2_why": "DFII10 +50 pb en un trimestre sin compresión de P/E de XLK/QQQ",
+    "C4": "0/0",
+    "C4_why": "sin acciones sueltas (^TNX es un índice de tasa)",
+    "obs": "Incluyó ^TNX (cotización de la tasa, no invertible) con peso 10%."
+   }
+  },
+  {
+   "key": "nuevo|sonnet|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "MORTGAGE30US": true,
+     "MSACSR": true,
+     "PERMIT": true,
+     "HOUST": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": true,
+    "C3b": 0.15,
+    "C3c": true,
+    "quote_types": {
+     "ITB": "ETF",
+     "XHB": "ETF",
+     "TLT": "ETF",
+     "WOOD": "ETF",
+     "LEN": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "MORTGAGE30US": "tasa hipotecaria",
+     "MSACSR": "meses de oferta de casas nuevas (ventas / inventario)",
+     "PERMIT": "permisos",
+     "HOUST": "inicios"
+    },
+    "C2": 2,
+    "C2_why": "HOUST +5% interanual 2 trimestres con MORTGAGE30US > 7%",
+    "C4": "0/1",
+    "C4_why": {
+     "LEN": "cita los 10-K de Lennar en el texto"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|gemini|Demanda eléctrica por centros de datos de IA",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "3/3",
+    "series_exist": {
+     "IPG2211A2N": true,
+     "PCU335311335311": true,
+     "DGS10": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 1.0,
+    "C3c": false,
+    "quote_types": {
+     "CEG": "EQUITY",
+     "VST": "EQUITY",
+     "ETN": "EQUITY",
+     "GEV": "EQUITY",
+     "PWR": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "2/3",
+    "C1b_why": {
+     "IPG2211A2N": "producción eléctrica",
+     "PCU335311335311": "precio de transformadores (equipo eléctrico)",
+     "DGS10": "no está en el mecanismo"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación (el prompt viejo no la pide)",
+    "C4": "5/5",
+    "C4_why": {
+     "CEG": "'mayor operador de energía nuclear de EE. UU.'",
+     "VST": "activos en ERCOT y PJM",
+     "ETN": "'superciclo … escasez de transformadores'",
+     "GEV": "ventas de turbinas",
+     "PWR": "'contratista clave … backlog masivo'"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|gemini|La IA es una burbuja",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "3/3",
+    "series_exist": {
+     "NASDAQCOM": true,
+     "BAMLH0A0HYM2": true,
+     "DGS10": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 0.35,
+    "C3c": true,
+    "quote_types": {
+     "PSQ": "ETF",
+     "BRK.B": "EQUITY",
+     "XLP": "ETF",
+     "XLU": "ETF",
+     "XOM": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "3/3",
+    "C1b_why": {
+     "NASDAQCOM": "precios tecnológicos",
+     "BAMLH0A0HYM2": "crédito",
+     "DGS10": "condiciones financieras"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "2/2",
+    "C4_why": {
+     "BRK.B": "'elevados niveles de liquidez', 'fortaleza de balance'",
+     "XOM": "recompras y dividendos"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|gemini|Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": "sin dato",
+   "failed_attempts": [
+    {
+     "seconds": 5.7,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 45.559026322s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '45s'}]}}"
+    },
+    {
+     "seconds": 5.8,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 34.741468518s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '34s'}]}}"
+    },
+    {
+     "seconds": 11.6,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 18.167115832s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '18s'}]}}"
+    }
+   ]
+  },
+  {
+   "key": "viejo|gemini|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": "sin dato",
+   "failed_attempts": [
+    {
+     "seconds": 5.9,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 52.312129918s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '52s'}]}}"
+    },
+    {
+     "seconds": 5.8,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 41.469073617s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.6-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '41s'}]}}"
+    },
+    {
+     "seconds": 5.3,
+     "fallback_reason": "Gemini falló tras 3 intentos (rate limit): 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash\\nPlease retry in 31.176576679s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.6-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '31s'}]}}"
+    }
+   ]
+  },
+  {
+   "key": "viejo|haiku|Demanda eléctrica por centros de datos de IA",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "2/3",
+    "series_exist": {
+     "ELECMVS": false,
+     "INDPRO": true,
+     "FEDFUNDS": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 1.0,
+    "C3c": false,
+    "quote_types": {
+     "NEE": "EQUITY",
+     "NVDA": "EQUITY",
+     "DLR": "EQUITY",
+     "DUK": "EQUITY",
+     "AMD": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "0/2",
+    "C1b_why": {
+     "INDPRO": "producción total",
+     "FEDFUNDS": "tasa de política: no está en el mecanismo",
+     "ELECMVS": "no existe en FRED"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "5/5",
+    "C4_why": {
+     "NEE": "'operador de energía renovable más grande de EE.UU.'",
+     "NVDA": "'casi monopólico'",
+     "DLR": "ocupación ligada a IA 'en crecimiento acelerado'",
+     "DUK": "'uno de los mayores generadores'",
+     "AMD": "'ganando cuota de mercado'"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|haiku|La IA es una burbuja",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "CPIAUCSL": true,
+     "UNRATE": true,
+     "DFF": true,
+     "VIXCLS": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 0.75,
+    "C3c": false,
+    "quote_types": {
+     "NVDA": "EQUITY",
+     "META": "EQUITY",
+     "TSLA": "EQUITY",
+     "GLD": "ETF",
+     "TLT": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "2/4",
+    "C1b_why": {
+     "DFF": "condiciones financieras (tasa)",
+     "VIXCLS": "condiciones financieras",
+     "CPIAUCSL": "inflación general: no está en el mecanismo",
+     "UNRATE": "desempleo: no está"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "3/3",
+    "C4_why": {
+     "NVDA": "'>100x P/E'",
+     "META": "'$65B+ capex', 'Reality Labs >$80B'",
+     "TSLA": "'70-80x P/E (2024-25)'"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|haiku|Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "DFF": true,
+     "DGS10": true,
+     "T10Y2Y": true,
+     "UNRATE": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 1.0,
+    "C3c": false,
+    "quote_types": {
+     "NVDA": "EQUITY",
+     "MSFT": "EQUITY",
+     "TSLA": "EQUITY",
+     "AAPL": "EQUITY",
+     "AMZN": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "3/4",
+    "C1b_why": {
+     "DFF": "tasa",
+     "DGS10": "tasa",
+     "T10Y2Y": "curva",
+     "UNRATE": "no está en el mecanismo"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "5/5",
+    "C4_why": {
+     "NVDA": "'50%+ CAGR esperado'",
+     "MSFT": "'15-20% CAGR'",
+     "TSLA": "múltiplos",
+     "AAPL": "'~$100B anuales en FCF'",
+     "AMZN": "reinversión de FCF en AWS"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|haiku|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "3/4",
+    "series_exist": {
+     "MORTGAGE30US": true,
+     "HOUST": true,
+     "PERMIT": true,
+     "MORTGAGE1YA": false
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 1.0,
+    "C3c": false,
+    "quote_types": {
+     "DHI": "EQUITY",
+     "LEN": "EQUITY",
+     "KBH": "EQUITY",
+     "MAS": "EQUITY",
+     "EQR": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "3/3",
+    "C1b_why": {
+     "MORTGAGE30US": "tasa hipotecaria",
+     "HOUST": "inicios",
+     "PERMIT": "permisos",
+     "MORTGAGE1YA": "no existe en FRED"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "5/5",
+    "C4_why": {
+     "DHI": "'~9% cuota de mercado'",
+     "LEN": "'tasas > 7% históricamente comprimen starts'",
+     "KBH": "segmento de presupuesto",
+     "MAS": "'caídas en HOUST de −30% … márgenes 15-20%'",
+     "EQR": "perfil de inversores"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|sonnet|Demanda eléctrica por centros de datos de IA",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "IPG2211A2N": true,
+     "TLPWRCONS": true,
+     "DGS10": true,
+     "CPIENGSL": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 1.0,
+    "C3c": false,
+    "quote_types": {
+     "CEG": "EQUITY",
+     "VST": "EQUITY",
+     "VRT": "EQUITY",
+     "ETN": "EQUITY",
+     "GEV": "EQUITY",
+     "NEE": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "3/4",
+    "C1b_why": {
+     "IPG2211A2N": "producción eléctrica",
+     "TLPWRCONS": "construcción en generación eléctrica",
+     "CPIENGSL": "precios de energía (incluye electricidad)",
+     "DGS10": "no está en el mecanismo"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "6/6",
+    "C4_why": {
+     "CEG": "reinicio de Three Mile Island para Microsoft, sin fuente",
+     "VST": "flota en ERCOT/PJM",
+     "VRT": "'backlog y órdenes han crecido aceleradamente'",
+     "ETN": "'escasez de oferta global'",
+     "GEV": "'backlog en niveles récord'",
+     "NEE": "'mayor cartera de renovables'"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|sonnet|La IA es una burbuja",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "NASDAQCOM": true,
+     "VIXCLS": true,
+     "DGS10": true,
+     "BAMLH0A0HYM2": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 0.0,
+    "C3c": true,
+    "quote_types": {
+     "SQQQ": "ETF",
+     "SOXS": "ETF",
+     "VIXY": "ETF",
+     "GLD": "ETF",
+     "TLT": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "NASDAQCOM": "precios tecnológicos",
+     "VIXCLS": "condiciones financieras",
+     "DGS10": "condiciones financieras",
+     "BAMLH0A0HYM2": "crédito"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "0/0",
+    "C4_why": "sin acciones sueltas (ETFs inversos y apalancados)",
+    "obs": "35% en SQQQ (−3x) y 20% en SOXS (−3x): ETFs, pero apalancados inversos."
+   }
+  },
+  {
+   "key": "viejo|sonnet|Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "DFII10": true,
+     "DGS10": true,
+     "FEDFUNDS": true,
+     "T10Y2Y": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 0.3,
+    "C3c": true,
+    "quote_types": {
+     "QQQ": "ETF",
+     "ARKK": "ETF",
+     "NVDA": "EQUITY",
+     "MSFT": "EQUITY",
+     "XLK": "ETF",
+     "TLT": "ETF"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "DFII10": "tasa real",
+     "DGS10": "tasa",
+     "FEDFUNDS": "tasa",
+     "T10Y2Y": "curva"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "2/2",
+    "C4_why": {
+     "NVDA": "'Líder en semiconductores/IA', 'EV/Sales muy elevado'",
+     "MSFT": "'rentable … balance sólido'"
+    },
+    "obs": ""
+   }
+  },
+  {
+   "key": "viejo|sonnet|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": "ok",
+   "mechanical": {
+    "C1a": "4/4",
+    "series_exist": {
+     "MORTGAGE30US": true,
+     "HOUST": true,
+     "PERMIT": true,
+     "EXHOSLUSM495S": true
+    },
+    "C3a_modelo": false,
+    "C3a_app": false,
+    "C3b": 0.75,
+    "C3c": false,
+    "quote_types": {
+     "DHI": "EQUITY",
+     "LEN": "EQUITY",
+     "ITB": "ETF",
+     "BLDR": "EQUITY",
+     "MHK": "EQUITY"
+    }
+   },
+   "judgment": {
+    "C1b": "4/4",
+    "C1b_why": {
+     "MORTGAGE30US": "tasa hipotecaria",
+     "HOUST": "inicios",
+     "PERMIT": "permisos",
+     "EXHOSLUSM495S": "ventas de viviendas"
+    },
+    "C2": 0,
+    "C2_why": "sin refutación",
+    "C4": "4/4",
+    "C4_why": {
+     "DHI": "'gran parte de sus ventas en primera vivienda'",
+     "LEN": "'ha recurrido intensamente a incentivos de tasa'",
+     "BLDR": "dependencia de housing starts",
+     "MHK": "exposición del segmento norteamericano"
+    },
+    "obs": ""
+   }
+  }
+ ]
+}

@@ -1,0 +1,253 @@
+{
+ "cap": 6,
+ "requests_sent": 4,
+ "requests_refused": 0,
+ "cells": [
+  {
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "reason": "Gemini falló: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+   "response": null,
+   "calls": [
+    1
+   ],
+   "model_raw": null
+  },
+  {
+   "thesis": "La IA es una burbuja",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "reason": "Gemini falló: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+   "response": null,
+   "calls": [
+    2
+   ],
+   "model_raw": null
+  },
+  {
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "sin dato",
+   "reason": "Gemini falló: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+   "response": null,
+   "calls": [
+    3
+   ],
+   "model_raw": null
+  },
+  {
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "label": "nuevo",
+   "model": "gemini",
+   "status": "ok",
+   "reason": null,
+   "response": {
+    "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+    "summary": "Las tasas hipotecarias elevadas incrementan el costo del crédito residencial, reduciendo la asequibilidad de la vivienda y ralentizando los inicios y permisos de construcción en EE.UU.",
+    "tickers": [
+     {
+      "symbol": "ITB",
+      "name": "iShares U.S. Home Construction ETF",
+      "sector": "Consumer Discretionary / Homebuilding",
+      "weight": 0.4,
+      "thesis_role": "Vehículo directo de exposición corta/subponderada al sector de constructoras residenciales en EE.UU.",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "XHB",
+      "name": "SPDR S&P Homebuilders ETF",
+      "sector": "Consumer Discretionary / Building Products",
+      "weight": 0.3,
+      "thesis_role": "Captura el impacto extendido en la cadena de valor de vivienda (materiales, remodelación y artefactos).",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "WOOD",
+      "name": "iShares Global Timber & Forestry ETF",
+      "sector": "Materials",
+      "weight": 0.15,
+      "thesis_role": "Exposición a la demanda de madera de estructura, insumo primario afectado por la caída en la construcción.",
+      "instrument_type": "etf",
+      "source": null
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Fixed Income",
+      "weight": 0.15,
+      "thesis_role": "Sensibilidad inversa a la trayectoria de tasas de largo plazo que impulsan las tasas hipotecarias.",
+      "instrument_type": "etf",
+      "source": null
+     }
+    ],
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average in the United States",
+      "category": "Interest Rates / Housing",
+      "expected_correlation": "Negative",
+      "mechanism_role": "causa: mide el costo directo del financiamiento hipotecario para el comprador"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "New Privately-Owned Housing Units Authorized in Permit-Issuing Places",
+      "category": "Housing indicators",
+      "expected_correlation": "Positive",
+      "mechanism_role": "canal: mide la intención adelantada de los desarrolladores para iniciar proyectos"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "Housing Starts: Total New Privately Owned Housing Units Started",
+      "category": "Housing indicators",
+      "expected_correlation": "Positive",
+      "mechanism_role": "efecto: refleja la actividad real de construcción residencial iniciada"
+     }
+    ],
+    "rationales": {
+     "ITB": "Mide de forma directa la rentabilidad de los constructores de viviendas residenciales estadounidenses, altamente sensibles a la velocidad de venta de unidades nuevas.",
+     "XHB": "Otorga exposición ponderada equitativamente a la cadena de suministro residencial, incluyendo insumos de construcción y acondicionamiento.",
+     "WOOD": "Refleja la contracción en la demanda de insumos industriales básicos como la madera, cuyo uso primario en EE.UU. es la construcción de marcos residenciales.",
+     "TLT": "Ofrece la cobertura o expresión macro directa del entorno de rendimientos de largo plazo, determinante clave de la fijación de tasas de crédito hipotecario a 30 años."
+    },
+    "mechanism": "El incremento en las tasas hipotecarias a 30 años reduce la capacidad de pago de los compradores y encarece el financiamiento residencial, contrayendo la demanda de viviendas nuevas. Como respuesta al menor ritmo de absorción de inventario y al aumento del costo de financiamiento para proyectos, los desarrolladores reducen las solicitudes de permisos y desaceleran la iniciación de obras. Esta menor actividad contractiva afecta negativamente los ingresos del sector de construcción residencial y de insumos básicos como la madera.",
+    "falsifiers": [
+     {
+      "condition": "Inicios de construcción de vivienda (HOUST) manteniéndose por encima de 1.55 millones de unidades anualizadas durante más de dos trimestres consecutivos con MORTGAGE30US superior al 7.0%",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "Crecimiento anual positivo de permisos de construcción (PERMIT) superior al 5% interanual con tasas hipotecarias por encima del 6.5%",
+      "series_id": "PERMIT"
+     }
+    ],
+    "benchmark": "SPY",
+    "prompt_version": 2,
+    "provider_used": "gemini-3.6-flash",
+    "fallback_reason": null,
+    "fallback_category": null,
+    "seconds": 30.5,
+    "run_at": "2026-09-29 18:43"
+   },
+   "calls": [
+    4
+   ],
+   "model_raw": {
+    "summary": "Las tasas hipotecarias elevadas incrementan el costo del crédito residencial, reduciendo la asequibilidad de la vivienda y ralentizando los inicios y permisos de construcción en EE.UU.",
+    "mechanism": "El incremento en las tasas hipotecarias a 30 años reduce la capacidad de pago de los compradores y encarece el financiamiento residencial, contrayendo la demanda de viviendas nuevas. Como respuesta al menor ritmo de absorción de inventario y al aumento del costo de financiamiento para proyectos, los desarrolladores reducen las solicitudes de permisos y desaceleran la iniciación de obras. Esta menor actividad contractiva afecta negativamente los ingresos del sector de construcción residencial y de insumos básicos como la madera.",
+    "macro_series": [
+     {
+      "series_id": "MORTGAGE30US",
+      "name": "30-Year Fixed Rate Mortgage Average in the United States",
+      "category": "Interest Rates / Housing",
+      "expected_correlation": "Negative",
+      "mechanism_role": "causa: mide el costo directo del financiamiento hipotecario para el comprador"
+     },
+     {
+      "series_id": "PERMIT",
+      "name": "New Privately-Owned Housing Units Authorized in Permit-Issuing Places",
+      "category": "Housing indicators",
+      "expected_correlation": "Positive",
+      "mechanism_role": "canal: mide la intención adelantada de los desarrolladores para iniciar proyectos"
+     },
+     {
+      "series_id": "HOUST",
+      "name": "Housing Starts: Total New Privately Owned Housing Units Started",
+      "category": "Housing indicators",
+      "expected_correlation": "Positive",
+      "mechanism_role": "efecto: refleja la actividad real de construcción residencial iniciada"
+     }
+    ],
+    "falsifiers": [
+     {
+      "condition": "Inicios de construcción de vivienda (HOUST) manteniéndose por encima de 1.55 millones de unidades anualizadas durante más de dos trimestres consecutivos con MORTGAGE30US superior al 7.0%",
+      "series_id": "HOUST"
+     },
+     {
+      "condition": "Crecimiento anual positivo de permisos de construcción (PERMIT) superior al 5% interanual con tasas hipotecarias por encima del 6.5%",
+      "series_id": "PERMIT"
+     }
+    ],
+    "tickers": [
+     {
+      "symbol": "ITB",
+      "name": "iShares U.S. Home Construction ETF",
+      "sector": "Consumer Discretionary / Homebuilding",
+      "instrument_type": "etf",
+      "weight": 0.4,
+      "thesis_role": "Vehículo directo de exposición corta/subponderada al sector de constructoras residenciales en EE.UU.",
+      "source": null
+     },
+     {
+      "symbol": "XHB",
+      "name": "SPDR S&P Homebuilders ETF",
+      "sector": "Consumer Discretionary / Building Products",
+      "instrument_type": "etf",
+      "weight": 0.3,
+      "thesis_role": "Captura el impacto extendido en la cadena de valor de vivienda (materiales, remodelación y artefactos).",
+      "source": null
+     },
+     {
+      "symbol": "WOOD",
+      "name": "iShares Global Timber & Forestry ETF",
+      "sector": "Materials",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Exposición a la demanda de madera de estructura, insumo primario afectado por la caída en la construcción.",
+      "source": null
+     },
+     {
+      "symbol": "TLT",
+      "name": "iShares 20+ Year Treasury Bond ETF",
+      "sector": "Fixed Income",
+      "instrument_type": "etf",
+      "weight": 0.15,
+      "thesis_role": "Sensibilidad inversa a la trayectoria de tasas de largo plazo que impulsan las tasas hipotecarias.",
+      "source": null
+     }
+    ],
+    "rationales": {
+     "ITB": "Mide de forma directa la rentabilidad de los constructores de viviendas residenciales estadounidenses, altamente sensibles a la velocidad de venta de unidades nuevas.",
+     "XHB": "Otorga exposición ponderada equitativamente a la cadena de suministro residencial, incluyendo insumos de construcción y acondicionamiento.",
+     "WOOD": "Refleja la contracción en la demanda de insumos industriales básicos como la madera, cuyo uso primario en EE.UU. es la construcción de marcos residenciales.",
+     "TLT": "Ofrece la cobertura o expresión macro directa del entorno de rendimientos de largo plazo, determinante clave de la fijación de tasas de crédito hipotecario a 30 años."
+    }
+   }
+  }
+ ],
+ "http_calls": [
+  {
+   "n": 1,
+   "at": "2026-09-29 18:42:26",
+   "thesis": "Demanda eléctrica por centros de datos de IA",
+   "status": 503,
+   "body": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+  },
+  {
+   "n": 2,
+   "at": "2026-09-29 18:42:41",
+   "thesis": "La IA es una burbuja",
+   "status": 503,
+   "body": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+  },
+  {
+   "n": 3,
+   "at": "2026-09-29 18:42:56",
+   "thesis": "Impacto de tasas de interés en múltiplos tecnológicos",
+   "status": 503,
+   "body": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+  },
+  {
+   "n": 4,
+   "at": "2026-09-29 18:43:11",
+   "thesis": "Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.",
+   "status": 200,
+   "body": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"parts\": [\n          {\n            \"text\": \"{\\n  \\\"summary\\\": \\\"Las tasas hipotecarias elevadas incrementan el costo del crédito residencial, reduciendo la asequibilidad de la vivienda y ralentizando los inicios y permisos de construcción en EE.UU.\\\",\\n  \\\"mechanism\\\": \\\"El incremento en las tasas hipotecarias a 30 años reduce la capacidad de pago de los compradores y encarece el financiamiento residencial, contrayendo la demanda de viviendas nuevas. Como respuesta al menor ritmo de absorción de inventario y al aumento del costo de financiamiento para proyectos, los desarrolladores reducen las solicitudes de permisos y desaceleran la iniciación de obras. Esta menor actividad contractiva afecta negativamente los ingresos del sector de construcción residencial y de insumos básicos como la madera.\\\",\\n  \\\"macro_series\\\": [\\n    {\\n      \\\"series_id\\\": \\\"MORTGAGE30US\\\",\\n      \\\"name\\\": \\\"30-Year Fixed Rate Mortgage Average in the United States\\\",\\n      \\\"category\\\": \\\"Interest Rates / Housing\\\",\\n      \\\"expected_correlation\\\": \\\"Negative\\\",\\n      \\\"mechanism_role\\\": \\\"causa: mide el costo directo del financiamiento hipotecario para el comprador\\\"\\n    },\\n    {\\n      \\\"series_id\\\": \\\"PERMIT\\\",\\n      \\\"name\\\": \\\"New Privately-Owned Housing Units Authorized in Permit-Issuing Places\\\",\\n      \\\"category\\\": \\\"Housing indicators\\\",\\n      \\\"expected_correlation\\\": \\\"Positive\\\",\\n      \\\"mechanism_role\\\": \\\"canal: mide la intención adelantada de los desarrolladores para iniciar proyectos\\\"\\n    },\\n    {\\n      \\\"series_id\\\": \\\"HOUST\\\",\\n      \\\"name\\\": \\\"Housing Starts: Total New Privately Owned Housing Units Started\\\",\\n      \\\"category\\\": \\\"Housing indicators\\\",\\n      \\\"expected_correlation\\\": \\\"Positive\\\",\\n      \\\"mechanism_role\\\": \\\"efecto: refleja la actividad real de construcción residencial iniciada\\\"\\n    }\\n  ],\\n  \\\"falsifiers\\\": [\\n    {\\n      \\\"condition\\\": \\\"Inicios de construcción de vivienda (HOUST) manteniéndose por encima de 1.55 millones de unidades anualizadas durante más de dos trimestres consecutivos con MORTGAGE30US superior al 7.0%\\\",\\n      \\\"series_id\\\": \\\"HOUST\\\"\\n    },\\n    {\\n      \\\"condition\\\": \\\"Crecimiento anual positivo de permisos de construcción (PERMIT) superior al 5% interanual con tasas hipotecarias por encima del 6.5%\\\",\\n      \\\"series_id\\\": \\\"PERMIT\\\"\\n    }\\n  ],\\n  \\\"tickers\\\": [\\n    {\\n      \\\"symbol\\\": \\\"ITB\\\",\\n      \\\"name\\\": \\\"iShares U.S. Home Construction ETF\\\",\\n      \\\"sector\\\": \\\"Consumer Discretionary / Homebuilding\\\",\\n      \\\"instrument_type\\\": \\\"etf\\\",\\n      \\\"weight\\\": 0.4,\\n      \\\"thesis_role\\\": \\\"Vehículo directo de exposición corta/subponderada al sector de constructoras residenciales en EE.UU.\\\",\\n      \\\"source\\\": null\\n    },\\n    {\\n      \\\"symbol\\\": \\\"XHB\\\",\\n      \\\"name\\\": \\\"SPDR S&P Homebuilders ETF\\\",\\n      \\\"sector\\\": \\\"Consumer Discretionary / Building Products\\\",\\n      \\\"instrument_type\\\": \\\"etf\\\",\\n      \\\"weight\\\": 0.3,\\n      \\\"thesis_role\\\": \\\"Captura el impacto extendido en la cadena de valor de vivienda (materiales, remodelación y artefactos).\\\",\\n      \\\"source\\\": null\\n    },\\n    {\\n      \\\"symbol\\\": \\\"WOOD\\\",\\n      \\\"name\\\": \\\"iShares Global Timber & Forestry ETF\\\",\\n      \\\"sector\\\": \\\"Materials\\\",\\n      \\\"instrument_type\\\": \\\"etf\\\",\\n      \\\"weight\\\": 0.15,\\n      \\\"thesis_role\\\": \\\"Exposición a la demanda de madera de estructura, insumo primario afectado por la caída en la construcción.\\\",\\n      \\\"source\\\": null\\n    },\\n    {\\n      \\\"symbol\\\": \\\"TLT\\\",\\n      \\\"name\\\": \\\"iShares 20+ Year Treasury Bond ETF\\\",\\n      \\\"sector\\\": \\\"Fixed Income\\\",\\n      \\\"instrument_type\\\": \\\"etf\\\",\\n      \\\"weight\\\": 0.15,\\n      \\\"thesis_role\\\": \\\"Sensibilidad inversa a la trayectoria de tasas de largo plazo que impulsan las tasas hipotecarias.\\\",\\n      \\\"source\\\": null\\n    }\\n  ],\\n  \\\"rationales\\\": {\\n    \\\"ITB\\\": \\\"Mide de forma directa la rentabilidad de los constructores de viviendas residenciales estadounidenses, altamente sensibles a la velocidad de venta de unidades nuevas.\\\",\\n    \\\"XHB\\\": \\\"Otorga exposición ponderada equitativamente a la cadena de suministro residencial, incluyendo insumos de construcción y acondicionamiento.\\\",\\n    \\\"WOOD\\\": \\\"Refleja la contracción en la demanda de insumos industriales básicos como la madera, cuyo uso primario en EE.UU. es la construcción de marcos residenciales.\\\",\\n    \\\"TLT\\\": \\\"Ofrece la cobertura o expresión macro directa del entorno de rendimientos de largo plazo, determinante clave de la fijación de tasas de crédito hipotecario a 30 años.\\\"\\n  }\\n}\",\n            \"thoughtSignature\": \"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\"\n          }\n        ],\n        \"role\": \"model\"\n      },\n      \"finishReason\": \"STOP\",\n      \"index\": 0\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 670,\n    \"candidatesTokenCount\": 1119,\n    \"totalTokenCount\": 3668,\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 670\n      }\n    ],\n    \"thoughtsTokenCount\": 1879,\n    \"serviceTier\": \"standard\"\n  },\n  \"modelVersion\": \"gemini-3.6-flash\",\n  \"responseId\": \"7zC8atKqG_6fz7IPndz5kAM\"\n}\n"
+  }
+ ]
+}

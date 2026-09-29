@@ -19,6 +19,9 @@ class ThesisModel(Base):
     tickers_json = Column(Text, nullable=False, default="[]")
     macro_series_json = Column(Text, nullable=False, default="[]")
     rationales_json = Column(Text, nullable=False, default="{}")
+    # 4.10: mechanism, falsifiers, benchmark and prompt version, as JSON. NULL
+    # on theses saved before it.
+    analysis_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=get_utc_now, nullable=False)
     updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now, nullable=False)
 

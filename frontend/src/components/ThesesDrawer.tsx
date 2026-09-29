@@ -19,6 +19,7 @@ import {
   addSnapshot,
   addResearchNote,
 } from '../services/api';
+import type { ThesisAnalysis } from '../services/api';
 import { horizonTag } from '../utils/horizon';
 import type {
   ThesisSummaryItem,
@@ -37,6 +38,8 @@ interface ThesesDrawerProps {
   currentTickers: TickerSuggestion[];
   currentMacro: MacroSuggestion[];
   currentRationales: Record<string, string>;
+  /** Mechanism, falsifiers, benchmark (4.10): saved with the thesis. */
+  currentAnalysis?: ThesisAnalysis;
   activeSeriesId: string;
   seriesData: TimeSeriesData | null;
   forecast: ForecastResponse | null;
@@ -53,6 +56,7 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
   currentTickers,
   currentMacro,
   currentRationales,
+  currentAnalysis,
   activeSeriesId,
   seriesData,
   forecast,
@@ -114,6 +118,7 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
         tickers: currentTickers,
         macro_series: currentMacro,
         rationales: currentRationales,
+        ...currentAnalysis,
       });
 
       // Optionally save forecast snapshot

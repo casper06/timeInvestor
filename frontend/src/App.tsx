@@ -44,6 +44,17 @@ import type {
   PortfolioOptimizeResponse,
 } from './services/api';
 
+// Readable name of the active LLM provider (health.llm_provider).
+const PROVIDER_LABEL: Record<string, string> = {
+  gemini: 'Gemini API',
+  gemini_cli: 'Gemini CLI',
+  claude_cli: 'Claude CLI',
+  openai: 'OpenAI',
+  ollama: 'Ollama',
+  mock: 'el motor local (sin LLM)',
+};
+const providerLabel = (id?: string | null): string | undefined => (id ? PROVIDER_LABEL[id] ?? id : undefined);
+
 export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -316,6 +327,10 @@ export const App: React.FC = () => {
       tickers: detail.tickers,
       macro_series: detail.macro_series,
       rationales: detail.rationales,
+      mechanism: detail.mechanism,
+      falsifiers: detail.falsifiers,
+      benchmark: detail.benchmark,
+      prompt_version: detail.prompt_version,
       provider_used: 'sqlite-repository',
     });
     setThesisStatus(detail.status);
@@ -453,6 +468,7 @@ export const App: React.FC = () => {
           onRemoveTicker={handleRemoveTicker}
           onAddMacro={handleAddMacro}
           macroAddError={macroAddError}
+          providerLabel={providerLabel(health?.llm_provider)}
           onRemoveMacro={handleRemoveMacro}
         />
 
@@ -583,6 +599,12 @@ export const App: React.FC = () => {
         currentTickers={activeTickers}
         currentMacro={activeMacro}
         currentRationales={thesisData?.rationales || {}}
+        currentAnalysis={{
+          mechanism: thesisData?.mechanism,
+          falsifiers: thesisData?.falsifiers,
+          benchmark: thesisData?.benchmark,
+          prompt_version: thesisData?.prompt_version,
+        }}
         activeSeriesId={selectedSeriesId}
         seriesData={seriesData}
         forecast={forecast}

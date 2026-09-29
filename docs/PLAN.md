@@ -715,7 +715,14 @@ Rama: una por ítem, a definir.
   verificación de #24).
   Hecho cuando: la versión de torch de la imagen es una decisión explícita y
   hay al menos una inferencia real de TimesFM verificada en esa imagen.
-- [ ] **4.6 Calidad del LLM al traducir la tesis.** Con
+- [ ] **4.6 Calidad del LLM al traducir la tesis.** **Medido junto con 4.10
+  (2026-09-28):** con el prompt nuevo, Sonnet sin errores de hecho y con series
+  relevantes (15/16); Haiku con series irrelevantes e inexistentes en T1, mal
+  uso de `source` y errores de hecho, y no más rápido. Propuesta: Sonnet por
+  defecto en Claude CLI. Gemini no se pudo evaluar (cupo). Decide el usuario.
+  **Decidido (2026-09-28): `CLAUDE_CLI_MODEL=sonnet` por defecto** (rama
+  `feat/thesis-prompt-v2`; ADR-0031, reemplaza a ADR-0016). Falta Gemini con
+  el prompt nuevo. Con
   `CLAUDE_CLI_MODEL=haiku`, la tesis "Demanda eléctrica por centros de datos
   de IA" dio como series FRED TOTALSA, GPDI, INDPRO y DFEDTARU, ninguna
   eléctrica. Comparar Haiku contra Sonnet con las mismas 3–4 tesis y
@@ -739,6 +746,16 @@ Rama: una por ítem, a definir.
     las series fuera del catálogo, y eso se ve en la UI. Tendría que usar la
     unidad y el título de `/fred/series`. **Resuelto en `fix/fred-metadata`
     (ADR-0029).**
+- [ ] **4.21 Validación de instrumentos.** Para cada ticker que propone el
+  LLM, traer de yfinance el nombre oficial y el tipo (acción o ETF). Para los
+  ETF, también el emisor y, si está disponible, el apalancamiento y si es
+  inverso. Si la descripción del LLM contradice esos datos, marcarlo en la UI
+  junto al texto de la empresa.
+  - Caso de prueba: "PSQ: inverso 3x Nasdaq-100 de Direxion" (Haiku, 4.10).
+    En realidad es de ProShares y −1x.
+  - También: el ETF "IPO" usado como exposición a semiconductores.
+  Hecho cuando: el caso PSQ aparece marcado, con el emisor y el
+  apalancamiento reales, y hay un test.
 - [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
@@ -794,6 +811,89 @@ Rama: una por ítem, a definir.
     4.6 (Haiku vs Sonnet): tabla tesis × prompt × modelo con instrumentos,
     series, mecanismo y falsador. Evaluación manual.
   Hecho cuando: esa tabla existe y se decidió qué prompt queda.
+
+  **Evaluación PRE-REGISTRADA el 2026-09-27**, en commit propio, antes de
+  escribir el prompt nuevo (rama `feat/thesis-prompt-v2`). Se reporta tal como
+  salga; no se cambian los criterios después de ver resultados, y no se elige
+  ganador antes de tener la tabla completa.
+  - **Tesis:**
+    - T1 "Demanda eléctrica por centros de datos de IA";
+    - T2 "La IA es una burbuja";
+    - T3 "Impacto de tasas de interés en múltiplos tecnológicos";
+    - T4 (no tecnológica, elegida acá) "Las tasas hipotecarias altas frenan la
+      construcción de viviendas en EE.UU.".
+  - **Matriz:** prompt {viejo = código de `main`, nuevo = esta rama} × modelo
+    {Gemini API `gemini-3.6-flash`, Claude CLI `haiku`, Claude CLI `sonnet` si
+    responde} × 4 tesis. Una corrida por celda, sin re-sortear.
+    - Si una llamada falla (429, 503, CLI), se reintenta hasta 3 veces con al
+      menos 60 s entre intentos. Si sigue fallando, la celda queda "sin
+      dato", con el motivo.
+    - Una respuesta del mock (fallback) nunca cuenta como del modelo: la celda
+      es "sin dato".
+    - La DB es una copia (Claude CLI registra su uso).
+  - **Criterios por corrida:**
+    - **C1 Series FRED relevantes al mecanismo.**
+      - C1a: cuántas de las propuestas existen en FRED (`/fred/series`;
+        mecánico).
+      - C1b: de las que existen, cuántas miden una variable de la cadena
+        causal (causa, canal o efecto), con una línea de justificación cada
+        una (juicio manual). Mecanismo de referencia, escrito antes de correr:
+        - T1: demanda o consumo eléctrico; generación o capacidad; precios o
+          tarifas de electricidad; construcción o inversión en centros de
+          datos; equipos eléctricos.
+        - T2: valuaciones o precios de activos tecnológicos; inversión o capex
+          tecnológico; crédito y condiciones financieras; productividad o
+          adopción; ganancias corporativas.
+        - T3: tasas (nominales, reales, curva); valuaciones o precios de
+          acciones tecnológicas o índices; prima de riesgo o condiciones
+          financieras.
+        - T4: tasas hipotecarias; inicios y permisos de construcción; ventas
+          y precios de viviendas; empleo en construcción; costo de
+          materiales.
+    - **C2 Criterios de refutación:**
+      - 0 = no hay;
+      - 1 = hay, pero no medibles (no nombran una variable);
+      - 2 = al menos uno medible: una variable o serie y una dirección o
+        umbral.
+      - El prompt viejo no los pide: un 0 ahí es por construcción, y se
+        reporta igual.
+    - **C3 Instrumentos:**
+      - C3a: SPY aparece como benchmark (en el viejo cuenta si aparece en
+        cualquier parte de la salida);
+      - C3b: peso en acciones sueltas. Suma de pesos de los instrumentos cuyo
+        `quoteType` de yfinance es `EQUITY`. ETF, índice, futuro o
+        commodity no suman.
+      - C3c: el primer instrumento listado no es una acción suelta.
+    - **C4 Textos de cada empresa** (solo acciones sueltas): cuántos textos
+      afirman hechos concretos (cifras, contratos, cuotas, eventos) sin fuente
+      ni marca de "afirmación del LLM". Se reporta n de m. Juicio manual, con
+      la frase afectada citada.
+  - **Sesgo conocido:** quien juzga (Claude) escribió el prompt nuevo.
+    Mitigación:
+    - C1a, C3a, C3b y C3c son mecánicos;
+    - C1b, C2 y C4 llevan su justificación escrita;
+    - las salidas crudas quedan versionadas en `docs/results/` para
+      re-juzgarlas.
+  - **Salida:** una tabla tesis × prompt × modelo con C1a, C1b, C2, C3a, C3b,
+    C3c y C4. Con la tabla completa se propone qué prompt queda (4.10) y qué
+    modelo por defecto (4.6), y lo decide el usuario.
+
+  **Resultado (2026-09-28)** (rama `feat/thesis-prompt-v2`, PR abierto;
+  ADR-0030; `docs/results/thesis_prompt_v2_2026-09-28.md`):
+  - Con Claude CLI (Haiku y Sonnet, las 4 tesis), el prompt nuevo trae
+    refutación medible en 8 de 8 corridas (el viejo en 0).
+  - Peso en acciones sueltas: de 94% a 5% (Haiku) y de 51% a 18% (Sonnet).
+  - Primer instrumento que no es una acción: 8 de 8 (el viejo, 2 de 8).
+  - Series relevantes: Sonnet 15/16 con los dos prompts; Haiku, de 8/13 a
+    10/13.
+  - Haiku con el prompt nuevo usó `source` para afirmaciones y cometió
+    errores de hecho.
+  - **Gemini sin datos con el prompt nuevo:** se agotó el cupo gratuito
+    diario.
+  - Desviaciones dichas en el documento: variante de Claude CLI corregida y
+    celdas nuevas corridas de cero; mismo timeout para los dos prompts.
+  - Propuesta: queda el prompt nuevo; con Gemini, correr antes sus 4 celdas.
+    La decisión es del usuario.
 - [ ] **4.11 IDs de FRED anclados en datos reales.** El LLM propone
   *conceptos*; `fred/series/search` devuelve candidatas reales con metadata, y
   se elige entre esas. Nunca un ID generado por el LLM sin verificar contra

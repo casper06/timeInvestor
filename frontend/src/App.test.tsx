@@ -56,9 +56,9 @@ describe('Empty start', () => {
 
   it('an example only fills the box; it does not analyze', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Superciclo de Capex en semiconductores avanzados y litografía' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.' }));
     expect((screen.getByLabelText('Tesis de inversión') as HTMLInputElement).value).toBe(
-      'Superciclo de Capex en semiconductores avanzados y litografía'
+      'Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.'
     );
     expect(api.analyzeThesis).not.toHaveBeenCalled();
   });
@@ -226,5 +226,20 @@ describe('Overlapping loads (4.16)', () => {
     await waitFor(() => expect(api.fetchForecast).toHaveBeenCalledTimes(2));
     const calls = vi.mocked(api.fetchForecast).mock.calls.map((c) => `${c[3]}@${c[1]}`);
     expect(calls).toEqual(['AAA@60', 'BBB@90']);
+  });
+});
+
+describe('Example theses (4.10)', () => {
+  it('are not all about technology', () => {
+    render(<App />);
+    const examples = [
+      'Demanda eléctrica por centros de datos de IA',
+      'Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.',
+      'La desaceleración del consumo golpea al comercio minorista',
+      'La sequía encarece los granos y favorece a los productores agrícolas',
+    ];
+    for (const e of examples) expect(screen.getByRole('button', { name: e })).toBeInTheDocument();
+    const tech = examples.filter((e) => /\b(IA|tecnol|semiconductor|chip)/i.test(e));
+    expect(tech.length).toBeLessThanOrEqual(1);
   });
 });

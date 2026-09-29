@@ -1,0 +1,116 @@
+{
+ "_nota": "Juicios manuales (C1b, C2, C4) de la evaluación pre-registrada en docs/PLAN.md (commit 8b258da). Juez: Claude, que escribió el prompt nuevo (sesgo declarado). C1b: de las series que existen en FRED, cuántas miden un eslabón del mecanismo de referencia pre-registrado. C2: 0 sin refutación, 1 no medible, 2 al menos una medible (variable + dirección o umbral); la relevancia de la variable no entra en C2. C4: textos de acciones sueltas con hechos concretos sin fuente (en el texto o en 'source'). 'obs' = observaciones fuera de los criterios.",
+
+ "nuevo|haiku|Demanda eléctrica por centros de datos de IA": {
+  "C1b": "0/2", "C1b_why": {"INDPRO": "producción industrial total, no un eslabón eléctrico", "CPIUFDSL": "IPC de alimentos: no mide nada del mecanismo", "ELECCCMI": "no existe en FRED (fuera del denominador)"},
+  "C2": 2, "C2_why": "INDPRO cae 3% contra su media de 12 meses: medible, pero sobre una serie irrelevante; las otras dos usan ELECCCMI (inexistente) y el IPC de alimentos",
+  "C4": "1/1", "C4_why": {"EQIX": "'mayor operador global independiente de data centers' y '250+ data center facilities' sin fuente real"},
+  "obs": "Usó 'source' para afirmaciones, no fuentes (5 de 5 instrumentos). Usó el ETF 'IPO' (Renaissance IPO ETF) como exposición a semiconductores: error."
+ },
+ "nuevo|haiku|La IA es una burbuja": {
+  "C1b": "2/3", "C1b_why": {"NASDAQCOM": "precio de activos tecnológicos", "VIXCLS": "condiciones financieras (volatilidad)", "UMCSENT": "confianza del consumidor: no está en el mecanismo", "SHCOMP": "no existe en FRED"},
+  "C2": 2, "C2_why": "VIXCLS < 13 durante 6 meses; NASDAQCOM > 15% anual con UMCSENT cayendo",
+  "C4": "0/0", "C4_why": "sin acciones sueltas",
+  "obs": "Errores de hecho en textos de ETFs: 'PSQ: inverso 3x Nasdaq-100 de Direxion' (PSQ es ProShares, −1x); cifras de P/E sin fuente puestas en 'source'."
+ },
+ "nuevo|haiku|Impacto de tasas de interés en múltiplos tecnológicos": {
+  "C1b": "4/4", "C1b_why": {"DGS10": "tasa", "DFF": "tasa", "NASDAQCOM": "precios tecnológicos", "VIXCLS": "prima de riesgo / condiciones financieras"},
+  "C2": 2, "C2_why": "correlación móvil DGS10–NASDAQCOM > −0,20; NASDAQCOM > 10% con DGS10 +100 pb",
+  "C4": "0/0", "C4_why": "sin acciones sueltas",
+  "obs": "Cifras sin fuente en textos de ETFs ('Sensibilidad −1.5x vs SPY', 'correlación −0.60')."
+ },
+ "nuevo|haiku|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.": {
+  "C1b": "4/4", "C1b_why": {"MORTGAGE30US": "tasa hipotecaria", "PERMIT": "permisos", "HOUST": "inicios", "HOUST1F": "inicios (unifamiliares)"},
+  "C2": 2, "C2_why": "MORTGAGE30US > 7,5% sostenido con HOUST > 1,2 M",
+  "C4": "0/0", "C4_why": "sin acciones sueltas",
+  "obs": "'Cada 100 bps … reduce capacidad de compra ~10-15%' sin fuente (texto de ETF)."
+ },
+
+ "nuevo|sonnet|Demanda eléctrica por centros de datos de IA": {
+  "C1b": "3/4", "C1b_why": {"PNFI": "inversión privada no residencial: proxy amplio de la inversión en data centers", "CAPUTLG2211A2S": "utilización de capacidad eléctrica", "IPUTIL": "producción eléctrica", "DHHNGSP": "precio del gas: combustible, no precio de la electricidad (el mecanismo de referencia no lo incluye)"},
+  "C2": 2, "C2_why": "IPUTIL estancado 2+ trimestres con capex creciente; utilización < ~75%",
+  "C4": "0/2", "C4_why": {"CEG": "cita comunicado de Constellation (20-sep-2024) y Reuters en el texto", "GEV": "cita 'earnings calls … reportados por Reuters/Bloomberg' (fuente vaga, pero fuente)"},
+  "obs": "Las fuentes quedaron en el texto y 'source' en null: la UI las marca 'afirmación del LLM, no verificada' (conservador)."
+ },
+ "nuevo|sonnet|La IA es una burbuja": {
+  "C1b": "4/4", "C1b_why": {"PNFI": "capex", "DGS10": "condiciones financieras", "BAMLH0A0HYM2": "crédito", "NASDAQCOM": "precios tecnológicos"},
+  "C2": 2, "C2_why": "NASDAQCOM no retrocede > 20% con PNFI en caída; spread HY < 400 pb 4 trimestres",
+  "C4": "1/1", "C4_why": {"NVDA": "'proveedor dominante de GPUs para entrenamiento' sin fuente"},
+  "obs": ""
+ },
+ "nuevo|sonnet|Impacto de tasas de interés en múltiplos tecnológicos": {
+  "C1b": "4/4", "C1b_why": {"DFII10": "tasa real", "FEDFUNDS": "tasa", "DGS10": "tasa", "NASDAQCOM": "precios tecnológicos"},
+  "C2": 2, "C2_why": "DFII10 +50 pb en un trimestre sin compresión de P/E de XLK/QQQ",
+  "C4": "0/0", "C4_why": "sin acciones sueltas (^TNX es un índice de tasa)",
+  "obs": "Incluyó ^TNX (cotización de la tasa, no invertible) con peso 10%."
+ },
+ "nuevo|sonnet|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.": {
+  "C1b": "4/4", "C1b_why": {"MORTGAGE30US": "tasa hipotecaria", "MSACSR": "meses de oferta de casas nuevas (ventas / inventario)", "PERMIT": "permisos", "HOUST": "inicios"},
+  "C2": 2, "C2_why": "HOUST +5% interanual 2 trimestres con MORTGAGE30US > 7%",
+  "C4": "0/1", "C4_why": {"LEN": "cita los 10-K de Lennar en el texto"},
+  "obs": ""
+ },
+
+ "viejo|gemini|Demanda eléctrica por centros de datos de IA": {
+  "C1b": "2/3", "C1b_why": {"IPG2211A2N": "producción eléctrica", "PCU335311335311": "precio de transformadores (equipo eléctrico)", "DGS10": "no está en el mecanismo"},
+  "C2": 0, "C2_why": "sin refutación (el prompt viejo no la pide)",
+  "C4": "5/5", "C4_why": {"CEG": "'mayor operador de energía nuclear de EE. UU.'", "VST": "activos en ERCOT y PJM", "ETN": "'superciclo … escasez de transformadores'", "GEV": "ventas de turbinas", "PWR": "'contratista clave … backlog masivo'"},
+  "obs": ""
+ },
+ "viejo|gemini|La IA es una burbuja": {
+  "C1b": "3/3", "C1b_why": {"NASDAQCOM": "precios tecnológicos", "BAMLH0A0HYM2": "crédito", "DGS10": "condiciones financieras"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "2/2", "C4_why": {"BRK.B": "'elevados niveles de liquidez', 'fortaleza de balance'", "XOM": "recompras y dividendos"},
+  "obs": ""
+ },
+
+ "viejo|haiku|Demanda eléctrica por centros de datos de IA": {
+  "C1b": "0/2", "C1b_why": {"INDPRO": "producción total", "FEDFUNDS": "tasa de política: no está en el mecanismo", "ELECMVS": "no existe en FRED"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "5/5", "C4_why": {"NEE": "'operador de energía renovable más grande de EE.UU.'", "NVDA": "'casi monopólico'", "DLR": "ocupación ligada a IA 'en crecimiento acelerado'", "DUK": "'uno de los mayores generadores'", "AMD": "'ganando cuota de mercado'"},
+  "obs": ""
+ },
+ "viejo|haiku|La IA es una burbuja": {
+  "C1b": "2/4", "C1b_why": {"DFF": "condiciones financieras (tasa)", "VIXCLS": "condiciones financieras", "CPIAUCSL": "inflación general: no está en el mecanismo", "UNRATE": "desempleo: no está"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "3/3", "C4_why": {"NVDA": "'>100x P/E'", "META": "'$65B+ capex', 'Reality Labs >$80B'", "TSLA": "'70-80x P/E (2024-25)'"},
+  "obs": ""
+ },
+ "viejo|haiku|Impacto de tasas de interés en múltiplos tecnológicos": {
+  "C1b": "3/4", "C1b_why": {"DFF": "tasa", "DGS10": "tasa", "T10Y2Y": "curva", "UNRATE": "no está en el mecanismo"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "5/5", "C4_why": {"NVDA": "'50%+ CAGR esperado'", "MSFT": "'15-20% CAGR'", "TSLA": "múltiplos", "AAPL": "'~$100B anuales en FCF'", "AMZN": "reinversión de FCF en AWS"},
+  "obs": ""
+ },
+ "viejo|haiku|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.": {
+  "C1b": "3/3", "C1b_why": {"MORTGAGE30US": "tasa hipotecaria", "HOUST": "inicios", "PERMIT": "permisos", "MORTGAGE1YA": "no existe en FRED"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "5/5", "C4_why": {"DHI": "'~9% cuota de mercado'", "LEN": "'tasas > 7% históricamente comprimen starts'", "KBH": "segmento de presupuesto", "MAS": "'caídas en HOUST de −30% … márgenes 15-20%'", "EQR": "perfil de inversores"},
+  "obs": ""
+ },
+
+ "viejo|sonnet|Demanda eléctrica por centros de datos de IA": {
+  "C1b": "3/4", "C1b_why": {"IPG2211A2N": "producción eléctrica", "TLPWRCONS": "construcción en generación eléctrica", "CPIENGSL": "precios de energía (incluye electricidad)", "DGS10": "no está en el mecanismo"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "6/6", "C4_why": {"CEG": "reinicio de Three Mile Island para Microsoft, sin fuente", "VST": "flota en ERCOT/PJM", "VRT": "'backlog y órdenes han crecido aceleradamente'", "ETN": "'escasez de oferta global'", "GEV": "'backlog en niveles récord'", "NEE": "'mayor cartera de renovables'"},
+  "obs": ""
+ },
+ "viejo|sonnet|La IA es una burbuja": {
+  "C1b": "4/4", "C1b_why": {"NASDAQCOM": "precios tecnológicos", "VIXCLS": "condiciones financieras", "DGS10": "condiciones financieras", "BAMLH0A0HYM2": "crédito"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "0/0", "C4_why": "sin acciones sueltas (ETFs inversos y apalancados)",
+  "obs": "35% en SQQQ (−3x) y 20% en SOXS (−3x): ETFs, pero apalancados inversos."
+ },
+ "viejo|sonnet|Impacto de tasas de interés en múltiplos tecnológicos": {
+  "C1b": "4/4", "C1b_why": {"DFII10": "tasa real", "DGS10": "tasa", "FEDFUNDS": "tasa", "T10Y2Y": "curva"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "2/2", "C4_why": {"NVDA": "'Líder en semiconductores/IA', 'EV/Sales muy elevado'", "MSFT": "'rentable … balance sólido'"},
+  "obs": ""
+ },
+ "viejo|sonnet|Las tasas hipotecarias altas frenan la construcción de viviendas en EE.UU.": {
+  "C1b": "4/4", "C1b_why": {"MORTGAGE30US": "tasa hipotecaria", "HOUST": "inicios", "PERMIT": "permisos", "EXHOSLUSM495S": "ventas de viviendas"},
+  "C2": 0, "C2_why": "sin refutación",
+  "C4": "4/4", "C4_why": {"DHI": "'gran parte de sus ventas en primera vivienda'", "LEN": "'ha recurrido intensamente a incentivos de tasa'", "BLDR": "dependencia de housing starts", "MHK": "exposición del segmento norteamericano"},
+  "obs": ""
+ }
+}

@@ -9,6 +9,10 @@ STATIC_DIR = BASE_DIR / "frontend" / "dist"
 # Load .env file
 load_dotenv(BASE_DIR / ".env")
 
+# Claude CLI model when CLAUDE_CLI_MODEL isn't set (ADR-0031).
+CLAUDE_CLI_DEFAULT_MODEL = "sonnet"
+
+
 class Settings:
     BASE_DIR: Path = BASE_DIR
     STATIC_DIR: Path = STATIC_DIR
@@ -41,11 +45,13 @@ class Settings:
     LLM_PROVIDER_FROM_ENV: str = LLM_PROVIDER
 
     # Model alias used for `claude -p ... --model <this>` when LLM_PROVIDER=claude_cli.
-    # Defaults to the cheapest model to minimize consumption of the user's
-    # SHARED 5-hour/weekly Claude usage window (see ClaudeCliLLMClient's own
-    # docstring) — override to "sonnet" for better quality at the cost of more
-    # of that shared quota per call.
-    CLAUDE_CLI_MODEL: str = os.getenv("CLAUDE_CLI_MODEL", "haiku")
+    # Sonnet by default since 4.6 (ADR-0031, which replaces ADR-0016's
+    # "haiku to save the shared quota"): in the 4.10 evaluation, haiku with the
+    # v2 prompt proposed irrelevant and nonexistent FRED series, put claims in
+    # "source" and made factual errors; sonnet didn't, and haiku wasn't faster.
+    # Override with CLAUDE_CLI_MODEL=haiku to spend less of the shared
+    # 5-hour/weekly Claude window.
+    CLAUDE_CLI_MODEL: str = os.getenv("CLAUDE_CLI_MODEL", CLAUDE_CLI_DEFAULT_MODEL)
 
     # Forecast Engine configuration
     # Options: "mock", "timesfm"

@@ -33,6 +33,10 @@ export interface TickerSuggestion {
   sector: string;
   weight: number;
   thesis_role: string;
+  /** 4.10: ETFs, commodities and rates before single stocks. */
+  instrument_type?: 'etf' | 'commodity' | 'rate' | 'index' | 'stock' | null;
+  /** Source the LLM cites for the facts in its text; null = an unverified LLM claim. */
+  source?: string | null;
 }
 
 export interface MacroSuggestion {
@@ -40,11 +44,28 @@ export interface MacroSuggestion {
   name: string;
   category: string;
   expected_correlation: string;
+  /** Which link of the mechanism it measures (cause, channel, effect). */
+  mechanism_role?: string | null;
+}
+
+/** An observable condition that would refute the thesis (4.10). */
+export interface Falsifier {
+  condition: string;
+  series_id?: string | null;
+}
+
+/** 4.10 fields of a translated thesis. */
+export interface ThesisAnalysis {
+  mechanism?: string | null;
+  falsifiers?: Falsifier[];
+  /** Mandatory benchmark (SPY); not part of the weights. */
+  benchmark?: string | null;
+  prompt_version?: number | null;
 }
 
 export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'content_filtered' | 'unknown';
 
-export interface ThesisResponse {
+export interface ThesisResponse extends ThesisAnalysis {
   thesis: string;
   summary: string;
   tickers: TickerSuggestion[];
@@ -357,7 +378,7 @@ export interface ThesisSummaryItem {
   note_count: number;
 }
 
-export interface ThesisDetailResponse {
+export interface ThesisDetailResponse extends ThesisAnalysis {
   id: string;
   title: string;
   prompt: string;
@@ -372,7 +393,7 @@ export interface ThesisDetailResponse {
   notes: ResearchNoteResponse[];
 }
 
-export interface ThesisCreateRequest {
+export interface ThesisCreateRequest extends ThesisAnalysis {
   title: string;
   prompt: string;
   summary?: string;
