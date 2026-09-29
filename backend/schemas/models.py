@@ -47,6 +47,19 @@ class FredSeriesMetadata(BaseModel):
     seasonal_adjustment: Optional[str] = Field(default=None, description="p. ej. 'Not Seasonally Adjusted'")
     seasonal_adjustment_short: Optional[str] = Field(default=None, description="p. ej. 'NSA'")
 
+class FredCandidate(BaseModel):
+    """A real FRED series offered as a replacement for an ID that doesn't exist
+    (4.11). Every field is FRED's own, from fred/series/search; nothing here is
+    written by hand or by the LLM."""
+    series_id: str = Field(..., description="ID real de FRED")
+    title: str = Field(..., description="Título oficial de FRED")
+    frequency: Optional[str] = Field(default=None, description="Frecuencia (frequency_short: D, W, M, Q, A)")
+    seasonal_adjustment: Optional[str] = Field(default=None, description="SA / NSA / SAAR (seasonal_adjustment_short)")
+    observation_start: Optional[str] = Field(default=None, description="Primera observación")
+    observation_end: Optional[str] = Field(default=None, description="Última observación")
+    units: Optional[str] = Field(default=None, description="Unidad (units_short)")
+
+
 class MacroSuggestion(BaseModel):
     series_id: str = Field(..., description="FRED or Macro series ID (e.g. IPG2211A2N)")
     name: str = Field(..., description="Series description")
@@ -79,6 +92,31 @@ class MacroSuggestion(BaseModel):
         default=None,
         description="Aviso para mostrar en la UI cuando el ID no se pudo verificar (4.11).",
     )
+    searched_concept: Optional[str] = Field(
+        default=None,
+        description="El texto con el que se buscó en FRED, para que el aviso diga qué se buscó (4.11).",
+    )
+    candidates: List["FredCandidate"] = Field(
+        default_factory=list,
+        description="Hasta 3 candidatos reales de FRED para un ID que no existe (4.11). "
+                    "Los elige el usuario: la app NUNCA sustituye el ID sola.",
+    )
+    chosen_by_user: bool = Field(
+        default=False,
+        description="True cuando el usuario eligió uno de los candidatos (4.11). Solo "
+                    "entonces una serie que era 'sugerido_por_busqueda' entra al análisis.",
+    )
+
+    def enters_analysis(self) -> bool:
+        """Whether this series may reach forecasts, correlations and the copilot.
+
+        A verified ID does. A searched-for suggestion does NOT until the user
+        picks a candidate: FRED's top hit is a guess at the concept, not the
+        series the user asked for (searching "new home sales" returns MSPUS, a
+        *price*, for a thesis about *how many* houses get built). A discarded or
+        unverifiable ID never enters.
+        """
+        return self.grounding == "verificado" or (self.grounding == "sugerido_por_busqueda" and self.chosen_by_user)
 
 
 class Falsifier(BaseModel):
@@ -198,6 +236,12 @@ class InterpretationContext(BaseModel):
     user_added_tickers: List[str] = Field(default_factory=list, description="Tickers que agregó el usuario a mano ('+ Ticker'); el resto los eligió el LLM al traducir la tesis")
     macro_evidence: Optional[List[MacroEvidence]] = Field(default=None, description="Lo completa el servidor: último valor y cambio a 12 meses de cada serie FRED de la tesis")
     reliability_warning: Optional[str] = Field(default=None, description="Si el pronóstico fue marcado no confiable (ForecastResponse.reliability_warning), el texto; el copiloto tiene que decirlo")
+    unresolved_macro_series: List[str] = Field(
+        default_factory=list,
+        description="IDs que el LLM propuso, no existen en FRED y el usuario todavía no "
+                    "reemplazó (4.11). NO entran a la evidencia: se le dicen al copiloto "
+                    "para que declare que esa parte del mecanismo quedó sin medir.",
+    )
 
 class InterpretationResponse(BaseModel):
     what_data_says: str = Field(..., description="Traducción conceptual de las curvas y tendencia proyectada")

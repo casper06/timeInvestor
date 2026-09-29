@@ -897,9 +897,15 @@ Rama: una por ítem, a definir.
 - [x] **4.11 IDs de FRED anclados en datos reales.** (ADR-0033, rama
   `feat/fred-id-grounding`, PR abierto.) `fred_grounding.ground_macro_series`
   corre en `analyze_thesis`: cada ID se verifica contra `/fred/series`; si no
-  existe, se busca el concepto con `fred/series/search` y se propone el
-  candidato real ("sugerido por búsqueda") o se descarta con aviso visible.
-  Sin clave o con FRED caído, la serie se conserva "sin verificar".
+  existe, se busca el concepto con `fred/series/search` y se **ofrecen hasta 3
+  candidatos reales para que elija el usuario** (la app nunca sustituye el ID
+  sola), o se descarta con aviso visible. Sin clave o con FRED caído, la serie
+  se conserva "sin verificar".
+  - **Solo entra al análisis** lo verificado o lo que eligió el usuario: una
+    sugerencia sin elegir no llega a pronósticos, correlaciones ni copiloto, y
+    al copiloto se le dice que ese eslabón quedó sin medir. El primer resultado
+    de FRED es una conjetura sobre el concepto: buscar "new home sales" para
+    TOTALSI devuelve MSPUS, un *precio*, para una tesis sobre *cantidades*.
   - **El índice de búsqueda de FRED es solo en inglés** (verificado el
     2026-09-29: "new home sales" → 2986, el mismo concepto en español → 0). El
     prompt ahora pide `search_concept_en`; con el `name` en español la búsqueda

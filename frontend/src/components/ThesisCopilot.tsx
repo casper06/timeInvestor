@@ -31,7 +31,10 @@ interface ThesisCopilotProps {
   horizon: number;
   confidence: number;
   activeTickers: TickerSuggestion[];
+  /** Only series that may enter the analysis (4.11): verified, or chosen by the user. */
   activeMacro: MacroSuggestion[];
+  /** IDs the LLM invented and the user hasn't replaced: told to the copilot, never measured (4.11). */
+  unresolvedMacro?: string[];
   fundamentals: FundamentalsMetric[];
   onSelectSeries: (seriesId: string) => void;
   onInterpretationComplete?: (res: InterpretationResponse) => void;
@@ -46,6 +49,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
   confidence,
   activeTickers,
   activeMacro,
+  unresolvedMacro = [],
   fundamentals,
   onSelectSeries,
   onInterpretationComplete,
@@ -84,6 +88,7 @@ export const ThesisCopilot: React.FC<ThesisCopilotProps> = ({
         cagr,
         other_tickers: activeTickers.map((t) => t.symbol).filter((s) => s !== activeSeriesId),
         macro_series: activeMacro.map((m) => m.series_id).filter((s) => s !== activeSeriesId),
+        unresolved_macro_series: unresolvedMacro,
         // Every figure with its date: the series' last observation, the
         // projection's target date, each fundamental's fiscal year.
         series_type: seriesData?.type === 'macro' ? 'macro' : 'equity',

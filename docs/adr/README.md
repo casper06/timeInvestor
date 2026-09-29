@@ -43,4 +43,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0030](0030-prompt-de-traduccion-v2.md) | Prompt de traducción de tesis v2: mecanismo, drivers FRED, refutación, instrumentos ETF primero, SPY | Propuesta | 4.10 |
 | [0031](0031-claude-cli-sonnet-por-defecto.md) | `CLAUDE_CLI_MODEL=sonnet` por defecto (reemplaza 0016) | Aceptada | 4.6 |
 | [0032](0032-badge-contra-el-naive-mas-exigente.md) | Badge de capacidad contra el naive más exigente (menor error total; criterio v10) | Aceptada | 4.17 |
-| [0033](0033-ids-de-fred-validados.md) | IDs de FRED validados contra FRED antes de la UI; búsqueda por concepto en inglés | Aceptada | 4.11 |
+| [0033](0033-ids-de-fred-validados.md) | IDs de FRED validados contra FRED antes de la UI; lo sugerido lo elige el usuario; búsqueda por concepto en inglés | Aceptada | 4.11 |

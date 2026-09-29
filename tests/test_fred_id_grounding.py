@@ -11,7 +11,7 @@ exist) and UMCSENT (real).
 import httpx
 import pytest
 
-from backend.schemas.models import MacroSuggestion
+from backend.schemas.models import FredCandidate, MacroSuggestion
 from backend.services import fred_grounding
 from backend.services.fred_grounding import (
     DISCARDED,
@@ -105,10 +105,14 @@ def test_id_inventado_se_reemplaza_por_candidato_real(monkeypatch, fake_id):
     [out] = ground_macro_series([item])
 
     assert out.grounding == SUGGESTED
-    assert out.series_id == "TOTALSA", "se usa el ID real que devolvio FRED"
+    assert out.series_id == fake_id, "el ID NO se sustituye solo: lo elige el usuario"
     assert out.proposed_series_id == fake_id
-    assert out.fred_title == "Total Vehicle Sales"
-    assert fake_id in out.grounding_note and "TOTALSA" in out.grounding_note
+    assert out.chosen_by_user is False
+    assert [c.series_id for c in out.candidates] == ["TOTALSA", "ALTSALES"]
+    assert out.candidates[0].title == "Total Vehicle Sales"
+    assert fake_id in out.grounding_note
+    assert "elegi" in out.grounding_note.lower() or "eleg" in out.grounding_note
+    assert out.enters_analysis() is False, "sin elección no entra al análisis"
     assert seen["search_text"] == "Ventas totales de vehiculos", "se busca el concepto del LLM"
 
 
@@ -172,9 +176,9 @@ def test_busqueda_usa_category_si_no_hay_name(monkeypatch):
     assert out.grounding == SUGGESTED
 
 
-def test_search_sin_clave_devuelve_none(monkeypatch):
+def test_search_sin_clave_no_devuelve_candidatos(monkeypatch):
     monkeypatch.setattr(fred_grounding.settings, "FRED_API_KEY", "")
-    assert search_fred_concept("lo que sea") is None
+    assert search_fred_concept("lo que sea") == []
 
 
 def test_mezcla_de_series_conserva_orden(monkeypatch):
@@ -199,7 +203,8 @@ def test_mezcla_de_series_conserva_orden(monkeypatch):
     ])
 
     assert [s.grounding for s in out] == [VERIFIED, SUGGESTED, DISCARDED]
-    assert [s.series_id for s in out] == ["UMCSENT", "TOTALSA", "IPGD"]
+    assert [s.series_id for s in out] == ["UMCSENT", "TOTALSI", "IPGD"], "solo el verificado queda firme"
+    assert [s.enters_analysis() for s in out] == [True, False, False]
 
 
 def test_busca_con_el_concepto_en_ingles(monkeypatch):
@@ -224,8 +229,9 @@ def test_busca_con_el_concepto_en_ingles(monkeypatch):
     [out] = ground_macro_series([item])
 
     assert seen["search_text"] == "new home sales"
-    assert out.series_id == "MSPUS"
     assert out.grounding == SUGGESTED
+    assert out.series_id == "TOTALSI", "se ofrece MSPUS, no se impone"
+    assert [c.series_id for c in out.candidates] == ["MSPUS"]
 
 
 def test_sin_concepto_en_ingles_cae_al_name(monkeypatch):
@@ -243,3 +249,79 @@ def test_sin_concepto_en_ingles_cae_al_name(monkeypatch):
     [out] = ground_macro_series([MacroSuggestion(series_id="IPGD", name="Vehicle sales", category="Consumo")])
     assert seen["search_text"] == "Vehicle sales"
     assert out.grounding == SUGGESTED
+
+
+# --------------------------------------------------------------------------
+# What may enter the analysis (4.11, second round): a series found by concept
+# search does NOT reach forecasts, correlations or the copilot until the user
+# picks a candidate. FRED's top hit is a guess at the concept, not the series
+# the user asked for.
+# --------------------------------------------------------------------------
+
+def _suggested():
+    """A TOTALSI that doesn't exist, with MSPUS offered but not chosen."""
+    return MacroSuggestion(
+        series_id="TOTALSI",
+        name="Ventas totales de viviendas nuevas",
+        category="Vivienda",
+        search_concept_en="new home sales",
+        grounding=SUGGESTED,
+        proposed_series_id="TOTALSI",
+        searched_concept="new home sales",
+        candidates=[FredCandidate(series_id="MSPUS", title="Median Sales Price of New Houses Sold", frequency="Q")],
+    )
+
+
+def test_sugerida_sin_eleccion_no_entra_al_analisis():
+    s = _suggested()
+    assert s.enters_analysis() is False
+
+
+def test_sugerida_elegida_por_el_usuario_si_entra():
+    s = _suggested()
+    s.series_id = "MSPUS"
+    s.chosen_by_user = True
+    assert s.enters_analysis() is True
+
+
+def test_verificada_entra_y_descartada_no():
+    assert MacroSuggestion(series_id="UMCSENT", name="x", category="y", grounding=VERIFIED).enters_analysis() is True
+    assert MacroSuggestion(series_id="IPGD", name="x", category="y", grounding=DISCARDED).enters_analysis() is False
+    assert MacroSuggestion(series_id="IPGD", name="x", category="y", grounding=None).enters_analysis() is False
+
+
+def test_el_contexto_del_copiloto_no_mide_la_sugerida_y_lo_dice():
+    """The copilot is told the link went unmeasured, instead of the series
+    appearing among the evidence as if it had data."""
+    from backend.schemas.models import InterpretationContext
+    from backend.services.copilot_context import interpretation_context_text
+
+    ctx = InterpretationContext(
+        thesis="Las tasas hipotecarias frenan la construccion",
+        active_series_id="MORTGAGE30US",
+        last_price=6.3,
+        projected_target=6.0,
+        lower_bound=5.5,
+        upper_bound=6.5,
+        series_type="macro",
+        macro_series=["MORTGAGE30US"],
+        unresolved_macro_series=["TOTALSI"],
+    )
+    text = interpretation_context_text(ctx)
+
+    assert "Sin medir: TOTALSI" in text
+    assert "no existe en FRED" in text
+    assert "decilo expl" in text
+    # It is NOT presented as a measured series.
+    assert "- TOTALSI:" not in text
+
+
+def test_sin_pendientes_el_contexto_no_habla_de_sin_medir():
+    from backend.schemas.models import InterpretationContext
+    from backend.services.copilot_context import interpretation_context_text
+
+    ctx = InterpretationContext(
+        thesis="t", active_series_id="MORTGAGE30US", last_price=1.0, projected_target=1.0,
+        lower_bound=0.9, upper_bound=1.1, series_type="macro", macro_series=["MORTGAGE30US"],
+    )
+    assert "Sin medir" not in interpretation_context_text(ctx)

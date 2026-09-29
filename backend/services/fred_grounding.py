@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from backend.config import settings
+from backend.schemas.models import FredCandidate
 from backend.services.data_fetcher import FREDDataFetcher, FredSeriesNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -35,22 +36,23 @@ SUGGESTED = "sugerido_por_busqueda"
 DISCARDED = "descartado"
 
 SEARCH_URL = "https://api.stlouisfed.org/fred/series/search"
-SEARCH_LIMIT = 5
+SEARCH_LIMIT = 3  # what the UI offers; the user picks one
 
 
-def search_fred_concept(concept: str, api_key: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Best real FRED series for a free-text concept, or None.
+def search_fred_concept(concept: str, api_key: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Up to `SEARCH_LIMIT` real FRED series for a free-text concept.
 
-    Uses FRED's own relevance ranking (`order_by=search_rank`, its default) and
-    takes the top hit: picking among them with our own heuristic would be
-    another guess, and the point of 4.11 is to stop guessing. Returns FRED's
-    `id` and `title` verbatim.
+    Returns FRED's own ranking (`order_by=search_rank`, its default) untouched,
+    with each hit's metadata verbatim: we don't reorder it, because our ranking
+    would be one more guess. The CHOICE among them is the user's — the top hit
+    is not necessarily the right series (searching "new home sales" ranks MSPUS
+    first, a *price*, which says nothing about how many houses are built).
     """
     key = api_key if api_key is not None else settings.FRED_API_KEY
     if not (key and str(key).strip()):
-        return None
+        return []
     if not (concept and concept.strip()):
-        return None
+        return []
 
     try:
         params = {
@@ -64,17 +66,24 @@ def search_fred_concept(concept: str, api_key: Optional[str] = None) -> Optional
             resp = client.get(SEARCH_URL, params=params)
         if resp.status_code != 200:
             logger.warning(f"FRED search returned HTTP {resp.status_code} for {concept!r}")
-            return None
+            return []
         hits = resp.json().get("seriess", []) or []
-        if not hits:
-            return None
-        top = hits[0]
-        if not top.get("id"):
-            return None
-        return {"id": top["id"], "title": top.get("title", "")}
+        return [
+            {
+                "series_id": h["id"],
+                "title": h.get("title", ""),
+                "frequency": h.get("frequency_short") or None,
+                "seasonal_adjustment": h.get("seasonal_adjustment_short") or None,
+                "observation_start": h.get("observation_start") or None,
+                "observation_end": h.get("observation_end") or None,
+                "units": h.get("units_short") or None,
+            }
+            for h in hits[:SEARCH_LIMIT]
+            if h.get("id")
+        ]
     except Exception as e:
         logger.warning(f"FRED search failed for {concept!r}: {e}")
-        return None
+        return []
 
 
 def _search_concept(item: Any) -> str:
@@ -133,18 +142,19 @@ def ground_macro_series(macro_series: List[Any]) -> List[Any]:
             item.fred_title = meta.get("title") or None
             continue
 
-        # The ID doesn't exist: look for the concept the LLM described.
+        # The ID doesn't exist: look for the concept the LLM described and
+        # OFFER the candidates. The ID is never substituted automatically: see
+        # MacroSuggestion.enters_analysis.
         concept = _search_concept(item)
-        candidate = search_fred_concept(concept)
+        candidates = search_fred_concept(concept)
 
-        if candidate:
+        if candidates:
             item.proposed_series_id = proposed
-            item.series_id = candidate["id"]
-            item.fred_title = candidate["title"] or None
             item.grounding = SUGGESTED
+            item.searched_concept = concept
+            item.candidates = [FredCandidate(**c) for c in candidates]
             item.grounding_note = (
-                f"'{proposed}' no existe en FRED. Se sugiere '{candidate['id']}' "
-                f"({candidate['title']}), encontrada buscando \"{concept}\"."
+                f"'{proposed}' no existe en FRED; elegí un reemplazo o seguí sin esta serie."
             )
         else:
             item.proposed_series_id = proposed

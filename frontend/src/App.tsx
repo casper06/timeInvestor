@@ -28,6 +28,7 @@ import {
   fetchForecast,
   fetchFredMetadata,
   ApiError,
+  entersAnalysis,
 } from './services/api';
 import type {
   HealthResponse,
@@ -37,6 +38,7 @@ import type {
   FundamentalsMetric,
   TickerSuggestion,
   MacroSuggestion,
+  FredCandidate,
   ThesisDetailResponse,
   InterpretationResponse,
   BacktestResponse,
@@ -307,6 +309,27 @@ export const App: React.FC = () => {
   };
 
   // Remove macro series
+  /**
+   * 4.11: the user picks a real FRED series to replace an ID that doesn't
+   * exist. Only here does a `sugerido_por_busqueda` become part of the
+   * analysis — the app never substitutes the ID on its own.
+   */
+  const handleChooseCandidate = (missingId: string, candidate: FredCandidate) => {
+    setActiveMacro((prev) =>
+      prev.map((m) =>
+        (m.proposed_series_id || m.series_id) === missingId
+          ? {
+              ...m,
+              series_id: candidate.series_id,
+              fred_title: candidate.title,
+              chosen_by_user: true,
+              grounding_note: null,
+            }
+          : m,
+      ),
+    );
+  };
+
   const handleRemoveMacro = (seriesId: string) => {
     const updated = activeMacro.filter((m) => m.series_id !== seriesId);
     setActiveMacro(updated);
@@ -373,12 +396,20 @@ export const App: React.FC = () => {
     });
   };
 
+  // 4.11: only series FRED confirmed, or whose replacement the user chose,
+  // reach forecasts, correlations and the copilot. A `sugerido_por_busqueda`
+  // that nobody picked is a guess at the concept, not a measurement.
+  const analysisMacro = activeMacro.filter(entersAnalysis);
+  const unresolvedMacro = activeMacro.filter(
+    (m) => m.grounding === 'sugerido_por_busqueda' && !m.chosen_by_user,
+  );
+
   // List of all active series for selector pills
   // nameFromLLM: the name is the LLM's (the ones added by hand carry the app's
   // generic "X Equity" / "FRED X"), not FRED's or the market's title.
   const allSeriesList = [
     ...activeTickers.map((t) => ({ id: t.symbol, name: t.name, type: 'equity', nameFromLLM: t.sector !== 'Custom Asset' })),
-    ...activeMacro.map((m) => ({
+    ...analysisMacro.map((m) => ({
       id: m.series_id,
       name: m.name,
       type: 'macro',
@@ -470,6 +501,7 @@ export const App: React.FC = () => {
           macroAddError={macroAddError}
           providerLabel={providerLabel(health?.llm_provider)}
           onRemoveMacro={handleRemoveMacro}
+          onChooseCandidate={handleChooseCandidate}
         />
 
         {/* ============================================================ */}
@@ -526,7 +558,8 @@ export const App: React.FC = () => {
               horizon={horizon}
               confidence={intervalLevel}
               activeTickers={activeTickers}
-              activeMacro={activeMacro}
+              activeMacro={analysisMacro}
+              unresolvedMacro={unresolvedMacro.map((m) => m.proposed_series_id || m.series_id)}
               fundamentals={fundamentals}
               onSelectSeries={handleSelectSeries}
               onInterpretationComplete={setLastInterpretation}
@@ -562,7 +595,7 @@ export const App: React.FC = () => {
         {!isEmpty && currentView === 'correlation' && (
           <CorrelationHeatmap
             activeTickers={activeTickers}
-            activeMacro={activeMacro}
+            activeMacro={analysisMacro}
             onResult={setLastCorrelation}
           />
         )}

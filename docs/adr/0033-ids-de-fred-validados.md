@@ -21,9 +21,12 @@ Tres resultados posibles, en el campo `grounding` de cada serie:
 - **`verificado`**: el ID existe en FRED (`/fred/series`). Se conserva, y se
   guarda el **título oficial de FRED** (`fred_title`), nunca uno escrito a mano.
 - **`sugerido_por_busqueda`**: el ID no existe. Se busca el *concepto* que
-  describió el LLM con `fred/series/search` y se propone el mejor candidato
-  real, con su título de FRED. El ID original queda registrado en
-  `proposed_series_id`, y la UI lo marca "sugerido por búsqueda".
+  describió el LLM con `fred/series/search` y se **ofrecen hasta 3 candidatos
+  reales**, cada uno con su título de FRED, frecuencia, SA/NSA y rango de
+  fechas. **La app no sustituye el ID: elige el usuario.** Hasta que elija, la
+  serie **no entra al análisis** (`MacroSuggestion.enters_analysis()`), y la UI
+  muestra el aviso "'X' no existe en FRED; elegí un reemplazo o seguí sin esta
+  serie".
 - **`descartado`**: el ID no existe y la búsqueda no encontró nada. Se marca
   con un aviso visible; nunca se descarta en silencio.
 
@@ -53,6 +56,30 @@ caché).
 Se toma el primer resultado del ranking de FRED (`order_by=search_rank`, su
 default): elegir entre los candidatos con una heurística propia sería otra
 adivinanza, y 4.11 existe para dejar de adivinar.
+
+### Por qué lo sugerido no entra solo
+
+El primer resultado de FRED es una conjetura sobre el *concepto*, no la serie
+que el usuario pidió. El caso real lo muestra: buscar "new home sales" para
+`TOTALSI` (una tesis sobre **cuántas** viviendas se construyen) devuelve
+primero **MSPUS**, el **precio mediano** de las casas vendidas. Es una serie
+real y del tema, pero mide otra cosa: sustituirla en silencio habría metido un
+precio donde la tesis hablaba de cantidades, y todo lo que sigue —pronóstico,
+correlación, copiloto— habría trabajado sobre esa confusión sin avisar.
+
+Qué entra al análisis, entonces:
+
+| Estado | ¿Entra a pronósticos, correlaciones y copiloto? |
+|---|---|
+| `verificado` | Sí |
+| `sugerido_por_busqueda` sin elegir | **No** |
+| `sugerido_por_busqueda` elegido por el usuario | Sí |
+| `descartado` | No |
+| `null` (no se pudo verificar) | No |
+
+El copiloto además **recibe los IDs que quedaron sin resolver**
+(`unresolved_macro_series`) como "Sin medir", con la instrucción de decir que
+ese eslabón del mecanismo no tiene datos, en vez de callarlo.
 
 ## Consecuencias
 
@@ -84,6 +111,21 @@ adivinanza, y 4.11 existe para dejar de adivinar.
   series de la tesis de vivienda salieron `verificado`
   (`MORTGAGE30US`, `HSN1F`, `PERMIT`, `HOUST`), con `search_concept_en` en
   inglés.
+
+### Verificación en el navegador (2026-09-29)
+
+Sobre una COPIA de la DB, con el frontend construido y **solo el LLM stubbeado**
+(la validación, FRED y la UI son reales; una traducción real de Sonnet devuelve
+IDs válidos y nunca mostraría el selector):
+
+- `TOTALSI` e `IPGD` aparecen como chips **"sin reemplazo elegido"**, cada uno
+  con su aviso y sus 3 candidatos con metadata (MSPUS/ASPUS/EXHOSLUSM495S y
+  IPG3344S/IPG3344A/IPG3344N).
+- **"SERIE ACTIVA" muestra solo ITB, XHB y UMCSENT**: los dos IDs inventados no
+  entran al análisis.
+- Al tocar "Agregar" en MSPUS, el chip pasa a **"MSPUS elegida por vos"**, su
+  selector desaparece y **MSPUS se suma a "SERIE ACTIVA"**. `IPGD` sigue
+  pendiente y fuera.
 
 ## Estado
 

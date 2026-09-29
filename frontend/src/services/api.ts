@@ -39,6 +39,17 @@ export interface TickerSuggestion {
   source?: string | null;
 }
 
+/** A real FRED series offered to replace an ID that doesn't exist (4.11). */
+export interface FredCandidate {
+  series_id: string;
+  title: string;
+  frequency?: string | null;
+  seasonal_adjustment?: string | null;
+  observation_start?: string | null;
+  observation_end?: string | null;
+  units?: string | null;
+}
+
 export interface MacroSuggestion {
   series_id: string;
   name: string;
@@ -59,6 +70,27 @@ export interface MacroSuggestion {
   fred_title?: string | null;
   /** Warning to show when the ID is not plainly verified. */
   grounding_note?: string | null;
+  /** The text searched on FRED, so the warning can say what was looked up. */
+  searched_concept?: string | null;
+  /** Up to 3 real candidates for an ID that doesn't exist. The user picks. */
+  candidates?: FredCandidate[];
+  /** True once the user picked a candidate; only then does it enter analysis. */
+  chosen_by_user?: boolean;
+}
+
+/**
+ * 4.11: may this series reach forecasts, correlations and the copilot?
+ *
+ * A verified ID may. A searched-for suggestion may NOT until the user picks a
+ * candidate: FRED's top hit is a guess at the concept, not the series the user
+ * asked for (searching "new home sales" ranks MSPUS first — a *price*, which
+ * says nothing about how many houses get built). Discarded and unverifiable
+ * IDs never enter.
+ */
+export function entersAnalysis(m: MacroSuggestion): boolean {
+  if (m.grounding === 'verificado') return true;
+  if (m.grounding === 'sugerido_por_busqueda') return !!m.chosen_by_user;
+  return false;
 }
 
 /** An observable condition that would refute the thesis (4.10). */
@@ -157,6 +189,9 @@ export interface InterpretationContext {
   cagr: number;
   other_tickers: string[];
   macro_series: string[];
+  /** IDs the LLM invented that the user hasn't replaced (4.11): never measured,
+   *  but told to the copilot so it can say that link went unmeasured. */
+  unresolved_macro_series?: string[];
   /** Older clients; `fundamentals` (with each figure's fiscal year) replaces it. */
   capex_summary?: Record<string, number>;
   series_type?: 'equity' | 'macro';
