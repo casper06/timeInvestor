@@ -1,0 +1,537 @@
+{
+ "rule": "docs/PLAN.md 4.17 (24d90b4)",
+ "selection_trace": [
+  [
+   "FEDFUNDS",
+   "excluida: no estacional (ACF de las diferencias en el lag 12 = 0.052 ≤ umbral 0.089: sin estacionalidad d)"
+  ],
+  [
+   "CSUSHPINSA",
+   "elegida"
+  ],
+  [
+   "APU0000703112",
+   "excluida: no estacional (ACF de las diferencias en el lag 12 = 0.038 ≤ umbral 0.075: sin estacionalidad d)"
+  ],
+  [
+   "UMCSENT",
+   "excluida: no estacional (ACF de las diferencias en el lag 12 = 0.070 ≤ umbral 0.079: sin estacionalidad d)"
+  ],
+  [
+   "CPIAUCNS",
+   "elegida"
+  ],
+  [
+   "REAINTRATREARAT10Y",
+   "excluida: no estacional (ACF de las diferencias en el lag 12 = 0.040 ≤ umbral 0.075: sin estacionalidad d)"
+  ],
+  [
+   "APU0000708111",
+   "elegida"
+  ],
+  [
+   "TB3MS",
+   "elegida"
+  ],
+  [
+   "PPIACO",
+   "excluida: no estacional (ACF de las diferencias en el lag 12 = 0.010 ≤ umbral 0.091: sin estacionalidad d)"
+  ],
+  [
+   "AAA",
+   "elegida"
+  ],
+  [
+   "GS10",
+   "excluida: no estacional (ACF de las diferencias en el lag 12 = -0.017 ≤ umbral 0.082: sin estacionalidad )"
+  ],
+  [
+   "BOGMBASE",
+   "elegida"
+  ]
+ ],
+ "validation": [
+  {
+   "series": "CSUSHPINSA",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "no_aporta",
+    "reason": "No aporta más que el random walk (igual que el último dato): le gana en 4 de 8 cutoffs y su error medio es 23% menor; hace falta ganar la mayoría con al menos un 10% menos de error (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 73.99, estacional 120.3)).",
+    "naive": "random_walk",
+    "wins": 4,
+    "losses": 4,
+    "n_pairs": 8,
+    "rel_gap": -0.2252024957749652,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 73.99, estacional 120.3)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 52% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.5232791821011715,
+    "source": "v9"
+   },
+   "sum_rw": 73.99066666666671,
+   "sum_snaive": 120.25441666666667,
+   "other_naive_wins": 6,
+   "other_naive_losses": 2,
+   "blocks_adoption": false
+  },
+  {
+   "series": "CPIAUCNS",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al random walk (igual que el último dato) en 8 de 8 cutoffs, con un error medio 28% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 45.08, estacional 73.88)).",
+    "naive": "random_walk",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.28114036842348933,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 45.08, estacional 73.88)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 56% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.5613308211346473,
+    "source": "v9"
+   },
+   "sum_rw": 45.08149999999994,
+   "sum_snaive": 73.87633333333333,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "APU0000708111",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "no_aporta",
+    "reason": "No aporta más que el random walk (igual que el último dato): le gana en 5 de 8 cutoffs y su error medio es 6% mayor; hace falta ganar la mayoría con al menos un 10% menos de error (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 4.982, estacional 6.999)).",
+    "naive": "random_walk",
+    "wins": 5,
+    "losses": 3,
+    "n_pairs": 8,
+    "rel_gap": 0.05852937230138289,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 4.982, estacional 6.999)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 25% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.24653811976947293,
+    "source": "v9"
+   },
+   "sum_rw": 4.981833333333333,
+   "sum_snaive": 6.998916666666667,
+   "other_naive_wins": 6,
+   "other_naive_losses": 2,
+   "blocks_adoption": false
+  },
+  {
+   "series": "TB3MS",
+   "decision": "v10 timesfm h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al random walk (igual que el último dato) en 6 de 8 cutoffs, con un error medio 25% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 4.967, estacional 8.645)).",
+    "naive": "random_walk",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.24887762013697778,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 4.967, estacional 8.645)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 57% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.5684702733773268,
+    "source": "v9"
+   },
+   "sum_rw": 4.966666666666667,
+   "sum_snaive": 8.645,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "AAA",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "no_evaluado",
+    "reason": "solo 2 cutoffs con los dos errores definidos (< 7)",
+    "naive": "random_walk",
+    "wins": null,
+    "losses": null,
+    "n_pairs": null,
+    "rel_gap": null,
+    "source": null
+   },
+   "v9": {
+    "state": "no_evaluado",
+    "reason": "solo 2 cutoffs con los dos errores definidos (< 7)",
+    "naive": "naive_estacional",
+    "wins": null,
+    "losses": null,
+    "n_pairs": null,
+    "rel_gap": null,
+    "source": null
+   },
+   "sum_rw": 0.3783333333333334,
+   "sum_snaive": 0.5475,
+   "other_naive_wins": 2,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "BOGMBASE",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "no_evaluado",
+    "reason": "solo 6 cutoffs con los dos errores definidos (< 7)",
+    "naive": "random_walk",
+    "wins": null,
+    "losses": null,
+    "n_pairs": null,
+    "rel_gap": null,
+    "source": null
+   },
+   "v9": {
+    "state": "no_evaluado",
+    "reason": "solo 6 cutoffs con los dos errores definidos (< 7)",
+    "naive": "naive_estacional",
+    "wins": null,
+    "losses": null,
+    "n_pairs": null,
+    "rel_gap": null,
+    "source": null
+   },
+   "sum_rw": 1594.9583333333335,
+   "sum_snaive": 1965.1,
+   "other_naive_wins": 4,
+   "other_naive_losses": 2,
+   "blocks_adoption": false
+  }
+ ],
+ "checked": [
+  {
+   "series": "POPTHM",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al random walk (igual que el último dato) en 8 de 8 cutoffs, con un error medio 83% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 7,691, estacional 1.503e+04)).",
+    "naive": "random_walk",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.8267129439835511,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 7,691, estacional 1.503e+04)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 91% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.9113090556194408,
+    "source": "v9"
+   },
+   "sum_rw": 7690.833333333333,
+   "sum_snaive": 15026.583333333334,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "GFDEBTN",
+   "decision": "v10 holt_winters h=4",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al random walk (igual que el último dato) en 8 de 8 cutoffs, con un error medio 44% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 4 pasos; el naive más exigente de los dos, por error total (random walk 1.124e+07, estacional 1.59e+07)).",
+    "naive": "random_walk",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.4390059133583448,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 4 pasos; el naive más exigente de los dos, por error total (random walk 1.124e+07, estacional 1.59e+07)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 60% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.6035420991674687,
+    "source": "v9"
+   },
+   "sum_rw": 11236381.63849118,
+   "sum_snaive": 15899654.518690294,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "GFDEGDQ188S",
+   "decision": "v10 timesfm h=4",
+   "seasonal": true,
+   "v10": {
+    "state": "no_aporta",
+    "reason": "No aporta más que el random walk (igual que el último dato): le gana en 5 de 8 cutoffs y su error medio es 6% menor; hace falta ganar la mayoría con al menos un 10% menos de error (fuente: mini-backtest de esta serie, 8 cutoffs a 4 pasos; el naive más exigente de los dos, por error total (random walk 27.96, estacional 36.53)).",
+    "naive": "random_walk",
+    "wins": 5,
+    "losses": 3,
+    "n_pairs": 8,
+    "rel_gap": -0.056057840137064274,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 4 pasos; el naive más exigente de los dos, por error total (random walk 27.96, estacional 36.53)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 7 de 8 cutoffs, con un error medio 28% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 7,
+    "losses": 1,
+    "n_pairs": 8,
+    "rel_gap": -0.2773388572215738,
+    "source": "v9"
+   },
+   "sum_rw": 27.963359999999984,
+   "sum_snaive": 36.525825,
+   "other_naive_wins": 7,
+   "other_naive_losses": 1,
+   "blocks_adoption": false
+  },
+  {
+   "series": "IMPCH",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al random walk (igual que el último dato) en 6 de 8 cutoffs, con un error medio 28% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 3.348e+04, estacional 5.085e+04)).",
+    "naive": "random_walk",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.2808922722279068,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 3.348e+04, estacional 5.085e+04)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 53% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.5265258823164306,
+    "source": "v9"
+   },
+   "sum_rw": 33481.27269425,
+   "sum_snaive": 50851.020216,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "MTSDS133FMS",
+   "decision": "v10 timesfm h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 24% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 1.446e+06, estacional 9.525e+05)).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.24121119861921247,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 1.446e+06, estacional 9.525e+05)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 24% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.24121119861921247,
+    "source": "v9"
+   },
+   "sum_rw": 1446201.68299518,
+   "sum_snaive": 952522.4874821159,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "UNRATENSA",
+   "decision": "v10 timesfm h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al random walk (igual que el último dato) en 8 de 8 cutoffs, con un error medio 40% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 7.467, estacional 8.675)).",
+    "naive": "random_walk",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.4034808953957897,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 7.467, estacional 8.675)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 49% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.48656953148379223,
+    "source": "v9"
+   },
+   "sum_rw": 7.466666666666666,
+   "sum_snaive": 8.675,
+   "other_naive_wins": 6,
+   "other_naive_losses": 2,
+   "blocks_adoption": false
+  },
+  {
+   "series": "IPG2211A2N",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 7 de 8 cutoffs, con un error medio 22% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 98.6, estacional 28.68)).",
+    "naive": "naive_estacional",
+    "wins": 7,
+    "losses": 1,
+    "n_pairs": 8,
+    "rel_gap": -0.22006578352205108,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 98.6, estacional 28.68)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 7 de 8 cutoffs, con un error medio 22% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 7,
+    "losses": 1,
+    "n_pairs": 8,
+    "rel_gap": -0.22006578352205108,
+    "source": "v9"
+   },
+   "sum_rw": 98.59955,
+   "sum_snaive": 28.682983333333333,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  },
+  {
+   "series": "HOUSTNSA",
+   "decision": "v10 timesfm h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 23% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 107.1, estacional 86.28)).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.22812588843794523,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 107.1, estacional 86.28)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 6 de 8 cutoffs, con un error medio 23% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 6,
+    "losses": 2,
+    "n_pairs": 8,
+    "rel_gap": -0.22812588843794523,
+    "source": "v9"
+   },
+   "sum_rw": 107.08333333333333,
+   "sum_snaive": 86.275,
+   "other_naive_wins": 6,
+   "other_naive_losses": 2,
+   "blocks_adoption": false
+  },
+  {
+   "series": "RSAFSNA",
+   "decision": "v10 holt_winters h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 46% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 3.589e+05, estacional 2.726e+05)).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.4597006442288174,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 3.589e+05, estacional 2.726e+05)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 8 de 8 cutoffs, con un error medio 46% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 8,
+    "losses": 0,
+    "n_pairs": 8,
+    "rel_gap": -0.4597006442288174,
+    "source": "v9"
+   },
+   "sum_rw": 358873.6666666667,
+   "sum_snaive": 272554.0,
+   "other_naive_wins": 7,
+   "other_naive_losses": 1,
+   "blocks_adoption": false
+  },
+  {
+   "series": "MRTSSM4451USN",
+   "decision": "v10 timesfm h=12",
+   "seasonal": true,
+   "v10": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 7 de 8 cutoffs, con un error medio 49% menor (fuente: mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 2.461e+04, estacional 2.125e+04)).",
+    "naive": "naive_estacional",
+    "wins": 7,
+    "losses": 1,
+    "n_pairs": 8,
+    "rel_gap": -0.4898186232048175,
+    "source": "mini-backtest de esta serie, 8 cutoffs a 12 pasos; el naive más exigente de los dos, por error total (random walk 2.461e+04, estacional 2.125e+04)"
+   },
+   "v9": {
+    "state": "aporta",
+    "reason": "Le gana al naive estacional (igual que el mismo período del ciclo anterior) en 7 de 8 cutoffs, con un error medio 49% menor (fuente: v9).",
+    "naive": "naive_estacional",
+    "wins": 7,
+    "losses": 1,
+    "n_pairs": 8,
+    "rel_gap": -0.4898186232048175,
+    "source": "v9"
+   },
+   "sum_rw": 24612.916666666668,
+   "sum_snaive": 21249.0,
+   "other_naive_wins": 8,
+   "other_naive_losses": 0,
+   "blocks_adoption": false
+  }
+ ]
+}

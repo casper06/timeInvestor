@@ -42,3 +42,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0029](0029-metadatos-reales-de-fred.md) | Metadatos reales de FRED (título, unidad, frecuencia, SA/NSA); "metadatos no disponibles" en vez de inventar | Aceptada | 4.3 (parte visible) |
 | [0030](0030-prompt-de-traduccion-v2.md) | Prompt de traducción de tesis v2: mecanismo, drivers FRED, refutación, instrumentos ETF primero, SPY | Propuesta | 4.10 |
 | [0031](0031-claude-cli-sonnet-por-defecto.md) | `CLAUDE_CLI_MODEL=sonnet` por defecto (reemplaza 0016) | Aceptada | 4.6 |
+| [0032](0032-badge-contra-el-naive-mas-exigente.md) | Badge de capacidad contra el naive más exigente (menor error total; criterio v10) | Aceptada | 4.17 |

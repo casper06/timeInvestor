@@ -384,6 +384,12 @@ class CorrelationRequest(BaseModel):
         description="Tipo de cada serie ({id: 'equity' | 'macro'}). Sin él, se decide por el catálogo y después "
                     "preguntándole a FRED; un ID de FRED nunca se busca en yfinance")
 
+class ExcludedSeries(BaseModel):
+    """A series left out of a calculation, with the reason (it doesn't exist, it failed to load)."""
+    series_id: str
+    reason: str
+
+
 class CorrelationMatrixResponse(BaseModel):
     series_ids: List[str]
     series_names: Dict[str, str]
@@ -396,6 +402,7 @@ class CorrelationMatrixResponse(BaseModel):
     end_date: str
     mode: str = "returns"
     warning: Optional[str] = None
+    excluded: List[ExcludedSeries] = Field(default_factory=list, description="Series que no entraron en la matriz y por qué; la matriz se calcula con las demás")
 
 
 # Portfolio Optimization Schemas

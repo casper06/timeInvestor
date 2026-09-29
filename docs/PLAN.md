@@ -412,7 +412,7 @@ verificada.
 - [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
   pasado. Comparar con los regresores externos de Prophet (ver 3.0).
 - [ ] **3.3 Latencia en CPU.**
-- [ ] **3.4 Revisiones de datos (vintages de ALFRED).** Los backtests sobre FRED
+- [x] **3.4 Revisiones de datos (vintages de ALFRED).** Los backtests sobre FRED
   usan la serie *revisada de hoy*: en cada cutoff el modelo ve valores que en
   esa fecha todavía no existían. Eso puede inflar la capacidad de pronóstico
   medida (auto-discovery, benchmarks de 2.5 y 3.0d). Las revisiones de las
@@ -444,6 +444,108 @@ verificada.
   Hecho cuando: el benchmark de 3.0d se re-corre con vintages en los cutoffs
   donde existen. Se reporta, por serie, cuánto cambia el MASE estacional y si
   cambia algún veredicto del catálogo.
+
+  **Medición PRE-REGISTRADA el 2026-09-28**, en commit propio, antes de
+  descargar ningún vintage (rama `feat/vintage-benchmark`). Solo mide: no
+  cambia criterios ni catálogos.
+  - **Series:**
+    - las 4 del catálogo estacional (IPG2211A2N, HOUSTNSA, RSAFSNA,
+      MRTSSM4451USN) y las 5 mensuales SA de 3.5 (HOUST, INDPRO, JTSJOL,
+      PSAVERT, UNRATE);
+    - entra solo la que tenga historia de vintages suficiente: primera fecha
+      de `fred/series/vintagedates` ≤ 2016-12-31, para que la ventana de
+      cutoffs cubra al menos 8 años. Las demás se reportan como excluidas,
+      con su primera fecha.
+  - **Cutoffs:** 24 fechas mensuales equiespaciadas entre el primer mes
+    posterior a la primera fecha de vintage y la última observación actual
+    menos 12 meses.
+  - **Horizonte:** 12 meses (el canónico mensual).
+  - **Dos versiones de los datos de entrenamiento en cada cutoff `c`:**
+    - **de época:** la serie como se publicó el día `c`
+      (`fred/series/observations?vintage_dates=c`), con su última
+      observación `t`;
+    - **revisada:** la serie actual cortada en esa misma `t`. Así las dos ven
+      el mismo período y difieren solo en las revisiones.
+  - **Dos verdades para los 12 meses siguientes a `t`:**
+    - el valor de la **primera publicación** (`output_type=4`);
+    - el **revisado** actual.
+  - **Métrica:** la capacidad de pronóstico de 3.5 (`capability()` de
+    `scripts/fred_category_benchmark.py`), en cada una de las 4
+    combinaciones (datos × verdad):
+    - motores Holt, Holt-Winters (si la serie es estacional según 3.0a sobre
+      los datos revisados completos) y TimesFM real (si cae a Holt, se
+      frena, como en 3.5);
+    - naive de referencia: el más exigente de los dos (menor error total),
+      calculado con los mismos datos de entrenamiento;
+    - un motor "le gana" si el test de signo da p < 0,05/k (k = motores) y
+      el skill (1 − ΣMAE motor / ΣMAE naive) es > 0;
+    - la serie "tiene capacidad" si algún motor le gana.
+  - **Qué contaría como "la conclusión no se sostiene"**, por serie:
+    - la serie tiene capacidad con datos revisados y verdad revisada (lo que
+      miden hoy los benchmarks) y **no** la tiene con datos de época y verdad
+      de primera publicación (lo que se habría podido saber en tiempo real);
+    - el caso contrario (sin capacidad → con capacidad) se reporta aparte;
+    - por motor se reporta además el cambio de skill entre las dos
+      condiciones;
+    - las combinaciones cruzadas (datos de época con verdad revisada, y al
+      revés) se reportan para separar el efecto del entrenamiento del efecto
+      de la verdad.
+  - **Snapshot:** todo lo bajado queda en `data/snapshots/vintages_<fecha>.json`
+    con su sha256, y la medición se re-corre desde ahí.
+  - **Límite de la API de FRED:** 120 pedidos por minuto. Unos 27 pedidos
+    por serie, espaciados.
+
+  **Resultado (2026-09-28)** (rama `feat/vintage-benchmark`, PR #56,
+  mergeado; `docs/results/vintage_benchmark_2026-09-28.md`):
+  - **Se sostienen:** HOUSTNSA, IPG2211A2N y RSAFSNA (el catálogo estacional).
+  - **No se sostienen:** HOUST, INDPRO y JTSJOL. Su capacidad con datos
+    revisados era de TimesFM; en INDPRO el skill cae de +0,42 a +0,08.
+  - **Sin capacidad en ninguna:** PSAVERT y UNRATE.
+  - **Excluida:** MRTSSM4451USN.
+  - **Límites:** cambios de base y de definición (INDPRO, PSAVERT) hacen
+    ininterpretables las combinaciones cruzadas; las ventanas de HOUST,
+    INDPRO y UNRATE mezclan décadas.
+  - No se cambió ningún criterio ni catálogo.
+
+  **Lectura (2026-09-28):** la capacidad del catálogo estacional (NSA) se
+  sostiene con datos de época. En las tres mensuales SA que tenían capacidad
+  con datos revisados (HOUST, INDPRO, JTSJOL), no.
+
+  **Propuesta, sin implementar: reflejarlo en el badge de 4.13** para series
+  SA revisables:
+  - Hoy el badge mide siempre con la serie revisada de hoy (la decisión de
+    auto-discovery), sin decirlo.
+  - Propuesta: cuando el badge dice "aporta" y la serie es SA (metadato
+    `seasonal_adjustment_short` de FRED, 4.3), agregar una nota bajo el
+    veredicto. Tiene dos variantes:
+    - si 3.4 midió la serie y no se sostuvo: "capacidad medida con datos
+      revisados; con datos de época no se sostuvo" (hoy: HOUST, INDPRO,
+      JTSJOL), con enlace al resultado;
+    - si 3.4 no la midió: "capacidad medida con datos revisados; no
+      verificada con datos de época".
+  - Las NSA del catálogo que se sostuvieron no llevan nota. "No aporta" y
+    "no evaluado" tampoco, porque las revisiones no pueden empeorar un
+    veredicto que ya es negativo.
+  - La lista de series medidas saldría de un snapshot versionado (como
+    `CATALOG_RW_EVIDENCE` en 4.17), no de una lista escrita a mano en el
+    componente.
+  - No cambia el criterio del badge: es una nota de procedencia. Antes de
+    implementarla hay que decidir si "no verificada" se muestra en todas
+    las SA o solo en las que tienen revisiones grandes.
+
+  **Pendiente de pre-registro: re-medir desde 2000 las series cuyos cutoffs
+  mezclan épocas.**
+  - En HOUST, INDPRO y UNRATE los 24 cutoffs van de 1927/1960 a 2025. Mezclan
+    décadas con otra metodología, y en INDPRO y PSAVERT hay cambios de base
+    de 58% y 130%.
+  - La re-medición usaría las mismas reglas de 3.4, con la ventana de cutoffs
+    arrancando en 2000-01 para todas las series con vintages anteriores a
+    esa fecha.
+  - Antes de descargar nada hay que escribir en su propio commit: la regla
+    de ventana, qué contaría como "cambia la lectura" y qué se hace con
+    PSAVERT si el cambio de definición cae dentro de la ventana.
+  - No se corre hasta que se pre-registre.
+
 - [x] **3.5 Capacidad de pronóstico por categoría de FRED.** (rama
   `feat/fred-category-benchmark`, PR #40, mergeado;
   `docs/results/fred_category_benchmark_2026-09-27.md`)
@@ -952,8 +1054,16 @@ Rama: una por ítem, a definir.
   Hecho cuando: agregar una serie de FRED a mano la carga como macro al
   primer intento, las respuestas viejas se descartan, y hay un test.
 
-- [ ] **4.17 Capacidad contra el más exigente de los dos naives
-  (propuesta, 2026-09-27; no pre-registrada todavía).**
+- [x] **4.17 Capacidad contra el más exigente de los dos naives.** (rama
+  `feat/skill-strictest-naive`, PR abierto; ADR-0032; criterio v10;
+  `docs/results/skill_strictest_naive_2026-09-28.md`)
+  - Validación con 6 series elegidas por la regla: se adopta, porque ningún
+    "aporta" pierde la mayoría contra el otro naive.
+  - CSUSHPINSA y APU0000708111 pasan a "no aporta"; GFDEGDQ188S también,
+    como se había medido.
+  - Desviación corregida: en una primera corrida, una descarga fallida dejó
+    afuera FEDFUNDS y CSUSHPINSA.
+  Propuesta original (2026-09-27):
   - **Problema (medido, criterio v9, copia de la DB):** en las series
     estacionales, el indicador de 4.13 compara solo contra el naive
     estacional.
@@ -988,6 +1098,50 @@ Rama: una por ítem, a definir.
   naive pre-registrado, la evidencia de los dos naives está guardada, y hay
   tests y verificación sobre una copia de la DB.
 
+  **Criterio PRE-REGISTRADO el 2026-09-28**, en commit propio, antes de
+  implementar y antes de mirar datos de las series de validación (rama
+  `feat/skill-strictest-naive`).
+  - **Regla (criterio v10 del badge):**
+    - en series estacionales, la referencia es el naive de **menor error
+      total** en los cutoffs de la decisión, sumando el MAE de los cutoffs
+      donde el motor, el random walk y el naive estacional están definidos.
+      Es el mismo criterio de 3.5 (`capability()`: `if sum(snaive) <
+      sum(rw)`). Con empate, el random walk;
+    - contra esa referencia, la misma regla de 4.13: al menos 7 pares,
+      mayoría de cutoffs ganados y error medio al menos 10% menor;
+    - en series no estacionales no cambia nada: random walk.
+  - **Evidencia:**
+    - la decisión guarda por cutoff el MAE del random walk y del naive
+      estacional (antes, solo el del naive elegido). Se sube el criterio a
+      v10 para que las decisiones se re-evalúen;
+    - para el catálogo estacional, la evidencia de 3.0d contra el random walk
+      se recalcula del snapshot y se versiona.
+  - **Esperado por lo medido (no es validación, ya se vio):** GFDEGDQ188S
+    pasa de "aporta" a "no aporta"; las otras 9 del chequeo no cambian.
+  - **Series de validación (regla mecánica sobre metadatos, sin mirar
+    errores):**
+    - el endpoint `fred/tags/series` con `tag_names=nsa;monthly;usa`,
+      `order_by=popularity`, `sort_order=desc`, primera página (`limit=1000`);
+    - se recorre en orden y se toman las **primeras 6** que cumplan:
+      - (a) no están en el set del chequeo de POPTHM (POPTHM, GFDEBTN,
+        GFDEGDQ188S, IMPCH, MTSDS133FMS, UNRATENSA, IPG2211A2N, HOUSTNSA,
+        RSAFSNA, MRTSSM4451USN);
+      - (b) `observation_start` ≤ 2000-01-01 y `observation_end` ≥ 2026-01-01;
+      - (c) el detector 3.0a las marca estacionales sobre las 500
+        observaciones que baja la app (la regla nueva solo cambia algo en
+        series estacionales);
+    - si no alcanzan 6, se reporta con las que haya.
+  - **Criterio de adopción (escrito antes de medir):**
+    - la v10 **se adopta** salvo que, en las series de validación, aparezca
+      al menos un caso donde la regla nueva diga "aporta" y el motor pierda
+      la mayoría de los cutoffs (ganados ≤ perdidos) contra el **otro**
+      naive, el de mayor error total;
+    - ese caso mostraría que "el más exigente por error total" no alcanza
+      como resumen y que habría que pasar a "contra los dos";
+    - se reporta además cuántas series cambian de estado entre v9 y v10.
+  - **Verificación:** sobre una copia de la DB, con TimesFM real. Se reporta
+    tal como salga.
+
 - [x] **4.18 Lote de honestidad de la UI.** (rama `fix/ui-honesty-batch`, PR
   abierto; ADR-0025)
   - El indicador de capacidad pasa al panel del gráfico, junto a "Serie
@@ -1000,6 +1154,35 @@ Rama: una por ítem, a definir.
   - Verificado en el navegador sobre una copia de la DB (NVDA e IPG2211A2N).
   - Hallazgo: en el corte por defecto de IPG2211A2N, TimesFM no supera al
     naive estacional (MAE 3,00 contra 2,67; un solo corte).
+
+- [x] **4.22 Una serie inexistente no rompe la pantalla.** (rama
+  `fix/missing-series-resilience`, PR abierto)
+  - Caso: la tesis de las capturas, con TOTALSI e IPGD propuestas por el LLM.
+    Ninguna de las dos existe en FRED (consultado el 2026-09-28: "The series
+    does not exist"); UMCSENT sí existe.
+  - **Correlación:** una serie que no existe o no carga queda afuera, con el
+    motivo (`excluded` en la respuesta). La matriz se calcula con las demás.
+    Si quedan menos de 2, el error nombra las excluidas. Los datos
+    sintéticos siguen rompiendo la matriz, porque mezclarlos daría un
+    resultado falso.
+  - **Dual-axis:**
+    - el selector y el gráfico muestran siempre la misma serie: se descartan
+      las respuestas viejas, y el hijo ya no pisa la elección del usuario en
+      cada render;
+    - si la serie elegida falla, se muestra su error, no el gráfico de otra;
+    - el nombre que escribió el LLM se marca "nombre según el LLM" en el
+      selector; una vez cargada, se muestra el título de FRED.
+  - **Reality Check:**
+    - la casilla Holt-Winters se deshabilita cuando el detector de 3.0a ya
+      sabe que la serie no es estacional, con el ACF y el umbral a la vista;
+    - si la serie no cargó, dice por qué no se puede correr.
+  - **Sin `alert()` ni `confirm()` del navegador:** se reemplazaron los de
+    análisis de tesis, Reality Check, copiloto, guardar tesis y borrar tesis
+    (este último con confirmación en la misma fila).
+  - **Riesgo** usa solo los tickers, así que una serie macro inexistente no
+    lo toca. Un ticker inexistente sigue rompiendo la optimización con un
+    error visible (no verificado en esta rama: queda para 4.11).
+  - Pendiente en 4.11: validar los IDs antes de que lleguen a la UI.
 
 ## Fase 5 — Examinar tesis, centrado en drivers (para discutir, no ejecutar)
 

@@ -1,0 +1,904 @@
+{
+ "snapshot_sha256": "650ba98b8dfb2ab71e14e4f71311bef51a0f99168b6c419b54bdf6b1780fa462",
+ "rule": "docs/PLAN.md 3.4 (477b979)",
+ "excluded": {
+  "MRTSSM4451USN": "primera fecha de vintage 2017-11-15 > 2016-12-31"
+ },
+ "series": {
+  "HOUST": {
+   "first_vintage": "1960-07-21",
+   "seasonal": false,
+   "engines": [
+    "holt",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 1.2396475329401409,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 11,
+       "losses": 13,
+       "p": 0.7293719053268433,
+       "skill": -0.043980219230318696,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 17,
+       "losses": 7,
+       "p": 0.03195732831954956,
+       "skill": 0.2271544088705294,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "epoca|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 12,
+       "losses": 12,
+       "p": 0.5805901288986206,
+       "skill": -0.06117855543631845,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 16,
+       "losses": 8,
+       "p": 0.07579481601715088,
+       "skill": 0.24818052288857606,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": -0.03355538251448187,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 18,
+       "losses": 6,
+       "p": 0.011327922344207764,
+       "skill": 0.18771181061327502,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 11,
+       "losses": 13,
+       "p": 0.7293719053268433,
+       "skill": -0.04820650519676861,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 19,
+       "losses": 5,
+       "p": 0.003305375576019287,
+       "skill": 0.22073320647284245,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    }
+   },
+   "verdict": "no se sostiene"
+  },
+  "HOUSTNSA": {
+   "first_vintage": "2011-03-16",
+   "seasonal": true,
+   "engines": [
+    "holt",
+    "holt_winters",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 0.06422654591334123,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 4,
+       "losses": 20,
+       "p": 0.9998614192008972,
+       "skill": -0.35713658569434625,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 14,
+       "losses": 10,
+       "p": 0.27062809467315674,
+       "skill": 0.05671410395881693,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 19,
+       "losses": 5,
+       "p": 0.003305375576019287,
+       "skill": 0.18457089753213884,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "epoca|revisada": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 7,
+       "losses": 17,
+       "p": 0.9886720776557922,
+       "skill": -0.3128812127373166,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": 0.05669950926513667,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 18,
+       "losses": 6,
+       "p": 0.011327922344207764,
+       "skill": 0.1897614935015698,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|primera": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 6,
+       "losses": 18,
+       "p": 0.9966946244239807,
+       "skill": -0.37066293574043896,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": 0.058513629306472636,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 20,
+       "losses": 4,
+       "p": 0.000771939754486084,
+       "skill": 0.20620267930857772,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|revisada": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 7,
+       "losses": 17,
+       "p": 0.9886720776557922,
+       "skill": -0.33030238728191263,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": 0.06373332809897381,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 19,
+       "losses": 5,
+       "p": 0.003305375576019287,
+       "skill": 0.21281602942300593,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    }
+   },
+   "verdict": "se sostiene"
+  },
+  "INDPRO": {
+   "first_vintage": "1927-01-26",
+   "seasonal": false,
+   "engines": [
+    "holt",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 57.60774446238482,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 12,
+       "losses": 12,
+       "p": 0.5805901288986206,
+       "skill": -0.0940281257137845,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 16,
+       "losses": 8,
+       "p": 0.07579481601715088,
+       "skill": 0.08121044468285987,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "epoca|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 6,
+       "losses": 18,
+       "p": 0.9966946244239807,
+       "skill": -0.053192019301754545,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 11,
+       "losses": 13,
+       "p": 0.7293719053268433,
+       "skill": 0.0012072517056830323,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 17,
+       "losses": 7,
+       "p": 0.03195732831954956,
+       "skill": 0.0075773140520867255,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 17,
+       "losses": 7,
+       "p": 0.03195732831954956,
+       "skill": 0.0031351109381638764,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 14,
+       "losses": 10,
+       "p": 0.27062809467315674,
+       "skill": 0.140404320585378,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 18,
+       "losses": 6,
+       "p": 0.011327922344207764,
+       "skill": 0.4240071441746298,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    }
+   },
+   "verdict": "no se sostiene"
+  },
+  "IPG2211A2N": {
+   "first_vintage": "2015-02-18",
+   "seasonal": true,
+   "engines": [
+    "holt",
+    "holt_winters",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 0.9440052322260257,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 0,
+       "losses": 24,
+       "p": 1.0,
+       "skill": -1.1659588938549916,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 16,
+       "losses": 8,
+       "p": 0.07579481601715088,
+       "skill": 0.04540281501522214,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 22,
+       "losses": 2,
+       "p": 1.7940998077392578e-05,
+       "skill": 0.17934130099698575,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "epoca|revisada": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 0,
+       "losses": 24,
+       "p": 1.0,
+       "skill": -1.319879031561443,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 16,
+       "losses": 8,
+       "p": 0.07579481601715088,
+       "skill": 0.07437410562622537,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 22,
+       "losses": 2,
+       "p": 1.7940998077392578e-05,
+       "skill": 0.20468961778454264,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|primera": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 0,
+       "losses": 24,
+       "p": 1.0,
+       "skill": -1.1562003041541513,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 19,
+       "losses": 5,
+       "p": 0.003305375576019287,
+       "skill": 0.1222442424039315,
+       "beats": true
+      },
+      "timesfm": {
+       "wins": 21,
+       "losses": 3,
+       "p": 0.0001385807991027832,
+       "skill": 0.1925359369967824,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|revisada": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 0,
+       "losses": 24,
+       "p": 1.0,
+       "skill": -1.5102545705507318,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 18,
+       "losses": 6,
+       "p": 0.011327922344207764,
+       "skill": 0.1589383645793181,
+       "beats": true
+      },
+      "timesfm": {
+       "wins": 20,
+       "losses": 4,
+       "p": 0.000771939754486084,
+       "skill": 0.20070603401894183,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    }
+   },
+   "verdict": "se sostiene"
+  },
+  "JTSJOL": {
+   "first_vintage": "2010-08-11",
+   "seasonal": false,
+   "engines": [
+    "holt",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 3.081312142206936,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 12,
+       "losses": 12,
+       "p": 0.5805901288986206,
+       "skill": -0.03305699846793808,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 15,
+       "losses": 9,
+       "p": 0.15372812747955322,
+       "skill": 0.12617709523648124,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "epoca|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 18,
+       "losses": 6,
+       "p": 0.011327922344207764,
+       "skill": 0.1093761281961575,
+       "beats": true
+      },
+      "timesfm": {
+       "wins": 17,
+       "losses": 7,
+       "p": 0.03195732831954956,
+       "skill": 0.15016092386444635,
+       "beats": false
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 11,
+       "losses": 13,
+       "p": 0.7293719053268433,
+       "skill": -0.16574762521495323,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 11,
+       "losses": 13,
+       "p": 0.7293719053268433,
+       "skill": -0.007039118697045987,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 17,
+       "losses": 7,
+       "p": 0.03195732831954956,
+       "skill": 0.0400526771004075,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 18,
+       "losses": 6,
+       "p": 0.011327922344207764,
+       "skill": 0.13607136432795575,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    }
+   },
+   "verdict": "no se sostiene"
+  },
+  "PSAVERT": {
+   "first_vintage": "1997-02-03",
+   "seasonal": false,
+   "engines": [
+    "holt",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 129.7142224383439,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": -0.02010864354522912,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 16,
+       "losses": 8,
+       "p": 0.07579481601715088,
+       "skill": 0.08922658312583953,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "epoca|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": -0.0016048288402998878,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 17,
+       "losses": 7,
+       "p": 0.03195732831954956,
+       "skill": 0.09296515182272824,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 7,
+       "losses": 17,
+       "p": 0.9886720776557922,
+       "skill": -0.07911177434561378,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 10,
+       "losses": 14,
+       "p": 0.8462718725204468,
+       "skill": -0.0034338482527060954,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 11,
+       "losses": 13,
+       "p": 0.7293719053268433,
+       "skill": -0.10007370888332145,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 15,
+       "losses": 9,
+       "p": 0.15372812747955322,
+       "skill": 0.1414466850927466,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    }
+   },
+   "verdict": "sin capacidad en ninguna"
+  },
+  "RSAFSNA": {
+   "first_vintage": "2001-06-13",
+   "seasonal": true,
+   "engines": [
+    "holt",
+    "holt_winters",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 24,
+   "mean_abs_revision_last60_pct": 2.732458170406064,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 5,
+       "losses": 19,
+       "p": 0.9992280602455139,
+       "skill": -0.19477281959107096,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 22,
+       "losses": 2,
+       "p": 1.7940998077392578e-05,
+       "skill": 0.4013290214226558,
+       "beats": true
+      },
+      "timesfm": {
+       "wins": 21,
+       "losses": 3,
+       "p": 0.0001385807991027832,
+       "skill": 0.4011765004780151,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "epoca|revisada": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 1,
+       "losses": 23,
+       "p": 0.9999999403953552,
+       "skill": -0.9060993055664719,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 9,
+       "losses": 15,
+       "p": 0.9242051839828491,
+       "skill": -0.35543124709908014,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 8,
+       "losses": 16,
+       "p": 0.9680426716804504,
+       "skill": -0.2970375718074696,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|primera": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 13,
+       "losses": 11,
+       "p": 0.4194098711013794,
+       "skill": 0.08021518968174801,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 23,
+       "losses": 1,
+       "p": 1.4901161193847656e-06,
+       "skill": 0.39804984730737325,
+       "beats": true
+      },
+      "timesfm": {
+       "wins": 23,
+       "losses": 1,
+       "p": 1.4901161193847656e-06,
+       "skill": 0.37890535774209766,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    },
+    "revisada|revisada": {
+     "reference_naive": "naive_estacional",
+     "k": 3,
+     "n_cutoffs": 24,
+     "engines": {
+      "holt": {
+       "wins": 5,
+       "losses": 19,
+       "p": 0.9992280602455139,
+       "skill": -0.16246132964700477,
+       "beats": false
+      },
+      "holt_winters": {
+       "wins": 23,
+       "losses": 1,
+       "p": 1.4901161193847656e-06,
+       "skill": 0.4071452981175334,
+       "beats": true
+      },
+      "timesfm": {
+       "wins": 23,
+       "losses": 1,
+       "p": 1.4901161193847656e-06,
+       "skill": 0.42316496620535127,
+       "beats": true
+      }
+     },
+     "has_capacity": true
+    }
+   },
+   "verdict": "se sostiene"
+  },
+  "UNRATE": {
+   "first_vintage": "1960-03-15",
+   "seasonal": false,
+   "engines": [
+    "holt",
+    "timesfm"
+   ],
+   "n_cutoffs_usable": 23,
+   "mean_abs_revision_last60_pct": 0.7318206505545176,
+   "capability": {
+    "epoca|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 23,
+     "engines": {
+      "holt": {
+       "wins": 9,
+       "losses": 14,
+       "p": 0.8949801921844482,
+       "skill": -0.02234631124113151,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 16,
+       "losses": 7,
+       "p": 0.04656982421875,
+       "skill": 0.25911262889251785,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "epoca|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 23,
+     "engines": {
+      "holt": {
+       "wins": 9,
+       "losses": 14,
+       "p": 0.8949801921844482,
+       "skill": -0.010081651353337495,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 16,
+       "losses": 7,
+       "p": 0.04656982421875,
+       "skill": 0.2856838322195281,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|primera": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 23,
+     "engines": {
+      "holt": {
+       "wins": 14,
+       "losses": 9,
+       "p": 0.2024364471435547,
+       "skill": 0.025986568334381177,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 14,
+       "losses": 9,
+       "p": 0.2024364471435547,
+       "skill": 0.298873025929575,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    },
+    "revisada|revisada": {
+     "reference_naive": "random_walk",
+     "k": 2,
+     "n_cutoffs": 23,
+     "engines": {
+      "holt": {
+       "wins": 14,
+       "losses": 9,
+       "p": 0.2024364471435547,
+       "skill": 0.02318926463964499,
+       "beats": false
+      },
+      "timesfm": {
+       "wins": 15,
+       "losses": 8,
+       "p": 0.10501980781555176,
+       "skill": 0.3338623117033689,
+       "beats": false
+      }
+     },
+     "has_capacity": false
+    }
+   },
+   "verdict": "sin capacidad en ninguna"
+  }
+ }
+}

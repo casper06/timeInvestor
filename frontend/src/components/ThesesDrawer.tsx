@@ -99,8 +99,13 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
     }
   };
 
+  // Errors and confirmations in the drawer itself, never alert()/confirm().
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+
   const handleSaveCurrent = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     if (!saveTitle.trim() || !currentPrompt.trim()) return;
 
     setSaving(true);
@@ -138,7 +143,7 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
       setSaveTitle('');
     } catch (err) {
       console.error('Error creating thesis:', err);
-      alert('Error al guardar la tesis');
+      setSaveError(err instanceof Error ? err.message : 'Error al guardar la tesis');
     } finally {
       setSaving(false);
     }
@@ -158,7 +163,7 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta tesis guardada?')) return;
+    setConfirmingDelete(null);
     try {
       await deleteThesis(id);
       await loadThesesList();
@@ -328,13 +333,25 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
                         >
                           <FileText className="h-3.5 w-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(t.id)}
-                          className="text-slate-500 hover:text-rose-400 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {confirmingDelete === t.id ? (
+                          <span data-testid="confirm-delete" className="flex items-center gap-1 text-[11px] text-rose-300">
+                            ¿Eliminar?
+                            <button onClick={() => handleDelete(t.id)} className="px-1.5 rounded bg-rose-600 text-white">
+                              Sí
+                            </button>
+                            <button onClick={() => setConfirmingDelete(null)} className="px-1.5 rounded bg-slate-700 text-slate-200">
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmingDelete(t.id)}
+                            className="text-slate-500 hover:text-rose-400 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={async () => {
                             const full = await fetchThesisDetail(t.id);
@@ -407,6 +424,11 @@ export const ThesesDrawer: React.FC<ThesesDrawerProps> = ({
                   </label>
                 )}
 
+                {saveError && (
+                  <p data-testid="save-error" role="alert" className="text-xs text-rose-300">
+                    No se pudo guardar la tesis: {saveError}
+                  </p>
+                )}
                 <button
                   type="submit"
                   disabled={saving || !saveTitle.trim()}

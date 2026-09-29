@@ -30,6 +30,8 @@ Versiones:
   (ADR-0022).
 - v9 (4.13): la misma regla; la decisión además guarda el MAE por cutoff
   del motor base, de TimesFM y del naive (ADR-0023).
+- v10 (4.17): la misma regla de motor; la decisión guarda el MAE de los dos
+  naives por cutoff, y el badge usa el más exigente (ADR-0032).
 
 ## Consecuencias
 

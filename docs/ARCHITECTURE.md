@@ -154,9 +154,10 @@ flowchart TD
   (`scripts/benchmark_real_data.py`); auto-discovery, el `horizon` de la
   decisión. Las respuestas de plan B no lo llevan (`is_fallback = true`).
 - **`skill`** (4.13, `backend/services/forecast_skill.py`): cada respuesta
-  dice si el pronóstico le gana al naive (random walk, o estacional en las
-  series estacionales): "aporta", "no aporta" o "no evaluado" con el
-  motivo. La evidencia son los cutoffs de la decisión o, en el catálogo
+  dice si el pronóstico le gana al naive: "aporta", "no aporta" o "no
+  evaluado", con el motivo. En las series no estacionales el naive es el
+  random walk; en las estacionales, el más exigente de los dos (el de menor
+  error total, criterio v10, ADR-0032). La evidencia son los cutoffs de la decisión o, en el catálogo
   estacional, los de 3.0d. La UI lo muestra, y cuando "no aporta" pasa el
   rango a dato principal.
 - **Catálogos** (`SEASONAL_FRED_CATALOG`, `DIVERSIFIED_ETF_CATALOG`): se
@@ -165,7 +166,7 @@ flowchart TD
   resultado.
 - **Auto-discovery** (`backend/services/auto_discovery.py`): cubre cualquier
   serie fuera de los catálogos con 90 puntos o más. El mini-backtest
-  (criterio v9) toma 8 cutoffs repartidos en una ventana reciente según la
+  (criterio v10) toma 8 cutoffs repartidos en una ventana reciente según la
   frecuencia (`RECENT_WINDOW`: 504 puntos en diarias, 104 en semanales, 120
   en mensuales, 40 en trimestrales), cada uno con el horizonte canónico de la
   frecuencia (`_decision_horizon`: diaria 60, semanal 13, mensual 12,
@@ -237,13 +238,13 @@ stateDiagram-v2
 
 `_is_stale` marca una fila como vieja por cualquiera de estas razones:
 - **Versión del criterio**: `criteria_version` (NULL = 1) es menor que
-  `AUTO_DISCOVERY_CRITERIA_VERSION` (9). Hubo versiones 1 a 9: v2 en 3.0e
+  `AUTO_DISCOVERY_CRITERIA_VERSION` (10). Hubo versiones 1 a 10: v2 en 3.0e
   (banda de TimesFM y nivel común de comparación), v3 en 3.0f (base
   Holt-Winters en series estacionales), v4 en 2.3, v5 en 2.3d (horizonte
   canónico), v6 en 2.10 (MAE en pares cuando el MASE no está definido) y v7
   en 2.9 (datos a la precisión de la fuente), v8 en 2.11 (pronósticos y
-  métricas sin redondear) y v9 en 4.13 (evidencia contra el naive por
-  cutoff).
+  métricas sin redondear), v9 en 4.13 (evidencia contra el naive por
+  cutoff) y v10 en 4.17 (los dos naives por cutoff).
 - **TTL**: pasaron más de `DECISION_TTL_DAYS` (30) desde `evaluated_at`.
 - **Crecimiento**: la serie creció `STALE_GROWTH_FRACTION` (20%) o más en
   puntos.
