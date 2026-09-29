@@ -49,6 +49,7 @@ from backend.schemas.models import (
     FORECAST_ENGINE_PER_SERIES_NOTICE,
 )
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
+from backend.services.fred_grounding import ground_macro_series
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError
 from backend.services.series_routing import is_fred_series
 from backend.services.llm_router import get_llm_client
@@ -155,6 +156,8 @@ async def analyze_thesis(
     try:
         client = get_llm_client("mock") if force_mock else get_llm_client()
         result = await client.parse_thesis(payload.thesis)
+        # 4.11: no FRED ID reaches the UI without being checked against FRED.
+        ground_macro_series(result.macro_series)
         return result
     except Exception as e:
         logger.error(f"Error processing thesis: {e}", exc_info=True)

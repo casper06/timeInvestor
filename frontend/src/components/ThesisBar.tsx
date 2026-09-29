@@ -43,6 +43,18 @@ const TranslatingIndicator: React.FC<{ providerLabel?: string }> = ({ providerLa
   );
 };
 
+/**
+ * 4.11: a FRED ID is shown for what it is. A verified one looks like it always
+ * did; a searched-for replacement and a discarded one are visibly different, so
+ * an ID the LLM invented can never pass as one FRED confirmed.
+ */
+function groundingChipClass(grounding?: string | null): string {
+  if (grounding === 'descartado') return 'bg-rose-500/10 text-rose-300 border-rose-500/30 line-through';
+  if (grounding === 'sugerido_por_busqueda') return 'bg-amber-500/10 text-amber-200 border-amber-500/30';
+  if (!grounding) return 'bg-slate-500/10 text-slate-300 border-slate-500/30';
+  return 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20';
+}
+
 export const ThesisBar: React.FC<ThesisBarProps> = ({
   onAnalyze,
   loading,
@@ -185,9 +197,27 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
             {macroSeries.map((m) => (
               <span
                 key={m.series_id}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs font-mono font-medium shadow-sm"
+                data-testid={`macro-chip-${m.series_id}`}
+                data-grounding={m.grounding ?? 'sin_verificar'}
+                title={m.grounding_note ?? m.fred_title ?? undefined}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-mono font-medium shadow-sm ${groundingChipClass(m.grounding)}`}
               >
                 {m.series_id}
+                {m.grounding === 'sugerido_por_busqueda' && (
+                  <span data-testid={`macro-suggested-${m.series_id}`} className="font-sans text-[10px] font-semibold not-italic">
+                    sugerido por búsqueda
+                  </span>
+                )}
+                {m.grounding === 'descartado' && (
+                  <span data-testid={`macro-discarded-${m.series_id}`} className="font-sans text-[10px] font-semibold">
+                    no existe en FRED
+                  </span>
+                )}
+                {!m.grounding && (
+                  <span data-testid={`macro-unverified-${m.series_id}`} className="font-sans text-[10px] font-semibold">
+                    sin verificar
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => onRemoveMacro(m.series_id)}

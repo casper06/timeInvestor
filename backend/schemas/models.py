@@ -53,6 +53,32 @@ class MacroSuggestion(BaseModel):
     category: str = Field(..., description="Category (Energy, Tech, Inflation, Rates, etc.)")
     expected_correlation: str = Field(default="Positive", description="Expected correlation with thesis")
     mechanism_role: Optional[str] = Field(default=None, description="Qué eslabón del mecanismo mide (causa, canal o efecto)")
+    search_concept_en: Optional[str] = Field(
+        default=None,
+        description="El concepto que mide la serie, EN INGLÉS, para buscarlo en FRED si el "
+                    "ID no existe (4.11). El índice de búsqueda de FRED es solo en inglés: "
+                    "con el nombre en español devuelve 0 resultados (verificado el 2026-09-29).",
+    )
+    grounding: Optional[str] = Field(
+        default=None,
+        description="Cómo se validó el ID contra FRED (4.11): 'verificado' si el ID "
+                    "que propuso el LLM existe en FRED; 'sugerido_por_busqueda' si no "
+                    "existía y se reemplazó por un candidato real de fred/series/search; "
+                    "'descartado' si no existe y la búsqueda no encontró candidato. "
+                    "None = no se pudo validar (sin clave de FRED o FRED no respondió).",
+    )
+    proposed_series_id: Optional[str] = Field(
+        default=None,
+        description="El ID original del LLM, cuando se reemplazó o se descartó (4.11).",
+    )
+    fred_title: Optional[str] = Field(
+        default=None,
+        description="Título oficial de FRED del ID validado (4.11). Nunca escrito a mano.",
+    )
+    grounding_note: Optional[str] = Field(
+        default=None,
+        description="Aviso para mostrar en la UI cuando el ID no se pudo verificar (4.11).",
+    )
 
 
 class Falsifier(BaseModel):

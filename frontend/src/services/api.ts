@@ -46,6 +46,19 @@ export interface MacroSuggestion {
   expected_correlation: string;
   /** Which link of the mechanism it measures (cause, channel, effect). */
   mechanism_role?: string | null;
+  /**
+   * How the ID was validated against FRED (4.11): 'verificado' (the LLM's ID
+   * exists), 'sugerido_por_busqueda' (it didn't, and a real candidate was
+   * found by concept search), 'descartado' (no real series at all).
+   * null/undefined = it could not be checked (no FRED key, or FRED was down).
+   */
+  grounding?: 'verificado' | 'sugerido_por_busqueda' | 'descartado' | null;
+  /** The LLM's original ID, when it was replaced or discarded. */
+  proposed_series_id?: string | null;
+  /** FRED's own title for the validated ID. Never hand-written. */
+  fred_title?: string | null;
+  /** Warning to show when the ID is not plainly verified. */
+  grounding_note?: string | null;
 }
 
 /** An observable condition that would refute the thesis (4.10). */

@@ -315,7 +315,8 @@ Debes devolver OBLIGATORIAMENTE un JSON con el siguiente esquema:
       "name": "Nombre del indicador",
       "category": "Categoría",
       "expected_correlation": "Positive / Negative",
-      "mechanism_role": "causa / canal / efecto: qué eslabón mide"
+      "mechanism_role": "causa / canal / efecto: qué eslabón mide",
+      "search_concept_en": "El concepto que mide, EN INGLÉS (ej. \"new home sales\"), para buscarlo en FRED"
     }
   ],
   "falsifiers": [
@@ -387,6 +388,11 @@ CLAUDE_CLI_THESIS_SCHEMA = {
                 "properties": {
                     "series_id": {"type": "string", "description": "ID de FRED existente; no inventes IDs de FRED"},
                     "name": {"type": "string"},
+                    "search_concept_en": {
+                        "type": "string",
+                        "description": "El concepto que mide la serie, EN INGLÉS (ej. 'new home sales', "
+                                       "'industrial production durable goods'), para buscarlo en FRED si el ID no existe",
+                    },
                     "category": {"type": "string"},
                     "expected_correlation": {"type": "string"},
                     "mechanism_role": {"type": "string", "description": "causa, canal o efecto: qué eslabón mide"},
