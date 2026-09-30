@@ -28,6 +28,7 @@ import {
   fetchForecast,
   fetchFredMetadata,
   ApiError,
+  entersAnalysis,
 } from './services/api';
 import type {
   HealthResponse,
@@ -373,12 +374,19 @@ export const App: React.FC = () => {
     });
   };
 
+  // 4.11: only IDs FRED confirmed reach forecasts, correlations and the
+  // copilot — proposed correctly, or repaired by the LLM itself and
+  // re-verified. A discarded one measures nothing, so the copilot is told
+  // about it instead of it silently disappearing.
+  const analysisMacro = activeMacro.filter(entersAnalysis);
+  const unresolvedMacro = activeMacro.filter((m) => m.grounding === 'descartado');
+
   // List of all active series for selector pills
   // nameFromLLM: the name is the LLM's (the ones added by hand carry the app's
   // generic "X Equity" / "FRED X"), not FRED's or the market's title.
   const allSeriesList = [
     ...activeTickers.map((t) => ({ id: t.symbol, name: t.name, type: 'equity', nameFromLLM: t.sector !== 'Custom Asset' })),
-    ...activeMacro.map((m) => ({
+    ...analysisMacro.map((m) => ({
       id: m.series_id,
       name: m.name,
       type: 'macro',
@@ -526,7 +534,8 @@ export const App: React.FC = () => {
               horizon={horizon}
               confidence={intervalLevel}
               activeTickers={activeTickers}
-              activeMacro={activeMacro}
+              activeMacro={analysisMacro}
+              unresolvedMacro={unresolvedMacro.map((m) => m.proposed_series_id || m.series_id)}
               fundamentals={fundamentals}
               onSelectSeries={handleSelectSeries}
               onInterpretationComplete={setLastInterpretation}
@@ -562,7 +571,7 @@ export const App: React.FC = () => {
         {!isEmpty && currentView === 'correlation' && (
           <CorrelationHeatmap
             activeTickers={activeTickers}
-            activeMacro={activeMacro}
+            activeMacro={analysisMacro}
             onResult={setLastCorrelation}
           />
         )}

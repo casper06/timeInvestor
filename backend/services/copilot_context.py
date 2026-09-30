@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 COPILOT_RULES = """
 Reglas obligatorias:
 1. Afirmá solo lo que está en los datos recibidos. No agregues cifras, hechos, tendencias ni noticias que no estén en el contexto; si algo no está, decí que no está.
-2. Si faltan datos de algún activo o serie (líneas "Sin fundamentales" o "sin datos"), decilo explícitamente.
+2. Si faltan datos de algún activo o serie (líneas "Sin fundamentales", "sin datos" o "Sin medir"), decilo explícitamente. Una serie "Sin medir" es un ID que no existe en FRED y que el usuario todavía no reemplazó: no tenés ningún dato de ese eslabón, no lo supongas.
 3. La evidencia a favor o en contra de la tesis sale de los indicadores del mundo (series de FRED y similares). El capex y los ingresos de las empresas listadas son de empresas que eligió el LLM al traducir la tesis (o que agregó el usuario, si así se indica), no una muestra representativa: presentalos así, nunca como confirmación de la tesis. No digas que se eligieron "manualmente", por un analista ni con un criterio sistemático: las eligió el LLM.
 4. Todo dato tiene fecha: usá la fecha de hoy y el período de cada dato (por ejemplo, "capex: último ejercicio cerrado 2025"). La proyección es la salida de un modelo estadístico, no un dato observado.
 """
@@ -161,6 +161,16 @@ def interpretation_context_text(ctx: InterpretationContext, today: Optional[date
         lines.append(f"- Series en la tesis: {', '.join(ctx.macro_series)} (sin valores recibidos)")
     else:
         lines.append("- Ninguna serie macro en la tesis: no hay evidencia de indicadores del mundo.")
+
+    # 4.11: an ID the LLM invented that the repair pass couldn't fix measures
+    # nothing. It stays OUT of the evidence, and the copilot is told so, so it
+    # can say that link of the mechanism is unmeasured instead of staying quiet.
+    if ctx.unresolved_macro_series:
+        lines.append(
+            f"- Sin medir: {', '.join(ctx.unresolved_macro_series)} "
+            f"(el ID no existe en FRED y no hubo un reemplazo válido). "
+            f"No hay datos de esa parte del mecanismo: decilo explícitamente."
+        )
 
     tickers = list(dict.fromkeys(
         ([ctx.active_series_id.upper()] if ctx.series_type == "equity" else []) + [t.upper() for t in ctx.other_tickers]

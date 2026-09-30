@@ -47,12 +47,82 @@ class FredSeriesMetadata(BaseModel):
     seasonal_adjustment: Optional[str] = Field(default=None, description="p. ej. 'Not Seasonally Adjusted'")
     seasonal_adjustment_short: Optional[str] = Field(default=None, description="p. ej. 'NSA'")
 
+class FredCandidate(BaseModel):
+    """A real FRED series offered as a replacement for an ID that doesn't exist
+    (4.11). Every field is FRED's own, from fred/series/search; nothing here is
+    written by hand or by the LLM."""
+    series_id: str = Field(..., description="ID real de FRED")
+    title: str = Field(..., description="Título oficial de FRED")
+    frequency: Optional[str] = Field(default=None, description="Frecuencia (frequency_short: D, W, M, Q, A)")
+    seasonal_adjustment: Optional[str] = Field(default=None, description="SA / NSA / SAAR (seasonal_adjustment_short)")
+    observation_start: Optional[str] = Field(default=None, description="Primera observación")
+    observation_end: Optional[str] = Field(default=None, description="Última observación")
+    units: Optional[str] = Field(default=None, description="Unidad (units_short)")
+
+
 class MacroSuggestion(BaseModel):
     series_id: str = Field(..., description="FRED or Macro series ID (e.g. IPG2211A2N)")
     name: str = Field(..., description="Series description")
     category: str = Field(..., description="Category (Energy, Tech, Inflation, Rates, etc.)")
     expected_correlation: str = Field(default="Positive", description="Expected correlation with thesis")
     mechanism_role: Optional[str] = Field(default=None, description="Qué eslabón del mecanismo mide (causa, canal o efecto)")
+    search_concept_en: Optional[str] = Field(
+        default=None,
+        description="El concepto que mide la serie, EN INGLÉS, para buscarlo en FRED si el "
+                    "ID no existe (4.11). El índice de búsqueda de FRED es solo en inglés: "
+                    "con el nombre en español devuelve 0 resultados (verificado el 2026-09-29).",
+    )
+    grounding: Optional[str] = Field(
+        default=None,
+        description="Cómo se validó el ID contra FRED (4.11): 'verificado' si el ID "
+                    "que propuso el LLM existe; 'reparado' si no existía y el propio LLM "
+                    "eligió un reemplazo real en la pasada de reparación; 'descartado' si "
+                    "no existe y no hubo reemplazo válido. None = no se pudo validar (sin "
+                    "clave de FRED o FRED no respondió).",
+    )
+    proposed_series_id: Optional[str] = Field(
+        default=None,
+        description="El ID original del LLM, cuando se reemplazó o se descartó (4.11).",
+    )
+    fred_title: Optional[str] = Field(
+        default=None,
+        description="Título oficial de FRED del ID validado (4.11). Nunca escrito a mano.",
+    )
+    grounding_note: Optional[str] = Field(
+        default=None,
+        description="Aviso para mostrar en la UI cuando el ID no se pudo verificar (4.11).",
+    )
+    searched_concept: Optional[str] = Field(
+        default=None,
+        description="El texto con el que se buscó en FRED, para que el aviso diga qué se buscó (4.11).",
+    )
+    candidates: List["FredCandidate"] = Field(
+        default_factory=list,
+        description="Candidatos reales de FRED para un ID que no existe (4.11), que se le "
+                    "ofrecen al LLM en la pasada de reparación. Quedan vacíos una vez "
+                    "resuelta la serie.",
+    )
+    repair_justification: Optional[str] = Field(
+        default=None,
+        description="Por qué el LLM eligió este reemplazo en la pasada de reparación (4.11). "
+                    "Se muestra al usuario: la corrección es visible, no silenciosa.",
+    )
+    reformulations: int = Field(
+        default=0,
+        description="Cuántas veces se reformuló la búsqueda de esta serie (4.11). El tope "
+                    "es 1: después el LLM elige o descarta, nunca un bucle abierto.",
+    )
+
+    def enters_analysis(self) -> bool:
+        """Whether this series may reach forecasts, correlations and the copilot.
+
+        Only an ID FRED confirmed: one the LLM proposed correctly
+        (`verificado`), or one it corrected itself in the repair pass and FRED
+        then confirmed (`reparado`). A discarded ID, or one that couldn't be
+        checked at all, never enters. Kept as a defensive check: the repair
+        pass already leaves nothing else behind.
+        """
+        return self.grounding in ("verificado", "reparado")
 
 
 class Falsifier(BaseModel):
@@ -172,6 +242,12 @@ class InterpretationContext(BaseModel):
     user_added_tickers: List[str] = Field(default_factory=list, description="Tickers que agregó el usuario a mano ('+ Ticker'); el resto los eligió el LLM al traducir la tesis")
     macro_evidence: Optional[List[MacroEvidence]] = Field(default=None, description="Lo completa el servidor: último valor y cambio a 12 meses de cada serie FRED de la tesis")
     reliability_warning: Optional[str] = Field(default=None, description="Si el pronóstico fue marcado no confiable (ForecastResponse.reliability_warning), el texto; el copiloto tiene que decirlo")
+    unresolved_macro_series: List[str] = Field(
+        default_factory=list,
+        description="IDs que el LLM propuso, no existen en FRED y la pasada de reparación "
+                    "no pudo reemplazar (4.11). NO entran a la evidencia: se le dicen al "
+                    "copiloto para que declare que esa parte del mecanismo quedó sin medir.",
+    )
 
 class InterpretationResponse(BaseModel):
     what_data_says: str = Field(..., description="Traducción conceptual de las curvas y tendencia proyectada")

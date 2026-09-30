@@ -39,6 +39,17 @@ export interface TickerSuggestion {
   source?: string | null;
 }
 
+/** A real FRED series offered to replace an ID that doesn't exist (4.11). */
+export interface FredCandidate {
+  series_id: string;
+  title: string;
+  frequency?: string | null;
+  seasonal_adjustment?: string | null;
+  observation_start?: string | null;
+  observation_end?: string | null;
+  units?: string | null;
+}
+
 export interface MacroSuggestion {
   series_id: string;
   name: string;
@@ -46,6 +57,39 @@ export interface MacroSuggestion {
   expected_correlation: string;
   /** Which link of the mechanism it measures (cause, channel, effect). */
   mechanism_role?: string | null;
+  /**
+   * How the ID was validated against FRED (4.11): 'verificado' (the LLM
+   * proposed a real one), 'reparado' (it didn't exist and the LLM itself
+   * picked a real replacement, re-verified against FRED), 'descartado' (no
+   * valid replacement). null/undefined = it could not be checked (no FRED
+   * key, or FRED was down).
+   */
+  grounding?: 'verificado' | 'reparado' | 'descartado' | null;
+  /** The LLM's original ID, when it was replaced or discarded. */
+  proposed_series_id?: string | null;
+  /** FRED's own title for the validated ID. Never hand-written. */
+  fred_title?: string | null;
+  /** Warning to show when the ID is not plainly verified. */
+  grounding_note?: string | null;
+  /** The text searched on FRED, so the warning can say what was looked up. */
+  searched_concept?: string | null;
+  /** Real candidates offered to the LLM during repair; empty once resolved. */
+  candidates?: FredCandidate[];
+  /** Why the LLM chose this replacement. Shown to the user: repair is visible. */
+  repair_justification?: string | null;
+  /** How many times the search was reformulated (capped at 1). */
+  reformulations?: number;
+}
+
+/**
+ * 4.11: may this series reach forecasts, correlations and the copilot?
+ *
+ * Only an ID FRED confirmed: proposed correctly, or repaired by the LLM and
+ * re-verified. Kept as a defensive check — the repair pass already leaves
+ * nothing else behind.
+ */
+export function entersAnalysis(m: MacroSuggestion): boolean {
+  return m.grounding === 'verificado' || m.grounding === 'reparado';
 }
 
 /** An observable condition that would refute the thesis (4.10). */
@@ -144,6 +188,9 @@ export interface InterpretationContext {
   cagr: number;
   other_tickers: string[];
   macro_series: string[];
+  /** IDs the LLM invented that the user hasn't replaced (4.11): never measured,
+   *  but told to the copilot so it can say that link went unmeasured. */
+  unresolved_macro_series?: string[];
   /** Older clients; `fundamentals` (with each figure's fiscal year) replaces it. */
   capex_summary?: Record<string, number>;
   series_type?: 'equity' | 'macro';

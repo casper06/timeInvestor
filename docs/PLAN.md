@@ -894,7 +894,35 @@ Rama: una por ítem, a definir.
     celdas nuevas corridas de cero; mismo timeout para los dos prompts.
   - Propuesta: queda el prompt nuevo; con Gemini, correr antes sus 4 celdas.
     La decisión es del usuario.
-- [ ] **4.11 IDs de FRED anclados en datos reales.** El LLM propone
+- [x] **4.11 IDs de FRED anclados en datos reales.** (ADR-0033, rama
+  `feat/fred-id-grounding`, PR abierto.) `fred_grounding.ground_macro_series`
+  corre en `analyze_thesis`: cada ID se verifica contra `/fred/series`. Los
+  inexistentes van a `fred/series/search` (hasta 5 candidatos reales con
+  metadata) y **el propio LLM los repara en UNA llamada extra**: elige uno de
+  esa lista con su justificación, o descarta. Puede pedir **una** reformulación
+  por serie, nunca más. **El usuario no elige nada**: el análisis sigue siendo
+  de un solo paso y no hay selector en la UI.
+  - Estados: `verificado`, `reparado` (con justificación visible), `descartado`
+    (aviso informativo) y `null` (FRED caído o sin clave). **Entran al análisis
+    `verificado` y `reparado`**; `enters_analysis` y el "Sin medir" del
+    copiloto quedan como chequeo defensivo.
+  - **Sin LLM (mock o reparación fallida): se descarta.** Nunca se adopta el
+    primer resultado de la búsqueda — para TOTALSI ese primero es MSPUS, un
+    *precio*, en una tesis sobre *cantidades*.
+  - Las reglas de la reparación van en las descripciones del schema, no en el
+    system prompt: con un system prompt largo, Claude CLI ignoró
+    `--json-schema` y respondió Markdown libre (3/3), como en ADR-0030.
+  - Verificado con Claude CLI Sonnet real (24,5 s): TOTALSI → **HSN1F**
+    (reparado, tras una reformulación), IPGD → **descartado** ("todos los
+    candidatos son subsectores específicos"), UMCSENT → verificado.
+  - **El índice de búsqueda de FRED es solo en inglés** (verificado el
+    2026-09-29: "new home sales" → 2986, el mismo concepto en español → 0). El
+    prompt ahora pide `search_concept_en`; con el `name` en español la búsqueda
+    habría descartado todo en vez de repararlo.
+  - Verificado con TOTALSI e IPGD (no existen → MSPUS e IPG3344S) y UMCSENT
+    (existe), y con una traducción real de Claude CLI Sonnet sobre una copia de
+    la DB.
+  Detalle original del pedido, que queda como registro: El LLM propone
   *conceptos*; `fred/series/search` devuelve candidatas reales con metadata, y
   se elige entre esas. Nunca un ID generado por el LLM sin verificar contra
   FRED.
