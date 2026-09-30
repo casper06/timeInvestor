@@ -147,7 +147,29 @@ class EngineSelector:
                 "(camino por defecto)")
         if res.seasonality is None and points:
             res.seasonality = detect_seasonality(points)
+        # 3.4: the badge always measures with today's revised series. On a
+        # revisable SA series that flatters the engine, so the verdict carries
+        # a provenance note saying so.
+        if res.skill is not None and series_id:
+            from backend.services.forecast_skill import vintage_note
+            res.skill.vintage_note = vintage_note(
+                series_id.strip().upper(), res.skill.state, EngineSelector._seasonal_adjustment_of(series_id)
+            )
         return res
+
+    @staticmethod
+    def _seasonal_adjustment_of(series_id: str) -> Optional[str]:
+        """FRED's own SA/NSA flag (4.3), or None when it can't be fetched.
+        Never a guess: with no metadata there is no note."""
+        try:
+            from backend.services.series_routing import is_fred_series
+            if not is_fred_series(series_id):
+                return None
+            from backend.services.data_fetcher import FREDDataFetcher
+            meta = FREDDataFetcher().get_series_metadata(series_id.strip().upper())
+            return meta.get("seasonal_adjustment_short")
+        except Exception:
+            return None
 
     @staticmethod
     def _select(

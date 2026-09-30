@@ -173,6 +173,8 @@ export interface ForecastSkill {
   n_pairs?: number | null;
   rel_gap?: number | null;
   source?: string | null;
+  /** 3.4: provenance note under an "aporta" verdict on a revisable SA series. */
+  vintage_note?: string | null;
 }
 
 export interface FundamentalsMetric {
@@ -352,12 +354,17 @@ export async function fetchFredMetadata(seriesId: string): Promise<FredSeriesMet
   return res.json();
 }
 
-export async function fetchFundamentals(tickers: string[]): Promise<FundamentalsMetric[]> {
-  if (tickers.length === 0) return [];
+/** 4.4: the backend's warnings travel with the metrics instead of being
+ *  dropped here — a ticker with no fundamentals is something the user has to
+ *  see, not something the client quietly swallows. */
+export async function fetchFundamentals(
+  tickers: string[],
+): Promise<{ metrics: FundamentalsMetric[]; warnings: string[] }> {
+  if (tickers.length === 0) return { metrics: [], warnings: [] };
   const res = await fetch(`${API_BASE}/data/fundamentals?tickers=${encodeURIComponent(tickers.join(','))}`);
   if (!res.ok) throw new Error('Error obteniendo fundamentales');
   const data = await res.json();
-  return data.metrics;
+  return { metrics: data.metrics ?? [], warnings: data.warnings ?? [] };
 }
 
 /** `horizon` is in steps of the series (12 on a monthly series = 12 months);

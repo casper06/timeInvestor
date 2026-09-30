@@ -87,3 +87,33 @@ describe('ThesisAlertBanner', () => {
     expect(container.textContent).not.toContain('$');
   });
 });
+
+describe('StatisticalTelemetry cone communication (4.7)', () => {
+  it('says the level is an average over windows, not a promise about this one', () => {
+    render(<StatisticalTelemetry seriesData={monthly} forecast={fc} horizon={12} confidence={0.95} />);
+    const note = screen.getByTestId('cone-explainer');
+    expect(note).toHaveTextContent('Qué significa el 95%');
+    expect(note).toHaveTextContent('promedio sobre muchas ventanas históricas');
+    expect(note).toHaveTextContent('no una promesa sobre esta');
+  });
+
+  it('says the cone is too wide when calm and too narrow in shocks (2.5)', () => {
+    render(<StatisticalTelemetry seriesData={monthly} forecast={fc} horizon={12} confidence={0.95} />);
+    const note = screen.getByTestId('cone-explainer');
+    expect(note).toHaveTextContent('más ancho de lo necesario');
+    expect(note).toHaveTextContent('en shocks se queda corto');
+  });
+
+  it('sends tail risk to the Risk tab instead of this cone', () => {
+    render(<StatisticalTelemetry seriesData={monthly} forecast={fc} horizon={12} confidence={0.95} />);
+    const note = screen.getByTestId('cone-explainer');
+    expect(note).toHaveTextContent('riesgo de cola');
+    expect(note).toHaveTextContent('Asignación y');
+    expect(note).toHaveTextContent('no sale de este cono');
+  });
+
+  it('uses the real level, not a hardcoded 95', () => {
+    render(<StatisticalTelemetry seriesData={monthly} forecast={fc} horizon={12} confidence={0.8} />);
+    expect(screen.getByTestId('cone-explainer')).toHaveTextContent('Qué significa el 80%');
+  });
+});

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Network, RefreshCw, Info } from 'lucide-react';
 import { fetchCorrelations } from '../services/api';
 import type { CorrelationMatrixResponse, TickerSuggestion, MacroSuggestion } from '../services/api';
@@ -21,6 +21,7 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
   const [period, setPeriod] = useState<string>('2y');
   const [data, setData] = useState<CorrelationMatrixResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const requestSeq = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{
     row: string;
@@ -41,13 +42,19 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
 
   const loadCorrelations = async () => {
     if (seriesIds.length < 2) return;
+    // Overlapping loads (ADR-0024): the effect refires on every change of
+    // tickers, macro series or period, so a slower earlier matrix could land
+    // after a newer one. Only the latest request may write.
+    const req = ++requestSeq.current;
     setLoading(true);
     setError(null);
     try {
       const res = await fetchCorrelations(seriesIds, period, 'returns', seriesTypes);
+      if (req !== requestSeq.current) return;
       setData(res);
       onResult?.(res);
     } catch (err) {
+      if (req !== requestSeq.current) return;
       // Previously swallowed silently (console.error only), leaving `data` at
       // its initial null forever — the header's "(0 activos)" count reads
       // from data?.series_ids, so a failed request looked IDENTICAL to an
@@ -57,7 +64,7 @@ export const CorrelationHeatmap: React.FC<CorrelationHeatmapProps> = ({
       setData(null);
       setError(err instanceof Error ? err.message : 'Error al calcular la matriz de correlación');
     } finally {
-      setLoading(false);
+      if (req === requestSeq.current) setLoading(false);
     }
   };
 

@@ -54,6 +54,53 @@ CATALOG_RW_EVIDENCE = {
 }
 
 
+# 3.4 (ADR-0035): which series were measured with data as it was published at
+# the time (ALFRED vintages), and whether the capability held up. Versioned
+# here, never hand-written in the component, exactly like CATALOG_RW_EVIDENCE.
+# Source: docs/results/vintage_benchmark_2026-09-28.json, snapshot
+# 650ba98b8dfb2ab7...; a test recomputes it from that file.
+# id: True = the capability held with vintage data; False = it did not.
+VINTAGE_EVIDENCE = {
+    "HOUST": False,
+    "HOUSTNSA": True,
+    "INDPRO": False,
+    "IPG2211A2N": True,
+    "JTSJOL": False,
+    "PSAVERT": False,
+    "RSAFSNA": True,
+    "UNRATE": False,
+}
+VINTAGE_SOURCE = "3.4 (24 cutoffs, docs/results/vintage_benchmark_2026-09-28.json)"
+
+
+def vintage_note(series_id: str, state: str, seasonal_adjustment_short: Optional[str]) -> Optional[str]:
+    """The provenance note under an "aporta" badge on a revisable SA series.
+
+    The badge always measures with TODAY's revised series, without saying so.
+    On a seasonally adjusted series that gets revised, that flatters the
+    engine: 3.4 found HOUST, INDPRO and JTSJOL keeping their capability with
+    revised data and losing it with the data as published at the time.
+
+    Only for "aporta": revisions can't make an already-negative verdict worse,
+    so "no aporta" and "no evaluado" carry no note. NSA series that held up
+    carry none either.
+    """
+    if state != "aporta":
+        return None
+    if (seasonal_adjustment_short or "").strip().upper() != "SA":
+        return None
+
+    measured = VINTAGE_EVIDENCE.get(series_id)
+    if measured is False:
+        return (
+            "Capacidad medida con datos revisados; con datos de época no se sostuvo "
+            f"({VINTAGE_SOURCE})."
+        )
+    if measured is True:
+        return None
+    return "Capacidad medida con datos revisados; no verificada con datos de época."
+
+
 def not_evaluated(reason: str, naive: Optional[str] = None) -> ForecastSkill:
     return ForecastSkill(state="no_evaluado", reason=reason, naive=naive)
 

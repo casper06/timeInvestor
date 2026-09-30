@@ -134,8 +134,16 @@ export const StatisticalTelemetry: React.FC<StatisticalTelemetryProps> = ({
           <div className="text-slate-300 font-mono text-[13px] font-medium">
             ±{(coneWidth / 2).toFixed(2)} ({lowerBound.toFixed(1)} a {upperBound.toFixed(1)})
           </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Amplitud del cono relativo al objetivo central, reflejando la dispersión e incertidumbre temporal estocástica.
+          {/* 4.7: what the level really means. The 95% is an AVERAGE over many
+              windows (2.5), not a promise about this one: the cone is wider
+              than needed in calm periods and fails in shocks. Tail risk has
+              its own tab, which is where that question belongs. */}
+          <p data-testid="cone-explainer" className="text-[11px] text-slate-500 leading-relaxed">
+            Qué significa el {Math.round(confidence * 100)}%: es un <strong className="text-slate-400">promedio sobre
+            muchas ventanas históricas</strong>, no una promesa sobre esta. En períodos tranquilos el cono
+            queda más ancho de lo necesario, y en shocks se queda corto: la cobertura real se mide en
+            Reality Check. Para riesgo de cola, mirá la pestaña <strong className="text-slate-400">Asignación y
+            Riesgo</strong> (VaR y Expected Shortfall), que no sale de este cono.
           </p>
         </div>
 

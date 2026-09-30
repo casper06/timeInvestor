@@ -15,7 +15,8 @@ vi.mock('./services/api', async (importOriginal) => {
     fetchMarketData: vi.fn(),
     fetchMacroData: vi.fn(),
     fetchForecast: vi.fn(),
-    fetchFundamentals: vi.fn().mockResolvedValue([]),
+    // 4.4: fundamentals now carry the backend's warnings alongside the metrics.
+    fetchFundamentals: vi.fn().mockResolvedValue({ metrics: [], warnings: [] }),
     fetchFredMetadata: vi.fn(),
     fetchLLMProviders: vi.fn().mockResolvedValue({ active: 'mock', providers: [] }),
   };
