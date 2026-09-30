@@ -14,6 +14,58 @@ Reglas (vienen del pedido que abrió este plan):
 El registro detallado de cada ronda (salida real de pytest, decisiones, qué quedó
 sin verificar) va en `.bitacora/RONDAS.md`, que es local y no se versiona.
 
+---
+
+## Estado en la v1.0 (2026-09-30)
+
+El detalle de cada ítem sigue más abajo, en sus fases originales, con su PR y
+su evidencia. Este índice dice en qué estado quedó cada uno.
+
+### Hecho
+
+Fases 0, 1 y 2 completas salvo lo listado abajo, más:
+
+| Ítem | Qué quedó | PR |
+|---|---|---|
+| **2.3b** Horizonte del mini-backtest por frecuencia | **Medido, no implementado**: con 12 meses el desacuerdo en FRED SA sube de 18,5% a 34,2%. La medición es el entregable | #36 |
+| **2.3c** Arrepentimiento como métrica | **Medido, v5 no se implementó** | #36 |
+| **2.6** Holt explota tras un salto de nivel | Marca hecha; la estimación robusta queda en Pendiente documentado | #37 |
+| **3.0a–3.0d** Estacionalidad y benchmark estacional | Detector, catálogo y evidencia por serie | varios |
+| **3.4** Revisiones de datos (vintages de ALFRED) | Medido con 8 series; alimenta la nota del badge | #60 |
+| **3.5** Semilla y reproducibilidad del riesgo | | #51 |
+| **4.3** SA vs NSA en series FRED | Leído de FRED y mostrado. Usarlo para **elegir el motor** queda en Futuro | #52, ADR-0029 |
+| **4.4** Warnings no mostrados | Fundamentales, optimización y riesgo | #60 |
+| **4.6** Qué modelo de Claude CLI por defecto | **Sonnet** | #54, ADR-0031 |
+| **4.10** Sesgos del prompt de traducción | Prompt v2: mecanismo, drivers, refutación, ETFs primero | #54, ADR-0030 |
+| **4.11** IDs de FRED anclados en datos reales | Verificación + reparación por el propio LLM. **Absorbe 4.1** | #58, ADR-0033 |
+| **4.13 / 4.17 / 4.18** Capacidad de pronóstico, naive más exigente, nivel real del intervalo | | #55, #57 |
+| **4.14** Horizontes en la unidad de la serie | | |
+| **4.16** Cargas superpuestas y FRED inexistente | Extendido al resto de los paneles en #60 | #53, ADR-0024 |
+| **4.19 / 4.20** Precisión de origen, contexto del copiloto | | #52, ADR-0028 |
+| **4.21** Instrumentos verificados contra yfinance | Verificación + corrección por el LLM, sin cambiar la apuesta | #59, ADR-0034 |
+| **4.7** Comunicación del cono | Texto del cono, tabla contra-qué-se-comparó, cobertura real | #60 |
+
+### Pendiente documentado (opcional, no bloquea la v1.0)
+
+- **2.6 (segunda mitad)** Estimación robusta de Holt tras un salto de nivel. Hoy el pronóstico se **marca** como no confiable, que es lo que protege al usuario; suavizarlo mejor es una mejora, no una falta.
+- **4.5 Torch en la imagen CUDA.** `Dockerfile.timesfm` instala torch de CPU y después el índice CUDA, así que la imagen puede quedar con la rueda equivocada. **No lo decido yo**: hace falta una GPU para verificar cualquier arreglo, y el usuario tiene que decir si esa imagen se va a usar.
+- **4.9 Intervalos analíticos de Holt-Winters** contra los empíricos.
+- **4.22 Cobertura condicional** del intervalo por régimen de volatilidad.
+
+### Futuro
+
+- **Fase 3 (3.1, 3.2, 3.3): TimesFM-3.** Univariado, con covariables y latencia en CPU, en el mismo arnés. Es la continuación natural del motivo de ser del proyecto.
+- **Fase 5: examinador de tesis.** Que el sistema no solo traduzca la tesis sino que la discuta.
+- **5.1 Modo crash.** Escenarios de shock sobre la cartera.
+- **Investigación (no implementar): 4.8** intervalo con volatilidad adaptativa (EWMA/GARCH), **4.12** fuentes fuera de FRED (SEC EDGAR, EIA), **4.15** calibración conformal de intervalos por categoría.
+
+### No se hará, y por qué
+
+- **4.1 Validar los FRED IDs en `CorrelationEngine`.** **Absorbido por 4.11**: el grounding valida todo ID contra FRED antes de que llegue a la app, así que el problema no llega a `CorrelationEngine`.
+- **4.2 Invalidar el caché de rechazo de Gemini CLI cuando cambia la cuenta.** **La cuenta de Google del usuario está permanentemente rechazada** (`IneligibleTierError: UNSUPPORTED_CLIENT`; Google migró el producto a "Antigravity" para cuentas personales). El caché de 24 h nunca se va a invalidar porque el rechazo no va a cambiar, y el sistema ya lo detecta y lo explica con el motivo real. Si algún día la cuenta se habilita, se reabre.
+
+---
+
 ## Fase 0 — Higiene
 
 Rama: `chore/fase-0-higiene`
@@ -109,7 +161,7 @@ Rama: a definir.
   cosa. La decisión tiene que usar muchos cutoffs o sacar la cobertura del
   criterio.
 
-- [ ] **2.3b Horizonte del mini-backtest por frecuencia.** Medido
+- [x] **2.3b Horizonte del mini-backtest por frecuencia.** (PR #36.) Medido
   (`docs/results/horizon_variants_2026-09-27.md`): **no se implementó**. Con
   12 meses desaparece la superposición (8 de 8 ventanas independientes, contra
   3 de 8 con 30), pero el desacuerdo en FRED SA sube de 18,5% a 34,2%; en
@@ -126,7 +178,7 @@ Rama: a definir.
   horizonte de uso (ciclo estacional completo, comparación interanual); no
   se elige por cuál da menos desacuerdo. Si v5 decide en él se resuelve con
   2.3c.
-- [ ] **2.3c Arrepentimiento como métrica.** Medido
+- [x] **2.3c Arrepentimiento como métrica.** Medido
   (`docs/results/decision_regret_2026-09-27.md`, PR #36, mergeado): **v5 no se implementó**.
   - Métrica: error relativo extra del motor elegido frente al mejor, en los
     cutoffs de la grilla que no se usaron para decidir.
@@ -258,7 +310,7 @@ Rama: a definir.
   Decisión explícita: el sesgo positivo (el precio real terminó por encima del
   centro, cada vez más con el horizonte) **NO se corrige**. Sale de una muestra
   de ~5 años mayormente alcista, y agregar drift sería ajustarse a ese régimen.
-- [ ] **2.6 Holt explota tras un salto de nivel.** (PR #37, mergeado; la
+- [x] **2.6 Holt explota tras un salto de nivel.** (PR #37, mergeado; la
   marca está hecha y la estimación robusta queda pendiente;
   `docs/results/holt_explosion_2026-09-27.md`)
   - Diagnóstico: cuando el último dato es el salto, el ajuste SSE lleva α y β
@@ -407,11 +459,11 @@ verificada.
       son públicas y sus ventanas de evaluación (1995–2025) podrían estar en
       el corpus de TimesFM, lo que lo favorecería. No verificado.
 
-- [ ] **3.1 Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
+- [ ] **3.1 (Futuro) Univariado** contra TimesFM 2.5 y contra Holt, en el mismo arnés
   walk-forward.
-- [ ] **3.2 Con covariables:** las series FRED de la tesis como covariables de
+- [ ] **3.2 (Futuro) Con covariables:** las series FRED de la tesis como covariables de
   pasado. Comparar con los regresores externos de Prophet (ver 3.0).
-- [ ] **3.3 Latencia en CPU.**
+- [ ] **3.3 (Futuro) Latencia en CPU.**
 - [x] **3.4 Revisiones de datos (vintages de ALFRED).** Los backtests sobre FRED
   usan la serie *revisada de hoy*: en cada cutoff el modelo ve valores que en
   esa fecha todavía no existían. Eso puede inflar la capacidad de pronóstico
@@ -681,16 +733,16 @@ incluso si la hipótesis no se sostiene.
 
 Rama: una por ítem, a definir.
 
-- [ ] **4.1 Validar los FRED IDs en `CorrelationEngine`** antes de enrutar a
+- [x] ~~**4.1 Validar los FRED IDs en `CorrelationEngine`**~~ **No se hará: absorbido por 4.11** (ADR-0033), que valida todo ID contra FRED antes de que llegue a la app. Texto original: validar los IDs antes de enrutar a
   yfinance. **Absorbido por 4.11.** Diagnóstico corregido (2026-09-26):
   `CorrelationEngine` manda a FRED solo los IDs de un `SERIES_CATALOG` fijo de
   5 series (`correlation_engine.py:35`); cualquier otro ID de FRED, **válido o
   no**, va a yfinance y falla. El ejemplo de antes (`IPG2211N` como "ID mal
   escrito") era incorrecto: `IPG2211N` existe en FRED (mensual NSA,
   1972–2026). El problema es el ruteo por catálogo, no la ortografía.
-- [ ] **4.2 Invalidar el caché de rechazo de Gemini CLI cuando cambia la
+- [x] ~~**4.2 Invalidar el caché de rechazo de Gemini CLI**~~ **No se hará:** la cuenta de Google del usuario está permanentemente rechazada (`IneligibleTierError: UNSUPPORTED_CLIENT`), así que el caché de 24 h nunca se va a invalidar; el sistema ya lo detecta y lo explica. Si la cuenta se habilita, se reabre. Texto original: invalidar el caché cuando cambia la
   cuenta.** Hoy dura 24 h o hasta reiniciar el server.
-- [ ] **4.3 SA vs NSA en series FRED.** Leer `seasonal_adjustment` de la
+- [x] **4.3 SA vs NSA en series FRED.** (PR #52, ADR-0029. Leerlo y mostrarlo: hecho; usarlo para elegir el motor queda en Futuro.) Leer `seasonal_adjustment` de la
   metadata de FRED, mostrarlo en la UI y tenerlo en cuenta al elegir el motor.
   **Leerlo y mostrarlo: hecho** (rama `fix/fred-metadata`, PR abierto;
   ADR-0029). Falta usarlo al elegir el motor, lo que implica un cambio de
@@ -698,7 +750,7 @@ Rama: una por ítem, a definir.
   Una serie SA ya no tiene el ciclo anual, así que "motor estacional" no aplica.
   Hoy la app no lo lee: solo un comentario de `scripts/benchmark_real_data.py`
   lo menciona.
-- [ ] **4.4 Warnings no mostrados en otros paneles.** Llegan desde la API pero
+- [x] **4.4 Warnings no mostrados en otros paneles.** (PR #60.) Llegan desde la API pero
   la UI no los muestra:
   - Fundamentales: `fetchFundamentals` (`api.ts`) devuelve solo
     `data.metrics` y descarta `warnings`.
@@ -708,14 +760,14 @@ Rama: una por ítem, a definir.
     renderiza.
   Hecho cuando: los tres paneles los muestran (con tests de componente), como
   ya hacen Backtest (#22) y Rebalanceo.
-- [ ] **4.5 Torch en la imagen CUDA.** `Dockerfile.timesfm` termina con torch
+- [ ] **4.5 Torch en la imagen CUDA.** **Pendiente documentado: la decisión es del usuario** (hace falta una GPU para verificar cualquier arreglo, y hay que decidir si esa imagen se usa). `Dockerfile.timesfm` termina con torch
   2.5.1+cu121, porque el índice `whl/cu121` llega solo hasta ahí; en local es
   2.14.0+cpu. Decidir entre un índice CUDA más nuevo o fijar torch. Hoy la
   inferencia en esa imagen no está verificada (sin pesos ni GPU en la
   verificación de #24).
   Hecho cuando: la versión de torch de la imagen es una decisión explícita y
   hay al menos una inferencia real de TimesFM verificada en esa imagen.
-- [ ] **4.6 Calidad del LLM al traducir la tesis.** **Medido junto con 4.10
+- [x] **4.6 Calidad del LLM al traducir la tesis.** (PR #54, ADR-0031: queda Sonnet.) **Medido junto con 4.10
   (2026-09-28):** con el prompt nuevo, Sonnet sin errores de hecho y con series
   relevantes (15/16); Haiku con series irrelevantes e inexistentes en T1, mal
   uso de `source` y errores de hecho, y no más rápido. Propuesta: Sonnet por
@@ -796,10 +848,10 @@ Rama: una por ítem, a definir.
   Además, el panel de backtest tiene que mostrar `mase_seasonal`,
   `seasonal_naive_metrics` y el veredicto de estacionalidad con su ACF y su
   umbral (`seasonality`). Hoy solo los menciona el texto del veredicto.
-- [ ] **4.8 (baja prioridad, solo investigar)** Intervalo con volatilidad
+- [ ] **4.8 (Futuro, solo investigar)** Intervalo con volatilidad
   adaptativa (EWMA/GARCH) para mejorar la cobertura condicional. Investigar,
   no implementar.
-- [ ] **4.9 (baja prioridad, después de 3.0d)** Los intervalos analíticos de
+- [ ] **4.9 (Pendiente documentado)** Los intervalos analíticos de
   `ETSModel` no incluyen la incertidumbre de los parámetros (Holt-Winters
   sub-cubre: 91,3% al 95% en 3.0b). Evaluar intervalos por simulación o
   bootstrap.
@@ -813,7 +865,7 @@ Rama: una por ítem, a definir.
   - Medido con CEG, ETN, GEV, PWR y VST a pesos iguales: tendencia +26,9%
     anual (t = 0,9). Con ella, el VaR95 del bootstrap a 30 días baja de 18,8%
     a 16,2% (8 veces el ruido de semilla), y a un año de 44,4% a 27,3%.
-- [ ] **4.10 Sesgos del prompt que traduce la tesis** (`SYSTEM_PROMPT` en
+- [x] **4.10 Sesgos del prompt que traduce la tesis** (PR #54, ADR-0030) (`SYSTEM_PROMPT` en
   `backend/services/llm_router.py`, ~línea 283, y su variante
   `CLAUDE_CLI_SYSTEM_PROMPT` + `--json-schema` de `ClaudeCliLLMClient`, que
   tienen que cambiar juntas).
@@ -971,7 +1023,7 @@ Rama: una por ítem, a definir.
     - Falta la búsqueda de conceptos → candidatas reales.
   Hecho cuando: ninguna serie macro llega a la app sin haber sido validada
   contra FRED, y `CorrelationEngine` acepta cualquier ID válido de FRED.
-- [ ] **4.12 Fuentes fuera de FRED (solo investigación).** SEC EDGAR (datos
+- [ ] **4.12 (Futuro) Fuentes fuera de FRED (solo investigación).** SEC EDGAR (datos
   contables de empresas, por ejemplo capex) y la API de la EIA (consumo
   eléctrico por sector).
   Verificado el 2026-09-26 leyendo las páginas oficiales (sin llamadas reales):
@@ -1033,7 +1085,7 @@ Rama: una por ítem, a definir.
   Hecho cuando: la UI elige horizonte y `freq` según la frecuencia detectada
   de la serie (por ejemplo, 3/6/12/24 meses para mensuales), las tarjetas y
   el gráfico muestran la unidad correcta, y hay tests.
-- [ ] **4.15 Calibración empírica de los intervalos por categoría (conformal),
+- [ ] **4.15 (Futuro) Calibración empírica de los intervalos por categoría (conformal),
   baja prioridad.** En 3.5, Holt cubre de más en diarias y semanales (94-98%
   contra 80%) y TimesFM cubre de menos en mensuales (70-79% contra 80%).
   Hecho cuando: hay una propuesta de calibración conformal por categoría,

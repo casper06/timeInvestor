@@ -101,7 +101,7 @@ npm run dev
 ### Tests
 
 ```bash
-python -m pytest tests/          # backend
+python -m pytest tests/          # backend (445 tests)
 cd frontend && npm run test      # frontend
 ```
 
@@ -163,9 +163,22 @@ tooltip del badge de proveedor LLM en el frontend.
 
 ## Proveedores LLM por suscripción (Gemini CLI / Claude Code CLI)
 
-La API key gratuita de Gemini (250 req/día, 10 RPM) puede quedarse corta para
-uso real, y habilitar facturación de API por separado —para Gemini o para
-Claude— no siempre es lo que querés. Ambos proveedores oficiales tienen un CLI
+> **Recomendado para la v1.0: Claude CLI con Sonnet**, con
+> `LLM_PROVIDER=claude_cli` en el `.env`. Es el proveedor con el que se hicieron
+> la traducción de tesis, el grounding de FRED (ADR-0033) y el de instrumentos
+> (ADR-0034), y el único que no depende de un cupo diario.
+>
+> El **default del código sigue siendo `gemini`** porque Claude CLI requiere
+> tener Claude Code instalado y autenticado (ver la instalación más abajo), que
+> no se puede asumir en una instalación nueva; Gemini solo necesita una API
+> key. El default es el que arranca sin herramientas de Node, no el
+> recomendado.
+
+La API key gratuita de Gemini se queda corta para uso real: son **20 pedidos
+por día y por modelo** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
+medido contra la API real el 2026-09-28/29, y cada llamada consume hasta 3 por
+los reintentos internos). Habilitar facturación de API por separado —para
+Gemini o para Claude— no siempre es lo que querés. Ambos proveedores oficiales tienen un CLI
 que se autentica con tu **sesión de suscripción** (Google AI Pro / Claude
 Pro-Max) en vez de una API key facturada por uso. `GeminiCliLLMClient` y
 `ClaudeCliLLMClient` (`backend/services/llm_router.py`) usan esos CLIs — son
