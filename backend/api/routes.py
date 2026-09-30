@@ -157,7 +157,13 @@ async def analyze_thesis(
         client = get_llm_client("mock") if force_mock else get_llm_client()
         result = await client.parse_thesis(payload.thesis)
         # 4.11: no FRED ID reaches the UI without being checked against FRED.
-        ground_macro_series(result.macro_series)
+        # The same provider repairs its own invalid IDs in one extra call; the
+        # user is never asked anything — the translation stays one step.
+        await ground_macro_series(
+            result.macro_series,
+            client=client,
+            mechanism=getattr(result, "mechanism", "") or "",
+        )
         return result
     except Exception as e:
         logger.error(f"Error processing thesis: {e}", exc_info=True)

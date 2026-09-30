@@ -75,10 +75,10 @@ class MacroSuggestion(BaseModel):
     grounding: Optional[str] = Field(
         default=None,
         description="Cómo se validó el ID contra FRED (4.11): 'verificado' si el ID "
-                    "que propuso el LLM existe en FRED; 'sugerido_por_busqueda' si no "
-                    "existía y se reemplazó por un candidato real de fred/series/search; "
-                    "'descartado' si no existe y la búsqueda no encontró candidato. "
-                    "None = no se pudo validar (sin clave de FRED o FRED no respondió).",
+                    "que propuso el LLM existe; 'reparado' si no existía y el propio LLM "
+                    "eligió un reemplazo real en la pasada de reparación; 'descartado' si "
+                    "no existe y no hubo reemplazo válido. None = no se pudo validar (sin "
+                    "clave de FRED o FRED no respondió).",
     )
     proposed_series_id: Optional[str] = Field(
         default=None,
@@ -98,25 +98,31 @@ class MacroSuggestion(BaseModel):
     )
     candidates: List["FredCandidate"] = Field(
         default_factory=list,
-        description="Hasta 3 candidatos reales de FRED para un ID que no existe (4.11). "
-                    "Los elige el usuario: la app NUNCA sustituye el ID sola.",
+        description="Candidatos reales de FRED para un ID que no existe (4.11), que se le "
+                    "ofrecen al LLM en la pasada de reparación. Quedan vacíos una vez "
+                    "resuelta la serie.",
     )
-    chosen_by_user: bool = Field(
-        default=False,
-        description="True cuando el usuario eligió uno de los candidatos (4.11). Solo "
-                    "entonces una serie que era 'sugerido_por_busqueda' entra al análisis.",
+    repair_justification: Optional[str] = Field(
+        default=None,
+        description="Por qué el LLM eligió este reemplazo en la pasada de reparación (4.11). "
+                    "Se muestra al usuario: la corrección es visible, no silenciosa.",
+    )
+    reformulations: int = Field(
+        default=0,
+        description="Cuántas veces se reformuló la búsqueda de esta serie (4.11). El tope "
+                    "es 1: después el LLM elige o descarta, nunca un bucle abierto.",
     )
 
     def enters_analysis(self) -> bool:
         """Whether this series may reach forecasts, correlations and the copilot.
 
-        A verified ID does. A searched-for suggestion does NOT until the user
-        picks a candidate: FRED's top hit is a guess at the concept, not the
-        series the user asked for (searching "new home sales" returns MSPUS, a
-        *price*, for a thesis about *how many* houses get built). A discarded or
-        unverifiable ID never enters.
+        Only an ID FRED confirmed: one the LLM proposed correctly
+        (`verificado`), or one it corrected itself in the repair pass and FRED
+        then confirmed (`reparado`). A discarded ID, or one that couldn't be
+        checked at all, never enters. Kept as a defensive check: the repair
+        pass already leaves nothing else behind.
         """
-        return self.grounding == "verificado" or (self.grounding == "sugerido_por_busqueda" and self.chosen_by_user)
+        return self.grounding in ("verificado", "reparado")
 
 
 class Falsifier(BaseModel):
@@ -238,9 +244,9 @@ class InterpretationContext(BaseModel):
     reliability_warning: Optional[str] = Field(default=None, description="Si el pronóstico fue marcado no confiable (ForecastResponse.reliability_warning), el texto; el copiloto tiene que decirlo")
     unresolved_macro_series: List[str] = Field(
         default_factory=list,
-        description="IDs que el LLM propuso, no existen en FRED y el usuario todavía no "
-                    "reemplazó (4.11). NO entran a la evidencia: se le dicen al copiloto "
-                    "para que declare que esa parte del mecanismo quedó sin medir.",
+        description="IDs que el LLM propuso, no existen en FRED y la pasada de reparación "
+                    "no pudo reemplazar (4.11). NO entran a la evidencia: se le dicen al "
+                    "copiloto para que declare que esa parte del mecanismo quedó sin medir.",
     )
 
 class InterpretationResponse(BaseModel):

@@ -162,13 +162,13 @@ def interpretation_context_text(ctx: InterpretationContext, today: Optional[date
     else:
         lines.append("- Ninguna serie macro en la tesis: no hay evidencia de indicadores del mundo.")
 
-    # 4.11: an ID the LLM invented that the user hasn't replaced yet measures
+    # 4.11: an ID the LLM invented that the repair pass couldn't fix measures
     # nothing. It stays OUT of the evidence, and the copilot is told so, so it
     # can say that link of the mechanism is unmeasured instead of staying quiet.
     if ctx.unresolved_macro_series:
         lines.append(
             f"- Sin medir: {', '.join(ctx.unresolved_macro_series)} "
-            f"(el ID no existe en FRED y el usuario todavía no eligió un reemplazo). "
+            f"(el ID no existe en FRED y no hubo un reemplazo válido). "
             f"No hay datos de esa parte del mecanismo: decilo explícitamente."
         )
 

@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, Tag, ArrowRight } from 'lucide-react';
-import type { TickerSuggestion, MacroSuggestion, FredCandidate } from '../services/api';
+import type { TickerSuggestion, MacroSuggestion } from '../services/api';
 
 interface ThesisBarProps {
   onAnalyze: (thesis: string) => void;
   loading: boolean;
   tickers: TickerSuggestion[];
   macroSeries: MacroSuggestion[];
-  /** The user picked a real FRED series to replace an ID that doesn't exist (4.11). */
-  onChooseCandidate?: (missingId: string, candidate: FredCandidate) => void;
   onAddTicker: (ticker: string) => void;
   onRemoveTicker: (symbol: string) => void;
   onAddMacro: (seriesId: string) => void;
@@ -52,11 +50,7 @@ const TranslatingIndicator: React.FC<{ providerLabel?: string }> = ({ providerLa
  */
 function groundingChipClass(m: MacroSuggestion): string {
   if (m.grounding === 'descartado') return 'bg-rose-500/10 text-rose-300 border-rose-500/30 line-through';
-  if (m.grounding === 'sugerido_por_busqueda') {
-    return m.chosen_by_user
-      ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
-      : 'bg-amber-500/10 text-amber-200 border-amber-500/30';
-  }
+  if (m.grounding === 'reparado') return 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30';
   if (!m.grounding) return 'bg-slate-500/10 text-slate-300 border-slate-500/30';
   return 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20';
 }
@@ -66,7 +60,6 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
   loading,
   tickers,
   macroSeries,
-  onChooseCandidate,
   onAddTicker,
   onRemoveTicker,
   onAddMacro,
@@ -78,10 +71,6 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
 
   const [newTicker, setNewTicker] = useState('');
   const [newMacro, setNewMacro] = useState('');
-  // 4.11: IDs that don't exist on FRED and still have no replacement chosen.
-  const pendingMacro = macroSeries.filter(
-    (m) => m.grounding === 'sugerido_por_busqueda' && !m.chosen_by_user && (m.candidates?.length ?? 0) > 0,
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,20 +199,13 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
                 key={m.series_id}
                 data-testid={`macro-chip-${m.series_id}`}
                 data-grounding={m.grounding ?? 'sin_verificar'}
-                title={m.grounding_note ?? m.fred_title ?? undefined}
+                title={[m.grounding_note, m.repair_justification, m.fred_title].filter(Boolean).join(' — ') || undefined}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-mono font-medium shadow-sm ${groundingChipClass(m)}`}
               >
-                {m.grounding === 'sugerido_por_busqueda' && !m.chosen_by_user
-                  ? m.proposed_series_id || m.series_id
-                  : m.series_id}
-                {m.grounding === 'sugerido_por_busqueda' && !m.chosen_by_user && (
-                  <span data-testid={`macro-pending-${m.proposed_series_id || m.series_id}`} className="font-sans text-[10px] font-semibold">
-                    sin reemplazo elegido
-                  </span>
-                )}
-                {m.grounding === 'sugerido_por_busqueda' && m.chosen_by_user && (
-                  <span data-testid={`macro-chosen-${m.series_id}`} className="font-sans text-[10px] font-semibold">
-                    elegida por vos
+                {m.series_id}
+                {m.grounding === 'reparado' && (
+                  <span data-testid={`macro-repaired-${m.series_id}`} className="font-sans text-[10px] font-semibold">
+                    corregida: reemplaza a {m.proposed_series_id}
                   </span>
                 )}
                 {m.grounding === 'descartado' && (
@@ -263,60 +245,6 @@ export const ThesisBar: React.FC<ThesisBarProps> = ({
             )}
           </div>
 
-          {/*
-            4.11: an ID the LLM invented is NOT replaced automatically. FRED's
-            own candidates are offered with the metadata needed to tell them
-            apart (title, frequency, SA/NSA, date range), and the user picks —
-            or leaves the series out. Until then it stays out of the analysis.
-          */}
-          {pendingMacro.map((m) => {
-            const missingId = m.proposed_series_id || m.series_id;
-            return (
-              <div
-                key={`pending-${missingId}`}
-                data-testid={`macro-candidates-${missingId}`}
-                className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 space-y-2"
-              >
-                <p role="alert" className="text-[11px] text-amber-200">
-                  <span className="font-mono font-semibold">'{missingId}'</span> no existe en FRED; elegí un
-                  reemplazo o seguí sin esta serie.
-                  {m.searched_concept && (
-                    <span className="text-amber-200/70"> Buscado en FRED: "{m.searched_concept}".</span>
-                  )}
-                </p>
-                <ul className="space-y-1">
-                  {(m.candidates ?? []).map((c) => (
-                    <li key={c.series_id} className="flex items-start justify-between gap-2">
-                      <span className="text-[11px] text-slate-300">
-                        <span className="font-mono font-semibold text-slate-100">{c.series_id}</span>{' '}
-                        {c.title}
-                        <span className="block text-[10px] text-slate-400">
-                          {[
-                            c.frequency,
-                            c.seasonal_adjustment,
-                            c.observation_start && c.observation_end
-                              ? `${c.observation_start} → ${c.observation_end}`
-                              : null,
-                            c.units,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        data-testid={`macro-choose-${missingId}-${c.series_id}`}
-                        onClick={() => onChooseCandidate?.(missingId, c)}
-                        className="shrink-0 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-100 border border-amber-500/40 text-[11px] font-semibold hover:bg-amber-500/30 transition-colors"
-                      >
-                        Agregar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

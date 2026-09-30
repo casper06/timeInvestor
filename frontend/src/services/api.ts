@@ -58,12 +58,13 @@ export interface MacroSuggestion {
   /** Which link of the mechanism it measures (cause, channel, effect). */
   mechanism_role?: string | null;
   /**
-   * How the ID was validated against FRED (4.11): 'verificado' (the LLM's ID
-   * exists), 'sugerido_por_busqueda' (it didn't, and a real candidate was
-   * found by concept search), 'descartado' (no real series at all).
-   * null/undefined = it could not be checked (no FRED key, or FRED was down).
+   * How the ID was validated against FRED (4.11): 'verificado' (the LLM
+   * proposed a real one), 'reparado' (it didn't exist and the LLM itself
+   * picked a real replacement, re-verified against FRED), 'descartado' (no
+   * valid replacement). null/undefined = it could not be checked (no FRED
+   * key, or FRED was down).
    */
-  grounding?: 'verificado' | 'sugerido_por_busqueda' | 'descartado' | null;
+  grounding?: 'verificado' | 'reparado' | 'descartado' | null;
   /** The LLM's original ID, when it was replaced or discarded. */
   proposed_series_id?: string | null;
   /** FRED's own title for the validated ID. Never hand-written. */
@@ -72,25 +73,23 @@ export interface MacroSuggestion {
   grounding_note?: string | null;
   /** The text searched on FRED, so the warning can say what was looked up. */
   searched_concept?: string | null;
-  /** Up to 3 real candidates for an ID that doesn't exist. The user picks. */
+  /** Real candidates offered to the LLM during repair; empty once resolved. */
   candidates?: FredCandidate[];
-  /** True once the user picked a candidate; only then does it enter analysis. */
-  chosen_by_user?: boolean;
+  /** Why the LLM chose this replacement. Shown to the user: repair is visible. */
+  repair_justification?: string | null;
+  /** How many times the search was reformulated (capped at 1). */
+  reformulations?: number;
 }
 
 /**
  * 4.11: may this series reach forecasts, correlations and the copilot?
  *
- * A verified ID may. A searched-for suggestion may NOT until the user picks a
- * candidate: FRED's top hit is a guess at the concept, not the series the user
- * asked for (searching "new home sales" ranks MSPUS first — a *price*, which
- * says nothing about how many houses get built). Discarded and unverifiable
- * IDs never enter.
+ * Only an ID FRED confirmed: proposed correctly, or repaired by the LLM and
+ * re-verified. Kept as a defensive check — the repair pass already leaves
+ * nothing else behind.
  */
 export function entersAnalysis(m: MacroSuggestion): boolean {
-  if (m.grounding === 'verificado') return true;
-  if (m.grounding === 'sugerido_por_busqueda') return !!m.chosen_by_user;
-  return false;
+  return m.grounding === 'verificado' || m.grounding === 'reparado';
 }
 
 /** An observable condition that would refute the thesis (4.10). */

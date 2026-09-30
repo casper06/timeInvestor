@@ -896,16 +896,25 @@ Rama: una por ítem, a definir.
     La decisión es del usuario.
 - [x] **4.11 IDs de FRED anclados en datos reales.** (ADR-0033, rama
   `feat/fred-id-grounding`, PR abierto.) `fred_grounding.ground_macro_series`
-  corre en `analyze_thesis`: cada ID se verifica contra `/fred/series`; si no
-  existe, se busca el concepto con `fred/series/search` y se **ofrecen hasta 3
-  candidatos reales para que elija el usuario** (la app nunca sustituye el ID
-  sola), o se descarta con aviso visible. Sin clave o con FRED caído, la serie
-  se conserva "sin verificar".
-  - **Solo entra al análisis** lo verificado o lo que eligió el usuario: una
-    sugerencia sin elegir no llega a pronósticos, correlaciones ni copiloto, y
-    al copiloto se le dice que ese eslabón quedó sin medir. El primer resultado
-    de FRED es una conjetura sobre el concepto: buscar "new home sales" para
-    TOTALSI devuelve MSPUS, un *precio*, para una tesis sobre *cantidades*.
+  corre en `analyze_thesis`: cada ID se verifica contra `/fred/series`. Los
+  inexistentes van a `fred/series/search` (hasta 5 candidatos reales con
+  metadata) y **el propio LLM los repara en UNA llamada extra**: elige uno de
+  esa lista con su justificación, o descarta. Puede pedir **una** reformulación
+  por serie, nunca más. **El usuario no elige nada**: el análisis sigue siendo
+  de un solo paso y no hay selector en la UI.
+  - Estados: `verificado`, `reparado` (con justificación visible), `descartado`
+    (aviso informativo) y `null` (FRED caído o sin clave). **Entran al análisis
+    `verificado` y `reparado`**; `enters_analysis` y el "Sin medir" del
+    copiloto quedan como chequeo defensivo.
+  - **Sin LLM (mock o reparación fallida): se descarta.** Nunca se adopta el
+    primer resultado de la búsqueda — para TOTALSI ese primero es MSPUS, un
+    *precio*, en una tesis sobre *cantidades*.
+  - Las reglas de la reparación van en las descripciones del schema, no en el
+    system prompt: con un system prompt largo, Claude CLI ignoró
+    `--json-schema` y respondió Markdown libre (3/3), como en ADR-0030.
+  - Verificado con Claude CLI Sonnet real (24,5 s): TOTALSI → **HSN1F**
+    (reparado, tras una reformulación), IPGD → **descartado** ("todos los
+    candidatos son subsectores específicos"), UMCSENT → verificado.
   - **El índice de búsqueda de FRED es solo en inglés** (verificado el
     2026-09-29: "new home sales" → 2986, el mismo concepto en español → 0). El
     prompt ahora pide `search_concept_en`; con el `name` en español la búsqueda

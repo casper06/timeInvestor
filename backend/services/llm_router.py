@@ -488,6 +488,17 @@ class BaseLLMClient(abc.ABC):
         """Provide quantitative copilot interpretation of current series vs the thesis."""
         pass
 
+    # 4.11: one extra structured call, used by the FRED repair pass to let the
+    # model fix its own invented IDs. A provider that doesn't implement it
+    # simply has no repair pass: the invalid IDs are discarded (never replaced
+    # by the search's first hit). Not abstract on purpose — the mock and any
+    # future client keep working untouched.
+    supports_json_completion = False
+
+    async def complete_json(self, system_prompt: str, user_prompt: str, json_schema: dict) -> dict:
+        """One structured JSON answer. Raises NotImplementedError by default."""
+        raise NotImplementedError(f"{type(self).__name__} no soporta complete_json")
+
 
 def _format_fallback_reason(provider_label: str, exc: Exception) -> str:
     """Builds a short, user-facing explanation for why a real LLM provider fell back to mock.
@@ -504,6 +515,32 @@ def _format_fallback_reason(provider_label: str, exc: Exception) -> str:
 
 class GeminiLLMClient(BaseLLMClient):
     """LLM client implementation using Google Gemini via google-genai SDK."""
+
+    supports_json_completion = True
+
+    async def complete_json(self, system_prompt: str, user_prompt: str, json_schema: dict) -> dict:
+        """One structured answer (4.11 repair pass). Same JSON-forcing config
+        as parse_thesis (`response_mime_type`) and the same retry policy."""
+        if not self._client:
+            from google import genai
+            self._client = genai.Client(api_key=self.api_key)
+        from google.genai import types
+
+        prompt = f"{system_prompt}\n\n{user_prompt}"
+
+        async def _attempt():
+            return self._client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            )
+
+        response = await _call_with_retry("Gemini", _attempt)
+        _check_gemini_safety_block(response)
+        raw = response.text.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.DOTALL)
+        return json.loads(raw)
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.GEMINI_API_KEY
@@ -1381,6 +1418,18 @@ class ClaudeCliLLMClient(BaseLLMClient):
                 ) from e
 
         data["_provider_used"] = f"claude-cli-{self.model}"
+        return data
+
+    supports_json_completion = True
+
+    async def complete_json(self, system_prompt: str, user_prompt: str, json_schema: dict) -> dict:
+        """One structured answer (4.11 repair pass), through the same retry
+        policy and the same --json-schema path parse_thesis uses."""
+        async def _attempt():
+            return await asyncio.to_thread(self._run, user_prompt, system_prompt, json_schema)
+
+        data = await _call_with_retry("Claude CLI", _attempt)
+        data.pop("_provider_used", None)
         return data
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
