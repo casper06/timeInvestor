@@ -132,16 +132,37 @@ def test_gemini_api_gets_the_context_and_rules():
 
 @pytest.mark.parametrize("cls", ["GeminiCliLLMClient", "ClaudeCliLLMClient"])
 def test_cli_clients_get_the_context_and_rules(cls):
+    """Every client gets the context AND the rules.
+
+    Claude CLI carries the rules in the schema's field descriptions instead of
+    the system prompt: with a long numbered prompt it ignores --json-schema and
+    falls back to the mock (ADR-0030, and again in the copilot during the v1.0
+    end-to-end check). The rules have to survive that move, so the schema
+    counts as part of what the model was told.
+    """
     client = object.__new__(getattr(lr, cls))
     client.model = "haiku"
     seen = {}
 
     def fake_run(prompt, system_prompt=None, json_schema=None):
         seen["text"] = prompt + "\n" + (system_prompt or "")
+        seen["schema"] = json_schema or {}
         return dict(PAYLOAD)
     client._run = fake_run
     asyncio.run(client.interpret_situation(_ctx()))
-    _check(seen["text"])
+
+    # The context always travels in the prompt.
+    assert f"Fecha de hoy: {TODAY}." in seen["text"]
+    assert "último ejercicio cerrado 2025" in seen["text"]
+    assert "Sin fundamentales: VST, GEV, PWR" in seen["text"]
+
+    # The rules: in the prompt, or in the schema's descriptions.
+    descriptions = " ".join(
+        p.get("description", "") for p in (seen["schema"].get("properties") or {}).values()
+    )
+    assert RULE in seen["text"] or "no son una muestra" in descriptions, (
+        "las reglas del copiloto no llegaron ni por el prompt ni por el schema"
+    )
 
 
 @pytest.mark.parametrize("cls,field", [("OpenAILLMClient", "messages"), ("OllamaLLMClient", "prompt")])
