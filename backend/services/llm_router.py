@@ -444,6 +444,13 @@ CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT = (
     "continuación.\n"
 ) + COPILOT_RULES
 
+# The Claude CLI variant (ADR-0030): a one-line system prompt, with the rules
+# in the schema's field descriptions. The long version above stays for every
+# other provider, which does respect it.
+CLAUDE_CLI_INTERPRETATION_SHORT_SYSTEM_PROMPT = (
+    "Sos un copiloto cuantitativo. Respondés solo el JSON del schema."
+)
+
 def _thesis_response(thesis: str, data: dict, provider_used: str,
                      default_summary: str = "Análisis de tesis cuantitativa") -> ThesisResponse:
     """ThesisResponse from any client's parsed JSON (prompt v2, 4.10). SPY is
@@ -1469,19 +1476,43 @@ class ClaudeCliLLMClient(BaseLLMClient):
             f"Contexto Cuantitativo:\n"
             f"{interpretation_context_text(ctx)}"
         )
+        # ADR-0030's lesson, applied here too: with a long numbered system
+        # prompt, Claude CLI ignores --json-schema and answers in free
+        # Markdown, which falls back to the mock and silently downgrades the
+        # copilot. The rules live in the field descriptions instead.
         schema = {
             "type": "object",
             "properties": {
-                "what_data_says": {"type": "string"},
-                "thesis_alignment": {"type": "string"},
-                "next_series_suggestion": {"type": "string"},
-                "suggested_series_id": {"type": "string"},
+                "what_data_says": {
+                    "type": "string",
+                    "description": "Qué dicen los datos recibidos, en lenguaje llano. Afirmá solo lo que "
+                                   "está en el contexto: no agregues cifras, hechos ni noticias que no "
+                                   "estén. Todo dato va con su fecha, y la proyección es la salida de un "
+                                   "modelo estadístico, no un dato observado.",
+                },
+                "thesis_alignment": {
+                    "type": "string",
+                    "description": "Si los datos confirman o contradicen la hipótesis. La evidencia sale de "
+                                   "los indicadores del mundo (FRED). Las empresas listadas las eligió el "
+                                   "LLM al traducir la tesis (o las agregó el usuario): no son una muestra "
+                                   "representativa y no confirman nada por sí solas. Si faltan datos de "
+                                   "algún activo o serie (líneas 'Sin fundamentales', 'sin datos' o 'Sin "
+                                   "medir'), decilo explícitamente.",
+                },
+                "next_series_suggestion": {
+                    "type": "string",
+                    "description": "Qué serie o indicador conviene mirar a continuación, y por qué",
+                },
+                "suggested_series_id": {
+                    "type": "string",
+                    "description": "El ID de esa serie, si es una de las del contexto",
+                },
             },
             "required": ["what_data_says", "thesis_alignment", "next_series_suggestion"],
         }
         try:
             async def _attempt():
-                return await asyncio.to_thread(self._run, user_prompt, CLAUDE_CLI_INTERPRETATION_SYSTEM_PROMPT, schema)
+                return await asyncio.to_thread(self._run, user_prompt, CLAUDE_CLI_INTERPRETATION_SHORT_SYSTEM_PROMPT, schema)
 
             data = await _call_with_retry("Claude CLI", _attempt)
 

@@ -52,6 +52,21 @@ def test_una_sa_que_si_se_sostuvo_no_lleva_nota():
     assert vintage_note("IPG2211A2N", "aporta", "SA") is None
 
 
+def test_saar_tambien_lleva_nota():
+    """FRED reports several seasonally adjusted flavours. HOUST comes back
+    "SAAR" (seasonally adjusted ANNUAL RATE), verified against the live API on
+    2026-09-30 — the end-to-end check caught the note silently missing on it.
+    Every adjusted flavour gets restated when the adjustment is revised."""
+    note = vintage_note("HOUST", "aporta", "SAAR")
+    assert note is not None
+    assert "con datos de época no se sostuvo" in note
+
+
+def test_cualquier_ajuste_que_no_sea_nsa_lleva_nota():
+    for flag in ("SA", "SAAR", "SAAR "):
+        assert vintage_note("INDPRO", "aporta", flag) is not None, flag
+
+
 def test_una_serie_nsa_no_lleva_nota():
     """The revision problem is about seasonal adjustment being restated."""
     assert vintage_note("HOUSTNSA", "aporta", "NSA") is None
