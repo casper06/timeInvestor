@@ -163,6 +163,17 @@ tooltip del badge de proveedor LLM en el frontend.
 
 ## Proveedores LLM por suscripción (Gemini CLI / Claude Code CLI)
 
+> **Recomendado para la v1.0: Claude CLI con Sonnet**, con
+> `LLM_PROVIDER=claude_cli` en el `.env`. Es el proveedor con el que se hicieron
+> la traducción de tesis, el grounding de FRED (ADR-0033) y el de instrumentos
+> (ADR-0034), y el único que no depende de un cupo diario.
+>
+> El **default del código sigue siendo `gemini`** porque Claude CLI requiere
+> tener Claude Code instalado y autenticado (ver la instalación más abajo), que
+> no se puede asumir en una instalación nueva; Gemini solo necesita una API
+> key. El default es el que arranca sin herramientas de Node, no el
+> recomendado.
+
 La API key gratuita de Gemini se queda corta para uso real: son **20 pedidos
 por día y por modelo** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
 medido contra la API real el 2026-09-28/29, y cada llamada consume hasta 3 por

@@ -50,10 +50,19 @@ Esto se midió, no se supone. El motor se elige **por serie**, no por fe:
 - **El LLM elige las empresas.** Las que aparecen en una tesis las eligió el
   modelo: no son una muestra representativa y no confirman nada. La app lo
   repite donde hace falta, incluido el copiloto.
-- **Cupos de los proveedores.** El proveedor principal es Claude CLI con Sonnet.
-  Gemini queda de respaldo con su plan gratuito: **20 pedidos por día y por
-  modelo**, y cada llamada consume hasta 3 por los reintentos. Claude CLI
-  comparte cupo con el uso interactivo de Claude Code.
+- **Cupos de los proveedores.** El proveedor principal recomendado es **Claude
+  CLI con Sonnet**, que se activa con `LLM_PROVIDER=claude_cli` en el `.env`.
+  El default del código sigue siendo `gemini` porque Claude CLI **requiere
+  tener Claude Code instalado** (`npm install -g @anthropic-ai/claude-code`) y
+  autenticado, que no se puede asumir en una instalación nueva. Gemini queda de
+  respaldo con su plan gratuito: **20 pedidos por día y por modelo**, y cada
+  llamada consume hasta 3 por los reintentos. Claude CLI comparte cupo con el
+  uso interactivo de Claude Code.
+- **`docker compose build` no verificado en el cierre de v1.0.** Docker Desktop
+  no estaba levantado (el cliente 29.8.0 está instalado; el daemon no
+  respondía). El resto del chequeo de punta a punta sí se corrió: venv limpio
+  desde `requirements.lock`, `pytest`, `vitest`, datos reales y la app entera
+  en el navegador.
 - **Sin datos sintéticos.** Con `ALLOW_SYNTHETIC_DATA=false` (el default), una
   fuente caída es un error explícito, no un número inventado. Ningún endpoint
   cuantitativo acepta una serie sintética.

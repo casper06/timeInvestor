@@ -123,7 +123,8 @@ Organización del trabajo:
 - `LLM_PROVIDER`: `gemini`, `gemini_cli`, `claude_cli`, `openai`, `ollama`, `auto` o `mock`. `auto` elige `gemini` si hay key, si no `openai`, si no `mock`.
   - **El proveedor principal de la v1.0 es `claude_cli` con Sonnet** (ADR-0031): es con el que se hicieron la traducción de tesis, el grounding de FRED (4.11) y el de instrumentos (4.21), y el único que no depende de un cupo diario.
   - **Gemini queda de respaldo.** Su plan gratuito son **20 pedidos por día y por modelo** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`), y cada llamada consume hasta 3 por los reintentos internos: alcanza para unas pocas tesis por día. Es un límite del plan, no del código.
-  - **Ojo:** el default del código (`backend/config.py`) y el `.env` del repo siguen diciendo `gemini`, por compatibilidad con las corridas viejas. Para usar Sonnet hay que poner `LLM_PROVIDER=claude_cli` en el `.env` o elegirlo en el dropdown del Header.
+  - **Cómo activarlo:** `LLM_PROVIDER=claude_cli` en el `.env`, o elegirlo en el dropdown del Header (cambio en caliente).
+  - **Por qué el default del código sigue siendo `gemini`:** Claude CLI **requiere tener Claude Code instalado** (`npm install -g @anthropic-ai/claude-code`) y autenticado, que no se puede dar por sentado en una instalación nueva; Gemini solo necesita una API key. El default es el que arranca sin herramientas de Node, no el recomendado.
 - `CLAUDE_CLI_MODEL`: default `sonnet` (ADR-0031, reemplaza a ADR-0016): en la evaluación de 4.10, `haiku` propuso series FRED irrelevantes e inexistentes y cometió errores de hecho. `haiku` gasta menos del cupo compartido.
 - `OLLAMA_BASE_URL`.
 - `DATABASE_URL`: la DB real por defecto. Las verificaciones apuntan a una copia; los tests, a un SQLite temporal.
