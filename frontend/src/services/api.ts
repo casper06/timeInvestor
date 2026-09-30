@@ -37,6 +37,20 @@ export interface TickerSuggestion {
   instrument_type?: 'etf' | 'commodity' | 'rate' | 'index' | 'stock' | null;
   /** Source the LLM cites for the facts in its text; null = an unverified LLM claim. */
   source?: string | null;
+  /** 4.21: how the instrument was validated against yfinance. */
+  grounding?: 'verificado' | 'reparado' | 'descartado' | null;
+  grounding_note?: string | null;
+  /** yfinance's own facts. Never hand-written. */
+  verified_name?: string | null;
+  verified_type?: string | null;
+  verified_issuer?: string | null;
+  verified_category?: string | null;
+  /** What the LLM claimed that contradicted those facts. */
+  contradictions?: string[];
+  original_symbol?: string | null;
+  original_thesis_role?: string | null;
+  /** What the LLM corrected and why. Shown to the user. */
+  repair_justification?: string | null;
 }
 
 /** A real FRED series offered to replace an ID that doesn't exist (4.11). */

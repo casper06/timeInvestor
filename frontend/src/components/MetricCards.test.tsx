@@ -188,3 +188,68 @@ describe('MetricCards claim label with the local template', () => {
     expect(screen.getByTestId('claim-label')).toHaveTextContent('Texto de plantilla local (sin LLM)');
   });
 });
+
+describe('MetricCards instrument grounding (4.21)', () => {
+  const grounded = {
+    thesis: 'La IA es una burbuja',
+    summary: 's',
+    tickers: [
+      {
+        symbol: 'PSQ', name: 'ProShares Short QQQ', sector: 'Cobertura', weight: 0.5,
+        instrument_type: 'etf' as const,
+        thesis_role: 'ETF inverso -1x del Nasdaq-100, de ProShares.',
+        grounding: 'reparado' as const,
+        original_thesis_role: 'ETF inverso 3x del Nasdaq-100, de Direxion',
+        repair_justification: 'El emisor es ProShares y el apalancamiento es -1x, no 3x de Direxion.',
+        verified_name: 'ProShares Short QQQ',
+        verified_type: 'ETF',
+        verified_issuer: 'ProShares',
+        verified_category: 'Trading--Inverse Equity',
+      },
+      {
+        symbol: 'FAKEX', name: 'Inexistente', sector: 'Tech', weight: 0.5,
+        thesis_role: 'Lo que sea',
+        grounding: 'descartado' as const,
+        grounding_note: "'FAKEX' no existe en yfinance y se descartó: no existe el instrumento.",
+      },
+    ],
+    macro_series: [],
+    rationales: {},
+    provider_used: 'claude-cli-sonnet',
+  };
+
+  it('shows the corrected description, not the original', () => {
+    render(<MetricCards thesisData={grounded} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    expect(screen.getByText(/ETF inverso -1x del Nasdaq-100, de ProShares/)).toBeInTheDocument();
+    expect(screen.queryByText(/Direxion/)).not.toHaveTextContent('ETF inverso 3x del Nasdaq-100, de Direxion');
+  });
+
+  it('says what was corrected and why', () => {
+    render(<MetricCards thesisData={grounded} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    expect(screen.getByTestId('instrument-repaired-PSQ')).toHaveTextContent('El emisor es ProShares');
+  });
+
+  it("shows yfinance's own facts next to the text", () => {
+    render(<MetricCards thesisData={grounded} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    const facts = screen.getByTestId('instrument-facts-PSQ');
+    expect(facts).toHaveTextContent('ProShares Short QQQ');
+    expect(facts).toHaveTextContent('ETF');
+    expect(facts).toHaveTextContent('Trading--Inverse Equity');
+  });
+
+  it('flags a discarded instrument instead of dropping it silently', () => {
+    render(<MetricCards thesisData={grounded} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    expect(screen.getByTestId('instrument-discarded-FAKEX')).toHaveTextContent('no existe en yfinance');
+  });
+
+  it('keeps the "LLM claim" label on a repaired instrument: yfinance cannot vouch for everything', () => {
+    render(<MetricCards thesisData={grounded} forecast={null} seriesData={null} horizon={12} confidence={0.95} />);
+    fireEvent.click(screen.getByText('Ver justificación por activo'));
+    const labels = screen.getAllByTestId('claim-label');
+    expect(labels[0]).toHaveTextContent('Afirmación del LLM, no verificada');
+  });
+});

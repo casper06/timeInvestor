@@ -37,6 +37,31 @@ class TickerSuggestion(BaseModel):
     thesis_role: str = Field(..., description="Specific role or angle in the investment thesis")
     instrument_type: Optional[Literal["etf", "commodity", "rate", "index", "stock"]] = Field(default=None, description="Tipo de instrumento (4.10): ETFs, commodities y tasas antes que acciones sueltas")
     source: Optional[str] = Field(default=None, description="Fuente que cita el LLM para los hechos de su texto; None = afirmación del LLM sin fuente. La app no la verifica")
+    # 4.21: qué dice yfinance realmente, y qué se corrigió.
+    grounding: Optional[str] = Field(
+        default=None,
+        description="Cómo se validó el instrumento (4.21): 'verificado' (existe y su "
+                    "descripción no contradice los datos), 'reparado' (el LLM corrigió la "
+                    "descripción o reemplazó el ticker), 'descartado' (no existe o no se "
+                    "pudo corregir). None = no se pudo verificar (yfinance no respondió).",
+    )
+    grounding_note: Optional[str] = Field(default=None, description="Aviso para la UI cuando no quedó verificado (4.21)")
+    verified_name: Optional[str] = Field(default=None, description="Nombre oficial según yfinance (4.21). Nunca escrito a mano")
+    verified_type: Optional[str] = Field(default=None, description="quoteType de yfinance: EQUITY, ETF, ... (4.21)")
+    verified_issuer: Optional[str] = Field(default=None, description="Emisor del fondo según yfinance (fundFamily) (4.21)")
+    verified_category: Optional[str] = Field(default=None, description="Categoría del fondo según yfinance (4.21)")
+    contradictions: List[str] = Field(default_factory=list, description="Qué afirmaba el LLM que contradice los datos reales (4.21)")
+    original_symbol: Optional[str] = Field(default=None, description="El ticker original, si la corrección lo reemplazó (4.21)")
+    original_thesis_role: Optional[str] = Field(default=None, description="La descripción original, si la corrección la reescribió (4.21)")
+    repair_justification: Optional[str] = Field(default=None, description="Qué corrigió el LLM y por qué (4.21). Visible para el usuario")
+
+    def enters_analysis(self) -> bool:
+        """Whether this instrument may reach the portfolio and the analysis.
+
+        Only one yfinance confirmed: proposed correctly, or repaired by the LLM
+        and re-verified. Kept as a defensive check, like its FRED twin.
+        """
+        return self.grounding in ("verificado", "reparado")
 
 class FredSeriesMetadata(BaseModel):
     series_id: str

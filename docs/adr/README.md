@@ -44,3 +44,4 @@ reemplace y se actualiza el estado de la anterior.
 | [0031](0031-claude-cli-sonnet-por-defecto.md) | `CLAUDE_CLI_MODEL=sonnet` por defecto (reemplaza 0016) | Aceptada | 4.6 |
 | [0032](0032-badge-contra-el-naive-mas-exigente.md) | Badge de capacidad contra el naive más exigente (menor error total; criterio v10) | Aceptada | 4.17 |
 | [0033](0033-ids-de-fred-validados.md) | IDs de FRED validados contra FRED; el propio LLM repara los inválidos en una llamada extra; búsqueda por concepto en inglés | Aceptada | 4.11 |
+| [0034](0034-instrumentos-verificados.md) | Instrumentos verificados contra yfinance; el LLM corrige sus propias descripciones (PSQ, IPO) | Aceptada | 4.21 |
