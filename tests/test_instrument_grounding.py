@@ -38,6 +38,17 @@ FACTS = {
     "SQQQ": {"symbol": "SQQQ", "name": "ProShares UltraPro Short QQQ", "quote_type": "ETF",
              "issuer": "ProShares", "category": "Trading--Inverse Equity",
              "legal_type": "Exchange Traded Fund"},
+    # Real fields, captured 2026-09-30: the inverse 3x semis ETF Sonnet picked
+    # for IPO before the risk-profile rule existed.
+    "SOXS": {"symbol": "SOXS", "name": "Direxion Daily Semiconductor Bear 3X Shares",
+             "quote_type": "ETF", "issuer": "Direxion Funds",
+             "category": "Trading--Inverse Equity", "legal_type": "Exchange Traded Fund"},
+    "PSQ_LONG": {"symbol": "QQQ", "name": "Invesco QQQ Trust", "quote_type": "ETF",
+                 "issuer": "Invesco", "category": "Large Growth",
+                 "legal_type": "Exchange Traded Fund"},
+    "QQQ": {"symbol": "QQQ", "name": "Invesco QQQ Trust", "quote_type": "ETF",
+            "issuer": "Invesco", "category": "Large Growth",
+            "legal_type": "Exchange Traded Fund"},
 }
 
 
@@ -388,3 +399,102 @@ def test_un_reemplazo_con_descripcion_coherente_queda_limpio():
     [out] = _run([item], stub)
     assert out.grounding == REPAIRED
     assert out.contradictions == []
+
+
+# --------------------------------------------------------------------------
+# A repair may not change the BET: same direction, no added leverage
+# --------------------------------------------------------------------------
+
+def test_ipo_no_se_reemplaza_por_soxs_cambia_la_direccion():
+    """The real Sonnet run picked SOXS (inverse 3x) for a LONG semiconductor
+    exposure. That is a different position, not a corrected description."""
+    item = _ticker(symbol="IPO", instrument_type="etf", sector="Semiconductores",
+                   thesis_role="Exposición a semiconductores del sector")
+    stub = StubRepairLLM({"decisiones": [{
+        "symbol": "IPO", "accion": "reemplazar_ticker", "nuevo_symbol": "SOXS",
+        "thesis_role": "ETF inverso 3x de semiconductores.",
+        "justificacion": "Para apostar contra el sector.",
+    }]})
+
+    [out] = _run([item], stub)
+
+    assert out.grounding == DISCARDED
+    assert out.symbol == "IPO", "no se adopta SOXS"
+    assert "cambiaría la dirección de la apuesta" in out.grounding_note
+    assert out.enters_analysis() is False
+
+
+def test_ipo_si_se_reemplaza_por_un_etf_largo_de_semis():
+    """The allowed repair: same direction, no leverage."""
+    item = _ticker(symbol="IPO", instrument_type="etf", sector="Semiconductores",
+                   thesis_role="Exposición a semiconductores del sector")
+    stub = StubRepairLLM({"decisiones": [{
+        "symbol": "IPO", "accion": "reemplazar_ticker", "nuevo_symbol": "SOXX",
+        "thesis_role": "ETF de semiconductores de iShares.",
+        "justificacion": "IPO no da exposición a semis.",
+    }]})
+
+    [out] = _run([item], stub)
+
+    assert out.grounding == REPAIRED
+    assert out.symbol == "SOXX"
+    assert out.enters_analysis() is True
+
+
+def test_un_inverso_no_se_reemplaza_por_un_largo():
+    """The rule runs both ways: a hedge must not silently become a long."""
+    item = _ticker(symbol="PSQ", instrument_type="etf",
+                   thesis_role="ETF inverso del Nasdaq-100, de Direxion")
+    stub = StubRepairLLM({"decisiones": [{
+        "symbol": "PSQ", "accion": "reemplazar_ticker", "nuevo_symbol": "QQQ",
+        "thesis_role": "ETF del Nasdaq-100.", "justificacion": "más simple",
+    }]})
+
+    [out] = _run([item], stub)
+    assert out.grounding == DISCARDED
+    assert "cambiaría la dirección" in out.grounding_note
+
+
+def test_no_se_agrega_apalancamiento_manteniendo_la_direccion():
+    """Same direction, more leverage: still a different bet. PSQ is -1x; SQQQ
+    is -3x."""
+    item = _ticker(symbol="PSQ", instrument_type="etf",
+                   thesis_role="ETF inverso del Nasdaq-100 de Direxion")
+    stub = StubRepairLLM({"decisiones": [{
+        "symbol": "PSQ", "accion": "reemplazar_ticker", "nuevo_symbol": "SQQQ",
+        "thesis_role": "ETF inverso 3x del Nasdaq-100.", "justificacion": "más potencia",
+    }]})
+
+    [out] = _run([item], stub)
+    assert out.grounding == DISCARDED
+    assert "1x" in out.grounding_note and "3x" in out.grounding_note
+
+
+def test_bajar_el_apalancamiento_si_se_permite():
+    """Going DOWN is less risk, not a different bet: allowed."""
+    item = _ticker(symbol="SQQQ", instrument_type="etf",
+                   thesis_role="ETF inverso 3x del Nasdaq-100 de Direxion")
+    stub = StubRepairLLM({"decisiones": [{
+        "symbol": "SQQQ", "accion": "reemplazar_ticker", "nuevo_symbol": "PSQ",
+        "thesis_role": "ETF inverso 1x del Nasdaq-100, de ProShares.",
+        "justificacion": "Menos apalancamiento para el mismo rol.",
+    }]})
+
+    [out] = _run([item], stub)
+    assert out.grounding == REPAIRED
+    assert out.symbol == "PSQ"
+
+
+def test_un_ticker_inexistente_usa_su_descripcion_como_intencion():
+    """With no real data for the original, the LLM's own words are the intent:
+    a long description must not be repaired into an inverse instrument."""
+    item = _ticker(symbol="SEMIX", instrument_type="etf", sector="Semiconductores",
+                   thesis_role="Exposición larga a semiconductores")
+    stub = StubRepairLLM({"decisiones": [{
+        "symbol": "SEMIX", "accion": "reemplazar_ticker", "nuevo_symbol": "SOXS",
+        "thesis_role": "ETF inverso 3x.", "justificacion": "x",
+    }]})
+
+    [out] = _run([item], stub)
+    assert out.grounding == DISCARDED
+    assert "dirección" in out.grounding_note

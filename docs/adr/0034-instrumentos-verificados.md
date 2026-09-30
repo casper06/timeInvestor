@@ -66,6 +66,17 @@ contradicciones. El modelo elige por cada uno:
   (si tampoco existe, se descarta);
 - **`descartar`**, con el motivo.
 
+**Una corrección no puede cambiar la apuesta.** Un reemplazo tiene que
+mantener la **misma dirección** que el original (largo → largo, inverso →
+inverso) y un apalancamiento que **no supere** al del original (1x si no tenía).
+Bajar el apalancamiento sí se permite: es menos riesgo, no otra apuesta. Si el
+instrumento correcto exigiría cambiar la dirección o apalancar, la pasada
+**descarta con ese motivo**. La regla está en el schema **y se valida en el
+backend después de la respuesta** — no se confía solo en el prompt.
+
+Cuando el ticker original no existe, la intención se lee de la descripción del
+propio LLM: es todo lo que hay.
+
 **La corrección también se verifica.** Si el texto nuevo sigue contradiciendo
 los datos, queda registrado en `contradictions` y el aviso lo dice: la
 respuesta del modelo no se acepta por venir del modelo. Una segunda vuelta
@@ -115,15 +126,23 @@ se conserva en silencio.
 | Propuesto | Contradicción detectada | Resultado |
 |---|---|---|
 | `PSQ` "inverso **3x** de **Direxion**" | emisor Direxion vs ProShares; 3x vs 1x | **reparado**: "ETF inverso 1x sobre el Nasdaq-100, de ProShares…" — *"El emisor real es ProShares (no Direxion) y el apalancamiento es 1x, no 3x."* |
-| `IPO` como semiconductores | categoría real "Mid-Cap Growth" | **reparado**: reemplazado por **SOXS** (Direxion Daily Semiconductor Bear 3X) — *"Renaissance IPO ETF es un fondo Mid-Cap Growth diversificado, no da exposición específica a semiconductores."* |
+| `IPO` como semiconductores | categoría real "Mid-Cap Growth" | **reparado**: reemplazado por **SOXX** (iShares Semiconductor ETF, largo) — *"IPO es Renaissance IPO ETF (Mid-Cap Growth…), no da exposición a semiconductores; se reemplaza por un ETF real del sector."* |
 | `NVDIA` (no existe) | 404 de yfinance | **reparado**: reemplazado por **NVDA**, re-verificado — *"El ticker 'NVDIA' no existe; el correcto es NVDA."* |
 | `NVDA` "líder del mercado de GPUs" | ninguna (no es verificable) | **verificado**, el texto queda intacto con su rótulo de afirmación |
 
-  El reemplazo `IPO → SOXS` muestra por qué la corrección se vuelve a verificar:
-  el modelo cambió de un fondo largo a uno **inverso apalancado**, coherente con
-  la tesis bajista pero un instrumento muy distinto del propuesto. Su
-  descripción sí coincide con los datos (Direxion, Bear 3X, inverso), así que
-  pasa limpio; si no hubiera coincidido, el aviso lo diría.
+### Por qué existe la regla de dirección y apalancamiento
+
+La primera corrida de esta misma pasada, **antes** de la regla, reemplazó `IPO`
+por **SOXS** (Direxion Daily Semiconductor **Bear 3X**): de un fondo largo a
+uno **inverso apalancado 3x**. Era coherente con la tesis bajista de esa
+corrida y el modelo lo justificó bien, pero es **otra posición**, no una
+descripción corregida — y nadie la aprobó.
+
+Con la regla en el schema y validada en el backend, la misma pasada con Sonnet
+real eligió **SOXX** (iShares Semiconductor ETF, largo, sin apalancamiento) en
+**9,6 s**: *"IPO es Renaissance IPO ETF (Mid-Cap Growth, empresas recién
+salidas a bolsa de sectores diversos), no da exposición a semiconductores; se
+reemplaza por un ETF real del sector."*
 
 ## Estado
 

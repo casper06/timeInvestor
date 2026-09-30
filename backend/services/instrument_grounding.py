@@ -79,14 +79,20 @@ REPAIR_SCHEMA = {
                         "description": "corregir_descripcion: el ticker sirve para la tesis pero tu texto "
                                        "decía algo falso; reescribilo con los datos reales. "
                                        "reemplazar_ticker: este instrumento no da la exposición que buscabas "
-                                       "(o no existe); proponé otro ticker real que sí la dé. "
+                                       "(o no existe); proponé otro ticker real que sí la dé, con la misma "
+                                       "dirección y sin más apalancamiento que el original. "
                                        "descartar: ningún instrumento razonable cubre ese rol.",
                     },
                     "nuevo_symbol": {
                         "type": "string",
                         "description": "Solo si accion=reemplazar_ticker: un ticker REAL que cotice en un "
                                        "mercado de EE.UU. Se verifica contra yfinance y, si no existe, se "
-                                       "descarta el instrumento.",
+                                       "descarta el instrumento. OBLIGATORIO: el reemplazo tiene que "
+                                       "mantener la MISMA DIRECCIÓN que el instrumento original (largo → "
+                                       "largo, inverso → inverso) y un apalancamiento que NO SUPERE al del "
+                                       "original (1x si el original no tenía). Si el instrumento correcto "
+                                       "exigiría cambiar la dirección o apalancar, usá accion=descartar con "
+                                       "ese motivo: una corrección no puede cambiar la apuesta.",
                     },
                     "thesis_role": {
                         "type": "string",
@@ -232,6 +238,46 @@ def find_contradictions(item: Any, facts: Dict[str, Any]) -> List[str]:
     return problems
 
 
+def _direction_and_leverage(item: Any, facts: Optional[Dict[str, Any]]) -> tuple:
+    """The (inverse?, leverage) profile of what the LLM originally asked for.
+
+    Read from the instrument's real data when there is any, and from the LLM's
+    own words when the ticker doesn't exist — for an invented ticker its
+    description is all the intent there is.
+    """
+    text = " ".join(str(getattr(item, f, "") or "") for f in ("thesis_role", "name", "sector"))
+    if facts:
+        inverse = _says_inverse(f"{facts.get('category') or ''} {facts.get('name') or ''}")
+        leverage = _real_leverage(facts)
+    else:
+        inverse = _says_inverse(text)
+        leverage = _claimed_leverage(text)
+    return inverse, float(str(leverage).lstrip("-")) if leverage else 1.0
+
+
+def _breaks_risk_profile(
+    item: Any, original_facts: Optional[Dict[str, Any]], new_facts: Dict[str, Any]
+) -> Optional[str]:
+    """Why this replacement is not allowed, or None if it is.
+
+    Two rules, both one-directional:
+      - the direction must match (long -> long, inverse -> inverse);
+      - the leverage must not EXCEED the original's (1x when it had none).
+    Going down in leverage is fine: that is less risk, not a different bet.
+    """
+    was_inverse, was_leverage = _direction_and_leverage(item, original_facts)
+    now_inverse, now_leverage = _direction_and_leverage(item, new_facts)
+
+    if was_inverse != now_inverse:
+        return (
+            f"el original es {'inverso' if was_inverse else 'largo'} y el reemplazo es "
+            f"{'inverso' if now_inverse else 'largo'}"
+        )
+    if now_leverage > was_leverage:
+        return f"el original es {was_leverage:g}x y el reemplazo es {now_leverage:g}x"
+    return None
+
+
 def _facts_block(item: Any, facts: Optional[Dict[str, Any]], problems: List[str]) -> str:
     lines = [f'Ticker: {item.symbol}', f'  Tu descripción: "{item.thesis_role}"']
     if facts:
@@ -267,7 +313,7 @@ def _mark_discarded(item: Any, reason: str) -> None:
     item.grounding_note = reason
 
 
-def _apply(item: Any, decision: Dict[str, Any], fetch, facts: Optional[Dict[str, Any]] = None) -> None:
+def _apply(item: Any, decision: Dict[str, Any], fetch, original_facts: Optional[Dict[str, Any]] = None) -> None:
     """Applies one repair decision."""
     action = (decision.get("accion") or "").strip().lower()
     justification = (decision.get("justificacion") or "").strip()
@@ -285,7 +331,7 @@ def _apply(item: Any, decision: Dict[str, Any], fetch, facts: Optional[Dict[str,
 
         # Same check on a rewritten description: if the new text still
         # contradicts the data, say so instead of calling it repaired and done.
-        leftover = find_contradictions(item, facts) if facts else []
+        leftover = find_contradictions(item, original_facts) if original_facts else []
         if leftover:
             item.contradictions = leftover
             item.grounding_note += (
@@ -313,6 +359,20 @@ def _apply(item: Any, decision: Dict[str, Any], fetch, facts: Optional[Dict[str,
                 f"en yfinance: se descarta.",
             )
             return
+        # A repair fixes a description; it must not change the BET. A
+        # replacement that flips long -> inverse, or adds leverage, is a
+        # different position from the one the thesis asked for, and nobody
+        # approved it. Enforced here and not only in the prompt.
+        refusal = _breaks_risk_profile(item, original_facts, facts)
+        if refusal:
+            _mark_discarded(
+                item,
+                f"'{item.symbol}' se descartó: el reemplazo coherente cambiaría la dirección "
+                f"de la apuesta o su apalancamiento ({refusal}). Propuesto: '{new_symbol}' "
+                f"({facts.get('name')}).",
+            )
+            return
+
         item.original_symbol = item.symbol
         item.original_thesis_role = item.thesis_role
         item.symbol = new_symbol

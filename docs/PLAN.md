@@ -763,9 +763,14 @@ Rama: una por ítem, a definir.
   - Estados `verificado` / `reparado` / `descartado` / `null`; el rótulo
     "afirmación del LLM" se mantiene para lo no verificable ("líder del
     mercado").
-  - Verificado con Claude CLI Sonnet real (20,1 s): **PSQ** corregido a
-    "inverso 1x de ProShares"; **IPO** reemplazado por **SOXS**; **NVDIA**
-    (inexistente) reemplazado por **NVDA**; **NVDA** verificado sin tocar.
+  - **Una corrección no puede cambiar la apuesta:** el reemplazo mantiene la
+    dirección (largo → largo, inverso → inverso) y no agrega apalancamiento
+    (bajarlo sí se permite). Si el instrumento correcto exigiría cambiarla, se
+    descarta con ese motivo. En el schema **y** validado en el backend.
+  - Verificado con Claude CLI Sonnet real: **PSQ** corregido a "inverso 1x de
+    ProShares"; **NVDIA** (inexistente) reemplazado por **NVDA**; **NVDA**
+    verificado sin tocar (20,1 s). **IPO** → **SOXX** (ETF largo de semis,
+    9,6 s): antes de la regla había elegido SOXS, un inverso 3x.
 - [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
