@@ -4,6 +4,7 @@ import type { DashboardView } from './components/Header';
 import { ThesisBar } from './components/ThesisBar';
 import { ForecastChart, humanizeSeriesError } from './components/ForecastChart';
 import { FundBarChart } from './components/FundBarChart';
+import { BackendWarnings } from './components/BackendWarnings';
 import { ExposureDonut } from './components/ExposureDonut';
 import { MetricCards } from './components/MetricCards';
 import { StatisticalTelemetry } from './components/StatisticalTelemetry';
@@ -98,6 +99,9 @@ export const App: React.FC = () => {
   const pendingLoad = useRef<{ id: string; type: string; period: string } | null>(null);
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [fundamentals, setFundamentals] = useState<FundamentalsMetric[]>([]);
+  // 4.4: the backend says which tickers had no fundamentals; that has to reach
+  // the screen, not just the network tab.
+  const [fundamentalsWarnings, setFundamentalsWarnings] = useState<string[]>([]);
   const [lastInterpretation, setLastInterpretation] = useState<InterpretationResponse | null>(null);
 
   // Forecast & View Controls
@@ -135,7 +139,7 @@ export const App: React.FC = () => {
       // Load fundamentals for tickers
       const tickerSymbols = resp.tickers.map((t) => t.symbol);
       fetchFundamentals(tickerSymbols)
-        .then((f) => setFundamentals(f))
+        .then((f) => { setFundamentals(f?.metrics ?? []); setFundamentalsWarnings(f?.warnings ?? []); })
         .catch((e) => console.error(e));
 
       // Select first ticker by default
@@ -264,7 +268,8 @@ export const App: React.FC = () => {
     };
     const updated = [...activeTickers, newT];
     setActiveTickers(updated);
-    fetchFundamentals(updated.map((t) => t.symbol)).then((f) => setFundamentals(f));
+    fetchFundamentals(updated.map((t) => t.symbol))
+      .then((f) => { setFundamentals(f?.metrics ?? []); setFundamentalsWarnings(f?.warnings ?? []); });
     handleSelectSeries(symbol);
   };
 
@@ -341,7 +346,7 @@ export const App: React.FC = () => {
 
     const tickerSymbols = detail.tickers.map((t) => t.symbol);
     fetchFundamentals(tickerSymbols)
-      .then((f) => setFundamentals(f))
+      .then((f) => { setFundamentals(f?.metrics ?? []); setFundamentalsWarnings(f?.warnings ?? []); })
       .catch((e) => console.error(e));
 
     const firstSym = detail.tickers[0]?.symbol || 'NVDA';
@@ -545,6 +550,7 @@ export const App: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7">
                 <FundBarChart metrics={fundamentals} loading={loading} />
+                <BackendWarnings warnings={fundamentalsWarnings} testId="fundamentals-warnings" className="mt-2" />
               </div>
               <div className="lg:col-span-5">
                 <ExposureDonut tickers={activeTickers} />

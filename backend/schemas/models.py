@@ -192,6 +192,12 @@ class ForecastSkill(BaseModel):
     n_pairs: Optional[int] = Field(default=None, description="Cutoffs con los dos errores definidos")
     rel_gap: Optional[float] = Field(default=None, description="error medio del motor / del naive − 1 (negativo = mejor)")
     source: Optional[str] = Field(default=None, description="De dónde sale la evidencia")
+    vintage_note: Optional[str] = Field(
+        default=None,
+        description="3.4: nota de procedencia bajo un veredicto 'aporta' en una serie SA "
+                    "revisable. El badge mide con la serie revisada de hoy; esta nota dice "
+                    "si con datos de época no se sostuvo, o si no se verificó.",
+    )
 
 
 class ForecastResponse(BaseModel):

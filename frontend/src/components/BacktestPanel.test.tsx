@@ -202,3 +202,63 @@ describe('BacktestPanel honesty (fix/ui-honesty-batch)', () => {
     expect(screen.getByTestId('backtest-mae')).not.toHaveTextContent('$');
   });
 });
+
+describe('BacktestPanel: what it was compared against (4.7)', () => {
+  it('shows the naives numbers, not just the verdict text', async () => {
+    await runWith(backtestResult({
+      naive_metrics: { ...metrics, mae: 2.4, mape: 3.3 },
+    }));
+    const table = screen.getByTestId('naive-comparison');
+    expect(table).toHaveTextContent('Random walk');
+    expect(table).toHaveTextContent('2.40');
+    expect(table).toHaveTextContent('3.30%');
+    // The model's own row is there to compare against.
+    expect(table).toHaveTextContent('1.50');
+  });
+
+  it('shows the seasonal naive only when the backend evaluated one', async () => {
+    await runWith(backtestResult({
+      naive_metrics: { ...metrics, mae: 2.4 },
+      seasonal_naive_metrics: { ...metrics, mae: 1.9, mape: 2.8 },
+    }));
+    expect(screen.getByTestId('seasonal-naive-row')).toHaveTextContent('Naive estacional');
+    expect(screen.getByTestId('seasonal-naive-row')).toHaveTextContent('1.90');
+  });
+
+  it('omits the seasonal row on a non-seasonal series', async () => {
+    await runWith(backtestResult({ naive_metrics: { ...metrics, mae: 2.4 } }));
+    expect(screen.queryByTestId('seasonal-naive-row')).not.toBeInTheDocument();
+  });
+
+  it('reports the measured interval coverage against its nominal level', async () => {
+    await runWith(backtestResult({
+      naive_metrics: { ...metrics, mae: 2.4 },
+      // The backend reports coverage 0-100 (not 0-1); the nominal level is 0-1.
+      interval_coverage: 43.3,
+      interval_level: 0.95,
+    }));
+    const note = screen.getByTestId('interval-coverage');
+    expect(note).toHaveTextContent('43.3%');
+    expect(note).toHaveTextContent('95% nominal');
+    expect(note).not.toHaveTextContent('4330');
+  });
+
+  it('states the seasonality verdict with its ACF and threshold', async () => {
+    await runWith(backtestResult({
+      naive_metrics: { ...metrics, mae: 2.4 },
+      seasonality: { is_seasonal: true, period: 12, acf_at_period: 0.61, threshold: 0.35, reason: 'r', frequency: 'monthly', n_obs: 120 },
+    }));
+    const note = screen.getByTestId('seasonality-note');
+    expect(note).toHaveTextContent('marca la serie como estacional');
+    expect(note).toHaveTextContent('ACF en el lag 12 = 0.610');
+    expect(note).toHaveTextContent('umbral 0.350');
+  });
+
+  it('says the seasonal naive does not apply when the series is not seasonal', async () => {
+    await runWith(backtestResult({
+      naive_metrics: { ...metrics, mae: 2.4 },
+      seasonality: { is_seasonal: false, period: 12, acf_at_period: 0.10, threshold: 0.35, reason: 'r', frequency: 'monthly', n_obs: 120 },
+    }));
+    expect(screen.getByTestId('seasonality-note')).toHaveTextContent('el naive estacional no aplica');
+  });
+});

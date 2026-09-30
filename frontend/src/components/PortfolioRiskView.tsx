@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { BackendWarnings } from './BackendWarnings';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -95,6 +96,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
   // Optimization output state
   const [optimizing, setOptimizing] = useState(false);
   const [optResult, setOptResult] = useState<PortfolioOptimizeResponse | null>(null);
+  const optSeq = useRef(0);
   const [optError, setOptError] = useState<string | null>(null);
 
   // Risk state
@@ -109,6 +111,7 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
   const [seedInput, setSeedInput] = useState<string>('');
   const [simulating, setSimulating] = useState(false);
   const [riskResult, setRiskResult] = useState<PortfolioRiskResponse | null>(null);
+  const riskSeq = useRef(0);
   const [riskError, setRiskError] = useState<string | null>(null);
 
   // Sub-view switcher
@@ -155,6 +158,9 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
     setOptError(null);
     setApplySuccess(null);
 
+    // Overlapping runs (ADR-0024): changing a parameter mid-run must not let
+    // an older allocation land on top of the newer one.
+    const req = ++optSeq.current;
     try {
       const res = await optimizePortfolio({
         tickers,
@@ -165,14 +171,16 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         max_weight: maxWeight,
         risk_free_rate: riskFreeRate,
       });
+      if (req !== optSeq.current) return;
       setOptResult(res);
       onOptimizeResult?.(res);
       // If no risk run yet, auto-simulate risk on the optimal portfolio
       handleSimulateRisk(res.portfolios.max_sharpe.weights);
     } catch (err: any) {
+      if (req !== optSeq.current) return;
       setOptError(err.message || 'Error en la optimización.');
     } finally {
-      setOptimizing(false);
+      if (req === optSeq.current) setOptimizing(false);
     }
   };
 
@@ -184,6 +192,9 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         ? optResult.portfolios[selectedStrategy].weights
         : initialWeightsMap);
 
+    // Same for the simulation, which also fires automatically after an
+    // optimization: two runs can easily be in flight at once.
+    const req = ++riskSeq.current;
     setSimulating(true);
     setRiskError(null);
 
@@ -198,11 +209,13 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
         drift: simDrift,
         seed: seedInput.trim() === '' ? undefined : Number(seedInput),
       });
+      if (req !== riskSeq.current) return;
       setRiskResult(res);
     } catch (err: any) {
+      if (req !== riskSeq.current) return;
       setRiskError(err.message || 'Error en la simulación de riesgo.');
     } finally {
-      setSimulating(false);
+      if (req === riskSeq.current) setSimulating(false);
     }
   };
 
@@ -704,6 +717,11 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
                   )}
                 </div>
 
+                {/* 4.4: the optimizer's own warnings (heavy shrinkage, a
+                    near-singular covariance, a short history) explain the
+                    numbers above; they used to be dropped. */}
+                <BackendWarnings warnings={optResult?.warnings} testId="optimize-warnings" />
+
                 {/* Weights table */}
                 <div className="space-y-2">
                   <span className="text-xs font-semibold text-slate-300">Ponderaciones Asignadas:</span>
@@ -956,6 +974,8 @@ export const PortfolioRiskView: React.FC<PortfolioRiskViewProps> = ({
           {/* Risk Metrics Cards */}
           {riskResult ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 shadow-lg backdrop-blur-md space-y-5">
+              {/* 4.4: the simulation's warnings, next to its numbers. */}
+              <BackendWarnings warnings={riskResult.warnings} testId="risk-warnings" />
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-xs font-semibold text-slate-300">
                   Métricas a {riskResult.horizon_days} días (Capital: ${riskResult.initial_capital.toLocaleString()})

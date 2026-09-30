@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -64,6 +64,20 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
         : seasonality.reason
       : null;
   const hwOn = useHoltWinters && !hwBlockedReason;
+  // 4.7: the seasonality verdict with its ACF and threshold, shown next to the
+  // comparison instead of only living inside the Holt-Winters toggle. It is
+  // what decides whether a seasonal naive is even a fair benchmark here.
+  const seasonalityNote = (() => {
+    const info = result?.seasonality ?? seasonality;
+    if (!info) return null;
+    const numbers =
+      info.acf_at_period != null && info.threshold != null
+        ? ` (ACF en el lag ${info.period} = ${info.acf_at_period.toFixed(3)}, umbral ${info.threshold.toFixed(3)})`
+        : '';
+    return info.is_seasonal
+      ? `El detector marca la serie como estacional${numbers}: por eso se la compara también contra el naive estacional.`
+      : `El detector no marca la serie como estacional${numbers}: el naive estacional no aplica.`;
+  })();
 
   const points = seriesData?.points || [];
   const frequency = seriesFrequency(seriesData?.frequency);
@@ -89,22 +103,29 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
   }, [seriesData]);
 
   const selectedDate = points[cutoffIndex]?.timestamp || '';
+  const requestSeq = useRef(0);
 
   const handleRunBacktest = async () => {
     if (!selectedDate) return;
+    // Overlapping runs (ADR-0024): each one takes a number and only the latest
+    // may write. Clicking "Ejecutar" twice, or changing the cutoff mid-run,
+    // used to let an older answer land on top of a newer one.
+    const req = ++requestSeq.current;
     setLoading(true);
     setRunError(null);
     try {
       const res = await runBacktest(
         activeSeriesId, selectedDate, horizon, 0.95, hwOn ? 'holt_winters' : undefined, seriesData?.type,
       );
+      if (req !== requestSeq.current) return;
       setResult(res);
       onResult?.(res);
     } catch (err) {
+      if (req !== requestSeq.current) return;
       console.error(err);
       setRunError(err instanceof Error ? err.message : 'Error al ejecutar backtest');
     } finally {
-      setLoading(false);
+      if (req === requestSeq.current) setLoading(false);
     }
   };
 
@@ -462,6 +483,60 @@ export const BacktestPanel: React.FC<BacktestPanelProps> = ({ seriesData, active
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5">Ventana de comparación</div>
           </div>
+        </div>
+      )}
+
+      {/* 4.7: the verdict cites the naives it compared against; until now their
+          numbers were only in the text. The seasonal naive appears only when
+          the backend evaluated one. */}
+      {result && (result.naive_metrics || result.seasonal_naive_metrics) && (
+        <div data-testid="naive-comparison" className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Contra qué se comparó
+          </span>
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="text-slate-500">
+                <th className="text-left font-medium py-1">Predictor</th>
+                <th className="text-right font-medium py-1">MAE</th>
+                <th className="text-right font-medium py-1">MAPE</th>
+              </tr>
+            </thead>
+            <tbody className="font-mono">
+              <tr className="text-slate-200 border-t border-slate-800/80">
+                <td className="py-1">Modelo{result.model_name ? ` (${result.model_name})` : ''}</td>
+                <td className="text-right">{formatValue(result.metrics.mae, seriesData)}</td>
+                <td className="text-right">{result.metrics.mape != null ? `${result.metrics.mape.toFixed(2)}%` : '—'}</td>
+              </tr>
+              {result.naive_metrics && (
+                <tr className="text-slate-400 border-t border-slate-800/80">
+                  <td className="py-1">Random walk (igual que el último dato)</td>
+                  <td className="text-right">{formatValue(result.naive_metrics.mae, seriesData)}</td>
+                  <td className="text-right">{result.naive_metrics.mape != null ? `${result.naive_metrics.mape.toFixed(2)}%` : '—'}</td>
+                </tr>
+              )}
+              {result.seasonal_naive_metrics && (
+                <tr data-testid="seasonal-naive-row" className="text-slate-400 border-t border-slate-800/80">
+                  <td className="py-1">Naive estacional (mismo período del ciclo anterior)</td>
+                  <td className="text-right">{formatValue(result.seasonal_naive_metrics.mae, seriesData)}</td>
+                  <td className="text-right">{result.seasonal_naive_metrics.mape != null ? `${result.seasonal_naive_metrics.mape.toFixed(2)}%` : '—'}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {result.interval_coverage != null && (
+            <p data-testid="interval-coverage" className="text-[10px] text-slate-500">
+              {/* The backend already reports this 0-100, not 0-1
+                  (backtest_engine.py: np.mean(in_interval) * 100). */}
+              Cobertura del intervalo: {result.interval_coverage.toFixed(1)}% de los puntos cayeron
+              dentro de la banda
+              {result.interval_level != null ? `, contra un ${Math.round(result.interval_level * 100)}% nominal` : ''}.
+              Es la medición real del cono en esta serie.
+            </p>
+          )}
+          {seasonalityNote && (
+            <p data-testid="seasonality-note" className="text-[10px] text-slate-500">{seasonalityNote}</p>
+          )}
         </div>
       )}
 

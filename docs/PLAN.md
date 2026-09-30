@@ -771,7 +771,18 @@ Rama: una por ítem, a definir.
     ProShares"; **NVDIA** (inexistente) reemplazado por **NVDA**; **NVDA**
     verificado sin tocar (20,1 s). **IPO** → **SOXX** (ETF largo de semis,
     9,6 s): antes de la regla había elegido SOXS, un inverso 3x.
-- [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
+- [x] **4.7 Comunicación del cono.** (Rama `fix/closing-ux`, PR abierto.)
+  - La tarjeta "Cono de Confianza" dice qué significa el nivel: un promedio
+    sobre muchas ventanas, no una promesa sobre esta; más ancho de lo
+    necesario en calma y corto en shocks; y manda el riesgo de cola a la
+    pestaña de Riesgo.
+  - El panel de backtest muestra ahora la tabla "contra qué se comparó" (modelo,
+    random walk y naive estacional cuando aplica), la cobertura real del
+    intervalo contra su nivel nominal, y el veredicto de estacionalidad con su
+    ACF y su umbral.
+  - Lo de la tarjeta "Objetivo" ya estaba resuelto en 4.13/4.18 (rango primero
+    cuando "no aporta").
+  Texto original del pendiente: En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de
   cola, remitir a la pestaña de Riesgo.

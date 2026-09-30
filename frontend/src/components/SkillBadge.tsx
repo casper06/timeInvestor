@@ -32,5 +32,13 @@ export const SkillBadge: React.FC<SkillBadgeProps> = ({ skill, seriesId }) => (
       Capacidad de pronóstico{seriesId ? ` (${seriesId})` : ''}: {SKILL_LABEL[skill.state]}
     </span>
     <span className="text-slate-300">{skill.reason}</span>
+    {/* 3.4: the badge measures with today's REVISED series. On a revisable SA
+        series that flatters the engine, so the verdict says where it comes
+        from instead of leaving it implicit. */}
+    {skill.vintage_note && (
+      <span data-testid="skill-vintage-note" className="text-[11px] text-amber-300/90 sm:basis-full">
+        {skill.vintage_note}
+      </span>
+    )}
   </div>
 );
