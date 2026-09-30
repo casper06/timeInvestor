@@ -87,7 +87,13 @@ def vintage_note(series_id: str, state: str, seasonal_adjustment_short: Optional
     """
     if state != "aporta":
         return None
-    if (seasonal_adjustment_short or "").strip().upper() != "SA":
+    # FRED reports several seasonally adjusted flavours, not just "SA": HOUST
+    # comes back "SAAR" (seasonally adjusted ANNUAL RATE), verified against the
+    # live API on 2026-09-30. All of them are seasonally adjusted, so all of
+    # them get restated when the adjustment is revised — which is the whole
+    # point of the note. Only NSA (and no metadata) is excluded.
+    adjustment = (seasonal_adjustment_short or "").strip().upper()
+    if not adjustment or adjustment == "NSA":
         return None
 
     measured = VINTAGE_EVIDENCE.get(series_id)
