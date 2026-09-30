@@ -50,6 +50,7 @@ from backend.schemas.models import (
 )
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
 from backend.services.fred_grounding import ground_macro_series
+from backend.services.instrument_grounding import ground_instruments
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError
 from backend.services.series_routing import is_fred_series
 from backend.services.llm_router import get_llm_client
@@ -164,6 +165,9 @@ async def analyze_thesis(
             client=client,
             mechanism=getattr(result, "mechanism", "") or "",
         )
+        # 4.21: the same for instruments — yfinance says what each ticker
+        # really is, and the LLM corrects its own descriptions in one pass.
+        await ground_instruments(result.tickers, client=client, thesis=payload.thesis)
         return result
     except Exception as e:
         logger.error(f"Error processing thesis: {e}", exc_info=True)

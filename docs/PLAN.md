@@ -746,16 +746,26 @@ Rama: una por ítem, a definir.
     las series fuera del catálogo, y eso se ve en la UI. Tendría que usar la
     unidad y el título de `/fred/series`. **Resuelto en `fix/fred-metadata`
     (ADR-0029).**
-- [ ] **4.21 Validación de instrumentos.** Para cada ticker que propone el
-  LLM, traer de yfinance el nombre oficial y el tipo (acción o ETF). Para los
-  ETF, también el emisor y, si está disponible, el apalancamiento y si es
-  inverso. Si la descripción del LLM contradice esos datos, marcarlo en la UI
-  junto al texto de la empresa.
-  - Caso de prueba: "PSQ: inverso 3x Nasdaq-100 de Direxion" (Haiku, 4.10).
-    En realidad es de ProShares y −1x.
-  - También: el ETF "IPO" usado como exposición a semiconductores.
-  Hecho cuando: el caso PSQ aparece marcado, con el emisor y el
-  apalancamiento reales, y hay un test.
+- [x] **4.21 Validación de instrumentos.** (ADR-0034, rama
+  `feat/instrument-grounding`, PR abierto.) `instrument_grounding` corre en
+  `analyze_thesis`: yfinance da nombre oficial, tipo, emisor y categoría; seis
+  reglas explícitas (tipo, ETF/empresa, emisor, apalancamiento, inverso,
+  exposición temática) deciden qué es contradicción; y **el propio LLM corrige
+  en UNA llamada extra** — reescribe la descripción, reemplaza el ticker (que
+  se re-verifica) o lo descarta. Mismo patrón que ADR-0033, sin preguntarle
+  nada al usuario.
+  - **yfinance no tiene campo de apalancamiento** (verificado el 2026-09-30):
+    lo inverso sale de su `category` y el multiplicador, del nombre del fondo
+    ("3X", "Ultra"=2x, "UltraPro"=3x); un inverso sin multiplicador es −1x.
+    Si yfinance no dice nada, no se contradice al LLM: se deja rotulado.
+  - **La corrección también se verifica**: si el texto nuevo sigue
+    contradiciendo los datos, queda marcado (una segunda vuelta sería un bucle).
+  - Estados `verificado` / `reparado` / `descartado` / `null`; el rótulo
+    "afirmación del LLM" se mantiene para lo no verificable ("líder del
+    mercado").
+  - Verificado con Claude CLI Sonnet real (20,1 s): **PSQ** corregido a
+    "inverso 1x de ProShares"; **IPO** reemplazado por **SOXS**; **NVDIA**
+    (inexistente) reemplazado por **NVDA**; **NVDA** verificado sin tocar.
 - [ ] **4.7 Comunicación del cono.** En "¿Qué estoy viendo?", aclarar que el
   95% es un promedio sobre muchas ventanas: el cono es más ancho de lo
   necesario en períodos tranquilos y falla en shocks (2.5). Para riesgo de

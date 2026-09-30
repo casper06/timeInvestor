@@ -261,8 +261,38 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                       {thesisData.rationales[t.symbol]}
                     </p>
                   )}
+                  {/* 4.21: what yfinance really says, and what the LLM had to
+                      correct. The corrected text is the one shown above. */}
+                  {t.grounding === 'reparado' && (
+                    <p
+                      data-testid={`instrument-repaired-${t.symbol}`}
+                      className="text-[10px] text-emerald-300/90 border-l-2 border-emerald-500/40 pl-2"
+                    >
+                      Corregido{t.original_symbol ? ` (reemplaza a ${t.original_symbol})` : ''}
+                      {t.repair_justification ? `: ${t.repair_justification}` : ''}
+                    </p>
+                  )}
+                  {t.grounding === 'descartado' && (
+                    <p
+                      data-testid={`instrument-discarded-${t.symbol}`}
+                      role="alert"
+                      className="text-[10px] text-rose-300/90 border-l-2 border-rose-500/40 pl-2"
+                    >
+                      {t.grounding_note}
+                    </p>
+                  )}
+                  {t.verified_name && (
+                    <p data-testid={`instrument-facts-${t.symbol}`} className="text-[10px] text-slate-500">
+                      Según yfinance: {t.verified_name}
+                      {t.verified_type ? ` · ${t.verified_type}` : ''}
+                      {t.verified_issuer ? ` · ${t.verified_issuer}` : ''}
+                      {t.verified_category ? ` · ${t.verified_category}` : ''}
+                    </p>
+                  )}
                   {/* What the LLM wrote about the asset is its claim unless it
-                      cites a source, and even then the app didn't check it. */}
+                      cites a source, and even then the app didn't check it.
+                      Still shown for a repaired instrument: yfinance can
+                      confirm an issuer, not "leader of the market". */}
                   <p
                     data-testid="claim-label"
                     data-sourced={t.source ? 'true' : 'false'}
