@@ -101,7 +101,7 @@ npm run dev
 ### Tests
 
 ```bash
-python -m pytest tests/          # backend
+python -m pytest tests/          # backend (445 tests)
 cd frontend && npm run test      # frontend
 ```
 
@@ -163,9 +163,11 @@ tooltip del badge de proveedor LLM en el frontend.
 
 ## Proveedores LLM por suscripción (Gemini CLI / Claude Code CLI)
 
-La API key gratuita de Gemini (250 req/día, 10 RPM) puede quedarse corta para
-uso real, y habilitar facturación de API por separado —para Gemini o para
-Claude— no siempre es lo que querés. Ambos proveedores oficiales tienen un CLI
+La API key gratuita de Gemini se queda corta para uso real: son **20 pedidos
+por día y por modelo** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
+medido contra la API real el 2026-09-28/29, y cada llamada consume hasta 3 por
+los reintentos internos). Habilitar facturación de API por separado —para
+Gemini o para Claude— no siempre es lo que querés. Ambos proveedores oficiales tienen un CLI
 que se autentica con tu **sesión de suscripción** (Google AI Pro / Claude
 Pro-Max) en vez de una API key facturada por uso. `GeminiCliLLMClient` y
 `ClaudeCliLLMClient` (`backend/services/llm_router.py`) usan esos CLIs — son

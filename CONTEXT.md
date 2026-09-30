@@ -2,7 +2,7 @@
 
 Documento para arrancar una sesión nueva de Claude Code sin haber leído el historial de conversación previo. Pegalo entero como primer mensaje, o guardalo como `CONTEXT.md` en la raíz del repo y decile al agente que lo lea antes de tocar nada.
 
-Repo: `github.com/casper06/timeInvestor`. Local, un solo usuario (Fer). ~15.100 líneas de Python, ~7.600 de TypeScript/TSX en `frontend/src`, 24 archivos de test de Python (`tests/test_*.py`) y 8 de frontend (`*.test.ts[x]`). Conteos medidos el 2026-09-27 sobre los archivos versionados de `main` @ `16b6782`, con `git ls-files '*.py' | xargs cat | wc -l` (y lo mismo para `frontend/src/*.ts[x]`).
+Repo: `github.com/casper06/timeInvestor`. Local, un solo usuario (Fer). 21.819 líneas de Python, 10.422 de TypeScript/TSX en `frontend/src`, 46 archivos de test de Python (`tests/test_*.py`) y 21 de frontend (`*.test.ts[x]`), y 34 ADRs. Conteos medidos el 2026-09-30 sobre los archivos versionados de `main` @ `1d31549`, con `git ls-files '*.py' | xargs cat | wc -l` (y lo mismo para `frontend/src/*.ts[x]`).
 
 Mapa de la documentación: arquitectura y diagramas en `docs/ARCHITECTURE.md`; decisiones con sus motivos en `docs/adr/`; trabajo pendiente y orden en `docs/PLAN.md`; resultados de las mediciones en `docs/results/`.
 
@@ -62,6 +62,7 @@ Esto es lo que hizo que el proyecto no se llenara de deuda técnica invisible. C
 5. **Rama por feature, PR antes de mergear a `main`, tests corridos después de cualquier rebase** (nunca asumir que lo que pasaba antes del rebase sigue pasando después).
 6. **Todo mensaje de fallback/error al usuario tiene que explicar la causa real y si conviene esperar o si hace falta intervenir** — nunca un genérico "algo falló".
 7. **Las verificaciones con datos reales se hacen sobre una COPIA de la DB** (en `data/` o en un directorio temporal, ignorada por git, apuntada con `DATABASE_URL`), nunca sobre `backend/database/time_investor.db` antes del merge. La DB real solo cambia por el uso normal de la app con el código de `main`.
+8. **No tocar el Chrome que el usuario tiene abierto:** no cerrarlo, no reiniciarlo, no usar sus pestañas, su perfil ni sus procesos. Para verificar en el navegador hay que abrir una instancia propia y aparte (Chromium de Playwright, headless o con un perfil temporal en un directorio del scratchpad) y cerrarla al terminar, matando solo el PID de esa instancia — nunca un `taskkill` por nombre de imagen, que se lleva puesta la sesión de trabajo del usuario.
 
 ## 5. Cómo correr el proyecto
 
@@ -120,6 +121,9 @@ Organización del trabajo:
 
 - `GEMINI_API_KEY`, `FRED_API_KEY`, `OPENAI_API_KEY` (opcional).
 - `LLM_PROVIDER`: `gemini`, `gemini_cli`, `claude_cli`, `openai`, `ollama`, `auto` o `mock`. `auto` elige `gemini` si hay key, si no `openai`, si no `mock`.
+  - **El proveedor principal de la v1.0 es `claude_cli` con Sonnet** (ADR-0031): es con el que se hicieron la traducción de tesis, el grounding de FRED (4.11) y el de instrumentos (4.21), y el único que no depende de un cupo diario.
+  - **Gemini queda de respaldo.** Su plan gratuito son **20 pedidos por día y por modelo** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`), y cada llamada consume hasta 3 por los reintentos internos: alcanza para unas pocas tesis por día. Es un límite del plan, no del código.
+  - **Ojo:** el default del código (`backend/config.py`) y el `.env` del repo siguen diciendo `gemini`, por compatibilidad con las corridas viejas. Para usar Sonnet hay que poner `LLM_PROVIDER=claude_cli` en el `.env` o elegirlo en el dropdown del Header.
 - `CLAUDE_CLI_MODEL`: default `sonnet` (ADR-0031, reemplaza a ADR-0016): en la evaluación de 4.10, `haiku` propuso series FRED irrelevantes e inexistentes y cometió errores de hecho. `haiku` gasta menos del cupo compartido.
 - `OLLAMA_BASE_URL`.
 - `DATABASE_URL`: la DB real por defecto. Las verificaciones apuntan a una copia; los tests, a un SQLite temporal.
