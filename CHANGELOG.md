@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.0.1 — 2026-10-01
+
+Corrección de seguridad de logs, mejores mensajes de clave y una instalación documentada para quien no conoce el proyecto. Sin cambios en el análisis ni en los motores.
+
+### Seguridad: la clave de FRED ya no se escribe en el log
+
+**v1.0 escribía la clave de FRED en el log de consola**, en texto plano, en cada pedido a FRED y también con claves válidas: el logger de `httpx` imprime `HTTP Request: GET <url completa>` a nivel INFO, y FRED exige la clave en la URL (`?api_key=…`). Las excepciones de red de `httpx` también incluyen esa URL. **v1.0.1 lo corrige**: un filtro de logging, instalado al arrancar, redacta `api_key=…` y las claves con forma conocida (`AIza…`, `sk-…`), y los mensajes de error de FRED, Gemini y OpenAI pasan por la misma redacción (#67).
+
+Si usaste v1.0, el log de tu consola (y cualquier archivo donde lo hayas redirigido) puede contener tu clave de FRED. Es gratuita y se regenera en https://fredaccount.stlouisfed.org/apikeys; conviene hacerlo si compartiste ese log.
+
+### Claves rechazadas (#67)
+
+- **FRED:** tres causas, tres mensajes: clave no configurada, **clave rechazada por FRED** (con el código y el mensaje de FRED, sin la clave) y FRED no responde. Antes las tres decían "no configurada". La UI muestra: "FRED rechazó tu clave: revisá que la hayas copiado completa en el .env (FRED_API_KEY)." Las rutas devuelven 401 en ese caso.
+- **Gemini:** una clave inválida (HTTP 400 `API_KEY_INVALID`) caía en "desconocido" con el JSON crudo de Google. Ahora tiene su categoría (`key_rejected`) y un mensaje claro.
+
+### Instalación (#65, #66)
+
+- **README:** requisitos explícitos (Python 3.12, Node.js ≥ 20.19 o ≥ 22.12 para compilar el frontend la primera vez), orden real de los pasos y qué esperar la primera vez. Se corrigió la frase falsa de que el default "arranca sin herramientas de Node".
+- **`INSTALAR.md`** (nuevo): instalación en castellano para quien no programa, con las claves gratuitas de FRED y Gemini.
+- **`.env.example`:** el cupo de Gemini gratuito es de 20 pedidos por día y por modelo (decía 250), y el plan gratuito puede usar tus datos para mejorar productos de Google.
+- **`run.py`** avisa con claridad cuando falta Node.js, en vez de arrancar sin pantalla y sin explicación (#66).
+
+### Verificación
+
+Prueba desde cero en un clon limpio con Python 3.12; pytest 471 y vitest 149 en verde.
+
 ## v1.0 — 2026-09-30
 
 Primera versión completa de TimeInvestor.
