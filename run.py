@@ -4,6 +4,7 @@ TimeInvestor Launcher
 Ejecuta el servidor FastAPI con el dashboard web moderno compilado en un solo comando.
 """
 import sys
+import shutil
 import subprocess
 from pathlib import Path
 import webbrowser
@@ -21,6 +22,14 @@ def ensure_frontend_built():
         return
 
     if not (DIST_DIR / "index.html").exists():
+        if shutil.which("npm") is None:
+            print("=" * 65)
+            print("[TimeInvestor] FALTA NODE.JS: no se puede compilar la pantalla.")
+            print("  Instalá Node.js (LTS, 20.19 o más nuevo) desde https://nodejs.org,")
+            print("  abrí una terminal nueva y volvé a correr este comando.")
+            print("  Mientras tanto la API funciona, pero la app no tiene pantalla.")
+            print("=" * 65)
+            return
         print("[TimeInvestor] Compilando frontend por primera vez...")
         try:
             # Install if node_modules missing
