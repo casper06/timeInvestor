@@ -34,13 +34,47 @@ sus motivos en [`docs/adr/`](docs/adr/README.md).
 
 ## Quickstart
 
+> ¿No programás? Seguí [`INSTALAR.md`](INSTALAR.md): los mismos pasos, sin
+> suponer nada.
+
+### Requisitos
+
+| Qué | Versión | Para qué |
+|---|---|---|
+| **Python** | **3.12** (la del lock; es contra la que se verificó) | el backend. Con 3.14 `pip install -r requirements.lock` también instala sin errores, pero no es la versión de referencia |
+| **Node.js** | **≥ 20.19 o ≥ 22.12** (lo que exige Vite 8; la LTS actual sirve) | **compilar el frontend la primera vez**. Sin Node el backend arranca igual, pero no hay pantalla: solo la portada de la API |
+| **Clave de FRED** | gratuita | las series macro (desempleo, inflación, producción…). [Cómo sacarla](https://fred.stlouisfed.org/docs/api/api_key.html) |
+| **Clave de Gemini** | gratuita, con cupo chico | traducir una tesis a series. [Cómo sacarla](https://aistudio.google.com/apikey) |
+
+Las series de acciones y ETFs (yfinance) no necesitan clave.
+
+### Pasos
+
+El orden importa: el entorno virtual va **antes** de `pip install`, y el `.env`
+**antes** de arrancar.
+
 ```bash
-cp .env.example .env   # completar FRED_API_KEY / GEMINI_API_KEY según necesidad
-python -m venv .venv
-.venv\Scripts\activate          # Windows; en Linux/macOS: source .venv/bin/activate
-pip install -r requirements.lock
-python run.py           # compila el frontend si hace falta y sirve todo en :8000
+git clone https://github.com/casper06/timeInvestor.git
+cd timeInvestor
+python -m venv .venv                      # con Python 3.12; en Windows: py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.lock    # Linux/macOS: .venv/bin/python
+copy .env.example .env                    # Linux/macOS: cp .env.example .env
+# editar .env: completar FRED_API_KEY y GEMINI_API_KEY
+.venv\Scripts\python.exe run.py          # Linux/macOS: .venv/bin/python run.py
 ```
+
+Se llama al Python del `.venv` directamente en vez de "activarlo": en Windows,
+`.venv\Scripts\Activate.ps1` falla con "la ejecución de scripts está
+deshabilitada" con la política de PowerShell de fábrica (Restricted), y
+`cp` no existe en `cmd`. Si preferís activar el entorno
+(`.venv\Scripts\activate`, o `source .venv/bin/activate` en Linux/macOS), los
+comandos de arriba funcionan igual sin el prefijo `.venv\Scripts\python.exe`.
+
+**La primera vez `run.py` compila el frontend** (instala ~130 paquetes de Node
+y corre `vite build`): unos 20 segundos en una máquina rápida, más con conexión
+lenta. Después sirve todo en <http://127.0.0.1:8000>. Si Node no está instalado,
+verás `Advertencia al compilar frontend` y la app **no** tendrá pantalla:
+instalá Node, y volvé a correr `run.py`.
 
 Ver `.env.example` para el detalle de cada variable de entorno.
 
@@ -171,8 +205,9 @@ tooltip del badge de proveedor LLM en el frontend.
 > El **default del código sigue siendo `gemini`** porque Claude CLI requiere
 > tener Claude Code instalado y autenticado (ver la instalación más abajo), que
 > no se puede asumir en una instalación nueva; Gemini solo necesita una API
-> key. El default es el que arranca sin herramientas de Node, no el
-> recomendado.
+> key (no hay que instalar el Claude Code CLI). El default es el que **no
+> requiere esa herramienta extra**, no el recomendado. (La app en sí sí necesita
+> Node.js para compilar el frontend: ver Requisitos.)
 
 La API key gratuita de Gemini se queda corta para uso real: son **20 pedidos
 por día y por modelo** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
