@@ -1,5 +1,9 @@
 # Changelog
 
+## Próxima versión
+
+- **Versión en un único lugar:** el número vive solo en el archivo `VERSION`; `backend/version.py` lo lee y de ahí salen la app FastAPI y `/api/health`, que el encabezado de la interfaz muestra. Se quitó el `1.0.0` escrito a mano en `backend/main.py` y el "v2.0 Advanced Core" del encabezado (y "v2.0" del pie), que no correspondían a ninguna versión real. Un test falla si alguien vuelve a escribir la versión a mano en otro archivo.
+
 ## v1.0.1 — 2026-10-01
 
 Corrección de seguridad de logs, mejores mensajes de clave y una instalación documentada para quien no conoce el proyecto. Sin cambios en el análisis ni en los motores.

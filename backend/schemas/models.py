@@ -294,6 +294,8 @@ FORECAST_ENGINE_PER_SERIES_NOTICE = "variable (per-series, ver engine_selection_
 
 class HealthResponse(BaseModel):
     status: str
+    # From the VERSION file (backend/version.py); the UI header shows it.
+    version: str
     llm_provider: str
     # EngineSelector decides Holt vs TimesFM per series, so there is no single
     # engine to name here. forecast_engine is kept only for existing consumers,

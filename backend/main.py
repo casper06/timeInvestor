@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from contextlib import asynccontextmanager
 from backend.config import settings
+from backend.version import __version__
 from backend.database.connection import init_db
 from backend.api.routes import router as api_router
 from backend.services.redaction import install_log_redaction
@@ -28,7 +29,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="TimeInvestor API",
     description="Quantitative Investment Thesis Analysis, Monitoring and Forecasting Engine",
-    version="1.0.0",
+    version=__version__,
     lifespan=lifespan
 )
 

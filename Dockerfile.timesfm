@@ -53,7 +53,7 @@ RUN pip install --no-cache-dir -c requirements.lock \
 # Copy application backend, execution scripts, and launcher
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
-COPY run.py ./
+COPY run.py VERSION ./
 
 # Copy compiled frontend from Stage 1
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
