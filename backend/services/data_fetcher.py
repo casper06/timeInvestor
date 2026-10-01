@@ -26,6 +26,40 @@ class FredSeriesNotFoundError(ValueError):
         self.series_id = series_id
 
 
+class FredKeyRejectedError(ValueError):
+    """FRED answered, and what it said is "I don't accept this api_key". Distinct
+    from a key that was never configured and from FRED being unreachable: each of
+    the three has a different fix. Subclasses ValueError so callers that already
+    turn ValueError into a user-facing message keep working. The message never
+    contains the key (see redaction.py)."""
+
+    def __init__(self, status_code: int, fred_message: str, api_key: Optional[str] = None):
+        from backend.services.redaction import redact_secrets
+        self.status_code = status_code
+        self.fred_message = redact_secrets(fred_message, api_key).strip()
+        super().__init__(
+            f"FRED rechazó la clave (HTTP {status_code}): {self.fred_message} "
+            f"Revisá que la hayas copiado completa en el .env (FRED_API_KEY)."
+        )
+
+
+def _fred_error_message(resp) -> str:
+    try:
+        return str(resp.json().get("error_message", "")) or str(getattr(resp, "text", ""))
+    except Exception:
+        return str(getattr(resp, "text", ""))
+
+
+def _fred_rejects_key(resp) -> bool:
+    """FRED answers HTTP 400 "Bad Request. The value for variable api_key is not
+    registered..." (or "... is not a 32 character alpha-numeric lower-case
+    string") for an unknown or malformed key. Told apart from the "series does
+    not exist" 400 by the message naming `api_key`."""
+    if resp.status_code not in (400, 401, 403):
+        return False
+    return "api_key" in _fred_error_message(resp).lower()
+
+
 def _fred_says_missing(resp) -> bool:
     """FRED answers HTTP 400 "Bad Request. The series does not exist." for an
     unknown series_id, on both /fred/series and /fred/series/observations
@@ -322,6 +356,10 @@ class FREDDataFetcher:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.FRED_API_KEY
 
+    def _safe(self, text: object) -> str:
+        from backend.services.redaction import redact_secrets
+        return redact_secrets(text, self.api_key)
+
     def get_series(self, series_id: str, limit: int = 500) -> TimeSeriesData:
         cache_key = f"fred_{series_id}_{limit}"
         hit = cache.get_with_time(cache_key)
@@ -332,7 +370,11 @@ class FREDDataFetcher:
             # included) as it was stored.
             return cached.model_copy(update={"from_cache": True, "cached_at": cached_at_str})
 
-        if self.api_key and self.api_key.strip():
+        rejected: Optional[FredKeyRejectedError] = None
+        if not (self.api_key and self.api_key.strip()):
+            detail = "FRED API no disponible (FRED_API_KEY no configurada)"
+        else:
+            detail = "FRED API no disponible (error de conexión o FRED no respondió)"
             try:
                 url = "https://api.stlouisfed.org/fred/series/observations"
                 params = {
@@ -381,16 +423,22 @@ class FREDDataFetcher:
                     elif _fred_says_missing(resp):
                         # Never a synthetic stand-in for a series that doesn't exist.
                         raise FredSeriesNotFoundError(series_id)
+                    elif _fred_rejects_key(resp):
+                        rejected = FredKeyRejectedError(resp.status_code, _fred_error_message(resp), self.api_key)
+                        detail = f"FRED rechazó la clave (HTTP {resp.status_code})"
+                        logger.warning(f"FRED rejected the API key: HTTP {resp.status_code}")
                     else:
-                        logger.warning(f"FRED API returned HTTP {resp.status_code}: {resp.text}")
+                        detail = f"FRED API no disponible (HTTP {resp.status_code})"
+                        logger.warning(f"FRED API returned HTTP {resp.status_code}: {self._safe(resp.text)}")
             except FredSeriesNotFoundError:
                 raise
             except Exception as e:
-                logger.error(f"Failed to query FRED API: {e}")
+                logger.error(f"Failed to query FRED API: {self._safe(e)}")
 
         # Fallback to reference series only if ALLOW_SYNTHETIC_DATA=true
-        detail = "FRED API no disponible (clave no configurada o error de conexión)"
         if not settings.ALLOW_SYNTHETIC_DATA:
+            if rejected is not None:
+                raise rejected
             raise ValueError(f"No se pudieron obtener datos de FRED para '{series_id}' ({detail}) y ALLOW_SYNTHETIC_DATA=false")
         
         series_data = self._generate_reference_series(series_id, detail=detail)
@@ -447,8 +495,11 @@ class FREDDataFetcher:
                     raise FredSeriesNotFoundError(series_id)
                 elif _fred_says_missing(resp):
                     raise FredSeriesNotFoundError(series_id)
+                elif _fred_rejects_key(resp):
+                    logger.warning(f"FRED rejected the API key: HTTP {resp.status_code}")
+                    raise FredKeyRejectedError(resp.status_code, _fred_error_message(resp), self.api_key)
                 else:
-                    logger.warning(f"FRED metadata API returned HTTP {resp.status_code}: {resp.text}")
+                    logger.warning(f"FRED metadata API returned HTTP {resp.status_code}: {self._safe(resp.text)}")
                     raise ValueError(
                         f"No se pudo obtener metadata de FRED para '{series_id}' "
                         f"(HTTP {resp.status_code} de la API de FRED)"
@@ -456,8 +507,8 @@ class FREDDataFetcher:
         except ValueError:
             raise
         except Exception as e:
-            logger.error(f"Failed to query FRED metadata API for {series_id}: {e}")
-            raise ValueError(f"No se pudo obtener metadata de FRED para '{series_id}': {str(e)}") from e
+            logger.error(f"Failed to query FRED metadata API for {series_id}: {self._safe(e)}")
+            raise ValueError(f"No se pudo obtener metadata de FRED para '{series_id}': {self._safe(e)}") from e
 
     def _metadata_fields(self, series_id: str) -> Dict[str, Any]:
         """Title, units, frequency and SA/NSA from FRED itself (/fred/series).

@@ -170,7 +170,7 @@ class ThesisResponse(BaseModel):
     prompt_version: Optional[int] = Field(default=None, description="Versión del prompt de traducción (2 = 4.10)")
     provider_used: str
     fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
-    fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "content_filtered", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient), si requiere intervención (auth_or_config), o si el proveedor bloqueó la respuesta por su filtro de contenido (content_filtered — no se arregla ni esperando ni reconfigurando). None si mock fue elegido explícitamente (sin fallback_reason)")
+    fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "key_rejected", "content_filtered", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient), si requiere intervención (auth_or_config; key_rejected = el proveedor rechazó la clave), o si el proveedor bloqueó la respuesta por su filtro de contenido (content_filtered — no se arregla ni esperando ni reconfigurando). None si mock fue elegido explícitamente (sin fallback_reason)")
 
 class ForecastRequest(BaseModel):
     points: List[TimeSeriesPoint] = Field(..., min_length=2, max_length=10_000, description="Historical time series")
@@ -287,7 +287,7 @@ class InterpretationResponse(BaseModel):
     suggested_series_id: Optional[str] = Field(default=None, description="ID del ticker o serie sugerida para explorar")
     provider_used: str = Field(..., description="Proveedor real que generó esta interpretación: gemini-3.6-flash, openai-gpt-4o-mini, ollama-<model>, o mock-semantic-engine")
     fallback_reason: Optional[str] = Field(default=None, description="Motivo real por el que se cayó a mock-semantic-engine (excepción del proveedor real), None si mock fue elegido explícitamente")
-    fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "content_filtered", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient), si requiere intervención (auth_or_config), o si el proveedor bloqueó la respuesta por su filtro de contenido (content_filtered — no se arregla ni esperando ni reconfigurando). None si mock fue elegido explícitamente (sin fallback_reason)")
+    fallback_category: Optional[Literal["rate_limit", "transient", "auth_or_config", "key_rejected", "content_filtered", "unknown"]] = Field(default=None, description="Clasificación accionable de fallback_reason: si esperar sirve (rate_limit/transient), si requiere intervención (auth_or_config; key_rejected = el proveedor rechazó la clave), o si el proveedor bloqueó la respuesta por su filtro de contenido (content_filtered — no se arregla ni esperando ni reconfigurando). None si mock fue elegido explícitamente (sin fallback_reason)")
 
 ENGINE_MODE_PER_SERIES = "per_series_auto_selection"
 FORECAST_ENGINE_PER_SERIES_NOTICE = "variable (per-series, ver engine_selection_reason en cada forecast)"

@@ -42,6 +42,7 @@ import httpx
 from backend.config import settings
 from backend.schemas.models import FredCandidate
 from backend.services.data_fetcher import FREDDataFetcher, FredSeriesNotFoundError
+from backend.services.redaction import redact_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +148,7 @@ def search_fred_concept(concept: str, api_key: Optional[str] = None) -> List[Dic
             if h.get("id")
         ]
     except Exception as e:
-        logger.warning(f"FRED search failed for {concept!r}: {e}")
+        logger.warning(f"FRED search failed for {concept!r}: {redact_secrets(e, key)}")
         return []
 
 

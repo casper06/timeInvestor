@@ -9,12 +9,14 @@ from contextlib import asynccontextmanager
 from backend.config import settings
 from backend.database.connection import init_db
 from backend.api.routes import router as api_router
+from backend.services.redaction import install_log_redaction
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
+install_log_redaction()
 logger = logging.getLogger("TimeInvestor")
 
 @asynccontextmanager

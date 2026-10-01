@@ -121,7 +121,7 @@ export interface ThesisAnalysis {
   prompt_version?: number | null;
 }
 
-export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'content_filtered' | 'unknown';
+export type FallbackCategory = 'rate_limit' | 'transient' | 'auth_or_config' | 'key_rejected' | 'content_filtered' | 'unknown';
 
 export interface ThesisResponse extends ThesisAnalysis {
   thesis: string;

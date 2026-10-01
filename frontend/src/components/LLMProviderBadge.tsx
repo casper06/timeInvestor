@@ -22,8 +22,10 @@ const describeFallbackCategory = (category: FallbackCategory | null | undefined,
       return 'Se alcanzó el límite de uso de tu cuenta de Gemini. Probá de nuevo en unos minutos, o revisá la facturación en Google AI Studio.';
     case 'transient':
       return 'Falla temporal del servicio. Reintentá la consulta.';
+    case 'key_rejected':
+      return 'Gemini rechazó tu clave: revisá que la hayas copiado completa en el .env (GEMINI_API_KEY). Esto no se arregla esperando.';
     case 'auth_or_config':
-      return 'Problema de configuración (clave inválida o modelo no disponible). Esto no se arregla esperando — revisá tu .env o los logs del servidor.';
+      return 'Problema de configuración (falta la clave o el modelo no está disponible). Esto no se arregla esperando — revisá tu .env o los logs del servidor.';
     case 'content_filtered':
       return 'Gemini bloqueó esta respuesta por su filtro de contenido. Probá reformular la tesis; esto no es un problema de cuota ni de configuración.';
     default:
