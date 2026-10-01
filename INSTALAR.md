@@ -29,15 +29,18 @@ reconoce", repetí la instalación y revisá lo del PATH.
 
 ## 2. Bajá el programa
 
-Bajá <https://github.com/casper06/timeInvestor/archive/refs/heads/main.zip>,
-y extraelo en una carpeta **con ruta corta**, por ejemplo `C:\TimeInvestor`
-(Windows se traba con rutas muy largas). Tiene que quedar así:
-`C:\TimeInvestor\timeInvestor-main\run.py`.
+Entrá a <https://github.com/casper06/timeInvestor/releases/latest> y, en la
+sección **Assets** (al final de la página), bajá **Source code (zip)**.
+Extraelo en una carpeta **con ruta corta**, por ejemplo `C:\TimeInvestor`
+(Windows se traba con rutas muy largas). Adentro se crea una carpeta con el
+nombre de la versión, por ejemplo `timeInvestor-1.0.1`; tiene que quedar así:
+`C:\TimeInvestor\timeInvestor-1.0.1\run.py`. (Si la versión que bajaste es
+otra, usá ese nombre en los comandos de abajo.)
 
 Entrá a esa carpeta desde el Símbolo del sistema:
 
 ```
-cd C:\TimeInvestor\timeInvestor-main
+cd C:\TimeInvestor\timeInvestor-1.0.1
 ```
 
 ## 3. Sacá las dos claves (gratis)
@@ -116,7 +119,7 @@ navegador.
 - **No cierres la ventana negra** mientras uses la app: es el programa
   funcionando.
 - Para apagarlo: en esa ventana, **Ctrl+C**.
-- **Las próximas veces** solo hacen falta `cd C:\TimeInvestor\timeInvestor-main`
+- **Las próximas veces** solo hacen falta `cd C:\TimeInvestor\timeInvestor-1.0.1`
   y la línea del paso 6: arranca en segundos.
 
 La app abre en `http://127.0.0.1:8000`, que solo se ve desde tu computadora.
