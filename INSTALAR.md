@@ -1,6 +1,6 @@
 # Instalar TimeInvestor (Windows, sin saber programar)
 
-Tiempo total: unos **20 minutos**, casi todo descargas. No hace falta pagar nada.
+Tiempo total: unos **20 minutos**, casi todo descargas (en la prueba, instalar las librerías tardó 78 s y la primera compilación 33 s). No hace falta pagar nada.
 
 > Los comandos se escriben en el **Símbolo del sistema** (buscalo en el menú
 > Inicio: escribí `cmd` y Enter). Cada línea de las cajas grises se copia, se
@@ -96,8 +96,8 @@ py -3.12 -m venv .venv
 
 El primero crea un espacio aislado para el programa (tarda unos segundos). El
 segundo descarga las librerías: **verás muchas líneas pasar durante uno o dos
-minutos**; es normal. Termina con `Successfully installed ...`. (Puede mostrar
-un aviso de "new release of pip": ignoralo.)
+minutos**; es normal. Termina con una línea `Successfully installed ...` y,
+después, un aviso de "new release of pip": ignoralo.
 
 ## 6. Arrancá
 
