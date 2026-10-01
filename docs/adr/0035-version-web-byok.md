@@ -60,7 +60,8 @@ El análisis completo, con el inventario línea por línea, está en
   de LLM (`llm_router.py:492-502`) y los de FRED, donde la clave está en la URL y
   una excepción de `httpx` la incluye (`data_fetcher.py:386,392,466`). Con
   claves ajenas hay que redactarlos antes.
-- **Cada usuario hace dos trámites** (FRED y Gemini) antes de ver nada. La
+- **Cada usuario hace dos trámites** (FRED y Gemini) antes de ver nada; está
+  decidido que así sea. La
   pantalla de claves explica dónde se consigue cada una y que son gratuitas.
 - **Hoy no existe ninguna función de redacción de secretos en el backend**
   (verificado: `grep -rn "redact\|sanitiz" backend/` no devuelve nada). Es
@@ -77,12 +78,12 @@ El análisis completo, con el inventario línea por línea, está en
 
 ## Estado
 
-**Propuesta.** Requiere decisiones del usuario antes de implementar: hosting,
-si se soporta OpenAI además de Gemini, si yfinance es aceptable como fuente, si
-pedirle dos claves a cada usuario es aceptable (la alternativa es una clave de
-FRED del dueño, a costa del objetivo de cero secretos), y qué hacer cuando a un
-usuario se le acaba el cupo. Están listadas al final del
-análisis.
+**Propuesta.** Una decisión ya está tomada (2026-09-30): **se le piden dos
+claves a cada usuario, Gemini y FRED, y el servidor no guarda ningún secreto**.
+Siguen abiertas, antes de implementar: hosting, si se soporta OpenAI además de
+Gemini, si yfinance es aceptable como fuente, qué hacer cuando a un usuario se
+le acaba el cupo, usuarios en Europa y si el código de acceso alcanza. Están
+listadas al final del análisis.
 
 ## Referencias
 

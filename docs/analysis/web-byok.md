@@ -512,6 +512,8 @@ Sin esto no se puede publicar:
 
 ### Lo que tenés que decidir vos
 
+La 6 ya está decidida; las demás siguen abiertas.
+
 1. **¿Hosting?** Mi recomendación es **Hetzner CX23** (EUR 5,99/mes) por el IP
    dedicado y la ausencia de arranque en frío; el costo es administrarlo. Si
    preferís no administrar nada, **Fly.io con 512 MB**. Render Free solo para
@@ -527,12 +529,10 @@ Sin esto no se puede publicar:
    cae al mock y lo declara.)
 5. **¿Usuarios en Europa?** Si sí, el plan gratuito de Gemini no les sirve
    (5.2) y hay que decírselo de entrada.
-6. **¿Pedirle a cada usuario dos claves es aceptable?** Sacar la de FRED es un
-   minuto, pero son dos trámites en cuentas distintas antes de ver nada. Para
-   conocidos, con la pantalla de 2.7 explicando cada paso, parece razonable.
-   Si el grupo no es técnico, la alternativa es que **vos** pongas la de FRED
-   (que es gratuita y de bajo riesgo) a costa de abandonar "el servidor no
-   guarda ningún secreto". Es tu decisión, no una necesidad técnica.
+6. ~~¿Pedirle a cada usuario dos claves es aceptable?~~ **Decidido
+   (2026-09-30): sí.** Cada usuario pone su clave de Gemini y la de FRED, y el
+   servidor no guarda ningún secreto. La pantalla de 2.7 explica cada paso.
+   La alternativa descartada era una clave de FRED del dueño.
 7. **¿El código de acceso alcanza?** Es compartido y no revocable por persona.
    Con pocos conocidos sí; conviene saber de antemano en qué punto deja de
    alcanzar.
