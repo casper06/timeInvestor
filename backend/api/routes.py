@@ -51,7 +51,7 @@ from backend.schemas.models import (
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
 from backend.services.fred_grounding import ground_macro_series
 from backend.services.instrument_grounding import ground_instruments
-from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError
+from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError, FredKeyRejectedError
 from backend.services.series_routing import is_fred_series
 from backend.services.llm_router import get_llm_client
 from backend.services.engine_selector import EngineSelector
@@ -199,6 +199,9 @@ def get_macro_data(
     except FredSeriesNotFoundError as nf:
         logger.warning(f"FRED series {series_id} does not exist")
         return _fred_not_found(nf)
+    except FredKeyRejectedError as kr:
+        # 401, not 404: the series may well exist; the credentials FRED was given don't work.
+        raise HTTPException(status_code=401, detail=str(kr))
     except ValueError as ve:
         logger.warning(f"Validation/Missing data for FRED {series_id}: {ve}")
         raise HTTPException(status_code=404, detail=str(ve))
@@ -314,6 +317,8 @@ def get_fred_series_metadata(
     except FredSeriesNotFoundError as nf:
         logger.warning(f"FRED series {series_id} does not exist")
         return _fred_not_found(nf)
+    except FredKeyRejectedError as kr:
+        raise HTTPException(status_code=401, detail=str(kr))
     except ValueError as ve:
         logger.warning(f"Validation/Missing metadata for FRED {series_id}: {ve}")
         raise HTTPException(status_code=404, detail=str(ve))

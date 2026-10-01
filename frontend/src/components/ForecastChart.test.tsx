@@ -97,7 +97,7 @@ describe('ForecastChart — "Serie Activa" selector', () => {
   });
 
   it('humanizes a missing-FRED-key error into user-facing copy', () => {
-    const technicalError = "No se pudieron obtener datos de FRED para 'IPG2211N' (FRED API no disponible (clave no configurada o error de conexión)) y ALLOW_SYNTHETIC_DATA=false";
+    const technicalError = "No se pudieron obtener datos de FRED para 'IPG2211N' (FRED API no disponible (FRED_API_KEY no configurada)) y ALLOW_SYNTHETIC_DATA=false";
     render(
       <ForecastChart
         {...baseProps}
@@ -114,6 +114,18 @@ describe('ForecastChart — "Serie Activa" selector', () => {
     expect(screen.queryByText(technicalError)).not.toBeInTheDocument();
     expect(screen.getByText(/FRED_API_KEY/)).toBeInTheDocument();
     expect(humanizeSeriesError(technicalError)).toMatch(/FRED_API_KEY/);
+  });
+
+  it('tells apart a rejected FRED key, a missing one and FRED being down', () => {
+    const rejected = 'FRED rechazó la clave (HTTP 400): Bad Request.  The value for variable api_key is not registered. Revisá que la hayas copiado completa en el .env (FRED_API_KEY).';
+    const missing = "No se pudieron obtener datos de FRED para 'UNRATE' (FRED API no disponible (FRED_API_KEY no configurada)) y ALLOW_SYNTHETIC_DATA=false";
+    const down = "No se pudieron obtener datos de FRED para 'UNRATE' (FRED API no disponible (HTTP 503)) y ALLOW_SYNTHETIC_DATA=false";
+
+    expect(humanizeSeriesError(rejected)).toBe('FRED rechazó tu clave: revisá que la hayas copiado completa en el .env (FRED_API_KEY).');
+    expect(humanizeSeriesError(rejected)).not.toMatch(/no está configurada/);
+    expect(humanizeSeriesError(missing)).toMatch(/no está configurada/);
+    expect(humanizeSeriesError(down)).toMatch(/no está respondiendo/);
+    expect(humanizeSeriesError(down)).not.toMatch(/clave/);
   });
 
   it('highlights the currently selected series tab', () => {

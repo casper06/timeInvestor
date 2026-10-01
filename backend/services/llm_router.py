@@ -10,6 +10,7 @@ from typing import Awaitable, Callable, Dict, List, Literal, Optional, TypeVar
 import httpx
 
 from backend.config import settings
+from backend.services.redaction import redact_secrets
 from backend.services.llm_availability import mark_account_rejected
 from backend.services.horizons import format_horizon
 from backend.services.copilot_context import (
@@ -43,7 +44,7 @@ RETRYABLE_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
 # message than non-retryable-and-config ("go fix your .env").
 AUTH_OR_CONFIG_STATUS_CODES = frozenset({401, 403, 404})
 
-FallbackCategory = Literal["rate_limit", "transient", "auth_or_config", "content_filtered", "unknown"]
+FallbackCategory = Literal["rate_limit", "transient", "auth_or_config", "key_rejected", "content_filtered", "unknown"]
 
 # Gemini's finish_reason values that mean "the model refused to generate, or
 # generated something that got blocked" — distinct from a genuine failure
@@ -204,6 +205,14 @@ def _classify_retry_label(exc: Exception) -> str:
     return "error transitorio"
 
 
+def _is_key_rejected(exc: Exception, status_code: Optional[int]) -> bool:
+    """Google answers a wrong or malformed key with HTTP 400 INVALID_ARGUMENT and
+    reason API_KEY_INVALID ("API key not valid. Please pass a valid API key."),
+    not with a 401 — so the status code alone files it under "unknown"."""
+    text = str(exc)
+    return status_code == 400 and ("API_KEY_INVALID" in text or "API key not valid" in text)
+
+
 def classify_fallback_category(exc: Exception) -> FallbackCategory:
     """
     Maps a provider failure to an ACTIONABLE category for the end user — not just
@@ -234,6 +243,8 @@ def classify_fallback_category(exc: Exception) -> FallbackCategory:
 
     status_code = _extract_status_code(exc)
 
+    if _is_key_rejected(exc, status_code):
+        return "key_rejected"
     if status_code == 429:
         return "rate_limit"
     if status_code in AUTH_OR_CONFIG_STATUS_CODES:
@@ -516,8 +527,10 @@ def _format_fallback_reason(provider_label: str, exc: Exception) -> str:
     "{provider_label} falló: " prefix on top of it.
     """
     if isinstance(exc, RetriesExhaustedError):
-        return str(exc)
-    return f"{provider_label} falló: {exc}"
+        return redact_secrets(exc)
+    if _is_key_rejected(exc, _extract_status_code(exc)):
+        return f"{provider_label} rechazó la clave: API key not valid (API_KEY_INVALID)."
+    return redact_secrets(f"{provider_label} falló: {exc}")
 
 
 class GeminiLLMClient(BaseLLMClient):
@@ -557,7 +570,7 @@ class GeminiLLMClient(BaseLLMClient):
             from google import genai
             self._client = genai.Client(api_key=self.api_key)
         except Exception as e:
-            logger.warning(f"Could not initialize google-genai Client: {e}")
+            logger.warning(f"Could not initialize google-genai Client: {redact_secrets(e)}")
             self._client = None
 
     async def parse_thesis(self, thesis: str) -> ThesisResponse:
@@ -596,7 +609,7 @@ class GeminiLLMClient(BaseLLMClient):
         except Exception as e:
             reason = _format_fallback_reason("Gemini", e)
             category = classify_fallback_category(e)
-            logger.error(f"Gemini LLM error: {e}. Falling back to MockLLMClient.")
+            logger.error(f"Gemini LLM error: {redact_secrets(e)}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.parse_thesis(thesis)
             result.fallback_reason = reason
@@ -648,7 +661,7 @@ class GeminiLLMClient(BaseLLMClient):
         except Exception as e:
             reason = _format_fallback_reason("Gemini", e)
             category = classify_fallback_category(e)
-            logger.error(f"Gemini interpretation error: {e}. Falling back to MockLLMClient.")
+            logger.error(f"Gemini interpretation error: {redact_secrets(e)}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.interpret_situation(ctx)
             result.fallback_reason = reason
@@ -694,7 +707,7 @@ class OpenAILLMClient(BaseLLMClient):
         except Exception as e:
             reason = _format_fallback_reason("OpenAI", e)
             category = classify_fallback_category(e)
-            logger.error(f"OpenAI LLM error: {e}. Falling back to MockLLMClient.")
+            logger.error(f"OpenAI LLM error: {redact_secrets(e)}. Falling back to MockLLMClient.")
             mock_client = MockLLMClient()
             result = await mock_client.parse_thesis(thesis)
             result.fallback_reason = reason
@@ -734,7 +747,7 @@ class OpenAILLMClient(BaseLLMClient):
         except Exception as e:
             reason = _format_fallback_reason("OpenAI", e)
             category = classify_fallback_category(e)
-            logger.error(f"OpenAI interpretation error: {e}. Falling back to Mock.")
+            logger.error(f"OpenAI interpretation error: {redact_secrets(e)}. Falling back to Mock.")
             mock_client = MockLLMClient()
             result = await mock_client.interpret_situation(ctx)
             result.fallback_reason = reason
@@ -1853,7 +1866,7 @@ def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
             return GeminiLLMClient()
         except Exception as e:
             reason = _format_fallback_reason("Gemini (inicialización)", e)
-            logger.warning(f"Failed to initialize GeminiLLMClient ({e}), falling back to MockLLMClient")
+            logger.warning(f"Failed to initialize GeminiLLMClient ({redact_secrets(e)}), falling back to MockLLMClient")
             return _PreFailedMockLLMClient(reason)
 
     elif prov == "openai":
@@ -1861,7 +1874,7 @@ def get_llm_client(provider: Optional[str] = None) -> BaseLLMClient:
             return OpenAILLMClient()
         except Exception as e:
             reason = _format_fallback_reason("OpenAI (inicialización)", e)
-            logger.warning(f"Failed to initialize OpenAILLMClient ({e}), falling back to MockLLMClient")
+            logger.warning(f"Failed to initialize OpenAILLMClient ({redact_secrets(e)}), falling back to MockLLMClient")
             return _PreFailedMockLLMClient(reason)
 
     elif prov == "ollama":

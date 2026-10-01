@@ -55,7 +55,7 @@ interface ForecastChartProps {
 
 /**
  * Translates a known technical backend error into user-facing copy, when the
- * cause is recognizably a missing configuration key. Falls back to the raw
+ * cause is recognizably a missing or rejected configuration key (or FRED being down). Falls back to the raw
  * message for anything else (yfinance down, invalid ticker, ...) — that's
  * still more useful than a generic "no data" string. Exported so App.tsx's
  * top-of-page error banner shows the same friendly text as the chart's own
@@ -63,8 +63,15 @@ interface ForecastChartProps {
  * humanized one in the other.
  */
 export const humanizeSeriesError = (rawError: string): string => {
-  if (/FRED_API_KEY|FRED API no disponible/i.test(rawError)) {
+  // Three different causes, three different fixes — checked from the most specific.
+  if (/FRED rechazó la clave/i.test(rawError)) {
+    return 'FRED rechazó tu clave: revisá que la hayas copiado completa en el .env (FRED_API_KEY).';
+  }
+  if (/FRED_API_KEY.*no configurada|clave no configurada/i.test(rawError)) {
     return 'Esta serie requiere una clave de API de FRED que no está configurada. Podés agregarla en tu .env (FRED_API_KEY).';
+  }
+  if (/FRED API no disponible/i.test(rawError)) {
+    return 'FRED no está respondiendo ahora. Volvé a intentar en un rato.';
   }
   if (/GEMINI_API_KEY/i.test(rawError)) {
     return 'Esta acción requiere una clave de API de Gemini que no está configurada. Podés agregarla en tu .env (GEMINI_API_KEY).';

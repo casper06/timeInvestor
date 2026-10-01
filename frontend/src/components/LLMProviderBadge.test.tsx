@@ -30,6 +30,20 @@ describe('LLMProviderBadge', () => {
     expect(label).toMatch(/sin LLM/i);
   });
 
+  it('says Gemini rejected the key, instead of the generic configuration problem', () => {
+    const { container } = render(
+      <LLMProviderBadge
+        providerUsed="mock-semantic-engine"
+        fallbackReason="Gemini rechazó la clave: API key not valid (API_KEY_INVALID)."
+        fallbackCategory="key_rejected"
+      />
+    );
+    const title = container.querySelector('span')?.getAttribute('title') ?? '';
+    expect(title).toMatch(/Gemini rechazó tu clave/);
+    expect(title).toMatch(/GEMINI_API_KEY/);
+    expect(title).not.toMatch(/modelo no está disponible/);
+  });
+
   it('handles an unset provider gracefully', () => {
     const { isMock, label } = formatLLMProvider(undefined);
     expect(isMock).toBe(true);
