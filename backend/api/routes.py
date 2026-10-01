@@ -51,6 +51,7 @@ from backend.schemas.models import (
 from backend.services.llm_availability import KNOWN_PROVIDERS, check_provider, get_provider_availability
 from backend.services.fred_grounding import ground_macro_series
 from backend.services.instrument_grounding import ground_instruments
+from backend.version import __version__
 from backend.services.data_fetcher import MarketDataFetcher, FREDDataFetcher, FredSeriesNotFoundError, FredKeyRejectedError
 from backend.services.series_routing import is_fred_series
 from backend.services.llm_router import get_llm_client
@@ -92,6 +93,7 @@ async def health_check():
     """
     return HealthResponse(
         status="ok",
+        version=__version__,
         llm_provider=settings.effective_llm_provider,
         engine_mode=ENGINE_MODE_PER_SERIES,
         forecast_engine=FORECAST_ENGINE_PER_SERIES_NOTICE,

@@ -241,6 +241,8 @@ export interface HealthResponse {
   has_gemini_key: boolean;
   has_fred_key: boolean;
   has_openai_key: boolean;
+  /** From the VERSION file at the repo root; optional so older backends still type-check. */
+  version?: string;
 }
 
 const API_BASE = '/api';

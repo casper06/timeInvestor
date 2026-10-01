@@ -53,9 +53,11 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
                 TimeInvestor
               </h1>
-              <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                v2.0 Advanced Core
-              </span>
+              {health?.version && (
+                <span className="text-[10px] font-mono tracking-widest px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                  v{health.version}
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400">
               Análisis, Monitoreo y Proyección de Tesis Cuantitativas

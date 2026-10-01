@@ -629,7 +629,7 @@ export const App: React.FC = () => {
       />
 
       <footer className="border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-600 font-mono">
-        TimeInvestor Quantitative Platform • v2.0 Local Core • TimesFM PyTorch Adapter • SQLite Persistence • Backtesting Engine
+        TimeInvestor Quantitative Platform • Local Core • TimesFM PyTorch Adapter • SQLite Persistence • Backtesting Engine
       </footer>
     </div>
   );
